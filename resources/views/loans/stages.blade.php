@@ -3,18 +3,19 @@
 @section('header')
     <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-3">
         <div class="d-flex align-items-center gap-2">
-            <a href="{{ route('loans.show', $loan) }}" style="color: rgba(255,255,255,0.4); text-decoration: none;">
-                <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-            </a>
             <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">
+                <svg style="width:16px;height:16px;display:inline;margin-right:6px;color:rgba(255,255,255,0.85);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
                 Stages — {{ $loan->loan_number }}
             </h2>
         </div>
-        @if($progress)
-            <span class="text-white" style="font-size: 0.9rem;">
-                {{ $progress->completed_stages }}/{{ $progress->total_stages }} stages ({{ number_format($progress->overall_percentage, 0) }}%)
-            </span>
-        @endif
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            @if($progress)
+                <span class="text-white" style="font-size: 0.9rem;">
+                    {{ $progress->completed_stages }}/{{ $progress->total_stages }} stages ({{ number_format($progress->overall_percentage, 0) }}%)
+                </span>
+            @endif
+            <a href="{{ route('loans.show', $loan) }}" class="btn-accent-outline btn-accent-sm btn-accent-outline-white"><svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg> Back</a>
+        </div>
     </div>
 @endsection
 
@@ -62,7 +63,8 @@
                     @endphp
                     <div class="d-flex align-items-center gap-1">
                         <div class="rounded-circle d-flex align-items-center justify-content-center {{ $dotColor }} {{ $isCurrent ? 'shadow' : '' }}"
-                             style="width: 28px; height: 28px; font-size: 0.7rem; font-weight: 700; flex-shrink: 0;{{ $isCurrent ? 'box-shadow: 0 0 0 3px rgba(13,110,253,0.3);' : '' }}"
+                             class="shf-text-xs"
+                             style="width: 28px; height: 28px; font-weight: 700; flex-shrink: 0;{{ $isCurrent ? 'box-shadow: 0 0 0 3px rgba(13,110,253,0.3);' : '' }}"
                              title="{{ $sa->stage?->stage_name_en }}">
                             {{ $loop->iteration }}
                         </div>
@@ -111,7 +113,7 @@
                     <div class="d-flex align-items-center gap-2">
                         <span class="shf-badge shf-badge-{{ match(\App\Models\StageAssignment::STATUS_LABELS[$assignment->status]['color']) {
                             'success' => 'green', 'primary' => 'blue', 'danger' => 'orange', 'warning' => 'orange', default => 'gray'
-                        } }}" style="font-size: 0.7rem;">
+                        } }} shf-text-xs">
                             {{ \App\Models\StageAssignment::STATUS_LABELS[$assignment->status]['label'] }}
                         </span>
                         <strong>{{ $assignment->stage?->stage_name_en }}</strong>
@@ -129,6 +131,115 @@
                     @endif
                     @if($assignment->completed_at)
                         <small class="text-muted ms-3">{{ $assignment->status === 'completed' ? 'Completed' : ucfirst($assignment->status) }}: {{ $assignment->completed_at->format('d M Y H:i') }}</small>
+                    @endif
+
+                    {{-- Phase progress indicator for multi-phase stages --}}
+                    @php
+                        $phaseConfig = match($assignment->stage_key) {
+                            'rate_pf' => [
+                                'current' => $assignment->getNotesData()['rate_pf_phase'] ?? '1',
+                                'phases' => [
+                                    ['key' => '1', 'label' => 'Fill Details', 'role' => 'Loan Advisor'],
+                                    ['key' => '2', 'label' => 'Bank Review', 'role' => 'Bank Employee'],
+                                    ['key' => '3', 'label' => 'Final Review', 'role' => 'Loan Advisor'],
+                                ],
+                            ],
+                            'sanction' => [
+                                'current' => $assignment->getNotesData()['sanction_phase'] ?? '1',
+                                'phases' => [
+                                    ['key' => '1', 'label' => 'Send to Bank', 'role' => 'Task Owner'],
+                                    ['key' => '2', 'label' => 'Generate Letter', 'role' => 'Bank Employee'],
+                                    ['key' => '3', 'label' => 'Fill Details', 'role' => 'Task Owner'],
+                                ],
+                            ],
+                            'legal_verification' => [
+                                'current' => $assignment->getNotesData()['legal_phase'] ?? '1',
+                                'phases' => [
+                                    ['key' => '1', 'label' => 'Send to Bank', 'role' => 'Task Owner'],
+                                    ['key' => '2', 'label' => 'Initiate Legal', 'role' => 'Bank Employee'],
+                                    ['key' => '3', 'label' => 'Review', 'role' => 'Task Owner'],
+                                ],
+                            ],
+                            'docket' => [
+                                'current' => $assignment->getNotesData()['docket_phase'] ?? '1',
+                                'phases' => [
+                                    ['key' => '1', 'label' => 'Login Date', 'role' => 'Loan Advisor'],
+                                    ['key' => '2', 'label' => 'Docket Login', 'role' => 'Office Employee'],
+                                    ['key' => '3', 'label' => 'Confirm', 'role' => 'Task Owner'],
+                                ],
+                            ],
+                            'esign' => [
+                                'current' => $assignment->getNotesData()['esign_phase'] ?? '1',
+                                'phases' => [
+                                    ['key' => '1', 'label' => 'Generate', 'role' => 'Bank Employee'],
+                                    ['key' => '2', 'label' => 'Customer Sign', 'role' => 'Task Owner'],
+                                    ['key' => '3', 'label' => 'Confirm', 'role' => 'Bank Employee'],
+                                ],
+                            ],
+                            default => null,
+                        };
+                    @endphp
+                    @php
+                        $roleBgCss = function($role) {
+                            if (str_contains($role, 'Bank Employee')) return 'shf-role-bg-bank-employee';
+                            if (str_contains($role, 'Office Employee')) return 'shf-role-bg-office-employee';
+                            if (str_contains($role, 'Branch Manager')) return 'shf-role-bg-branch-manager';
+                            if (str_contains($role, 'Loan Advisor')) return 'shf-role-bg-loan-advisor';
+                            return 'shf-role-bg-task-owner';
+                        };
+                        $transferSuggestion = match($assignment->stage_key) {
+                            'inquiry', 'document_selection', 'document_collection', 'app_number' => 'Can transfer to: Loan Advisor, Branch Manager',
+                            'bsm_osv' => 'Can transfer to: Bank Employee (same bank)',
+                            'legal_verification' => 'Phase auto-transfers between Task Owner ↔ Bank Employee',
+                            'technical_valuation', 'property_valuation' => 'Can transfer to: Office Employee, Branch Manager',
+                            'rate_pf' => 'Phase auto-transfers: Loan Advisor → Bank Employee → Loan Advisor',
+                            'sanction' => 'Phase auto-transfers: Task Owner → Bank Employee → Task Owner',
+                            'docket' => 'Phase auto-transfers: Loan Advisor → Office Employee → Task Owner',
+                            'kfs' => 'Can transfer to: Loan Advisor, Branch Manager, Office Employee',
+                            'esign' => 'Phase auto-transfers: Bank Employee → Task Owner → Bank Employee',
+                            'disbursement' => 'Can transfer to: Loan Advisor, Branch Manager',
+                            'otc_clearance' => 'Can transfer to: Office Employee, Loan Advisor, Branch Manager',
+                            default => null,
+                        };
+                    @endphp
+                    @if($phaseConfig && $assignment->status === 'in_progress')
+                        <div class="d-flex align-items-center gap-2 mt-2 mb-1 flex-wrap">
+                            @foreach($phaseConfig['phases'] as $pi => $phase)
+                                @php
+                                    $isCurrent = $phaseConfig['current'] === $phase['key'];
+                                    $isDone = (int)$phaseConfig['current'] > (int)$phase['key'];
+                                @endphp
+                                <div class="d-flex align-items-center gap-2">
+                                    @if($isDone)
+                                        <span class="shf-phase-pill shf-phase-pill--done">
+                                            <svg style="width:14px;height:14px;color:#16a34a;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                            {{ $phase['label'] }}
+                                            <span class="shf-pill-role">({{ $phase['role'] }})</span>
+                                        </span>
+                                    @elseif($isCurrent)
+                                        <span class="shf-phase-pill shf-phase-pill--active {{ $roleBgCss($phase['role']) }}" style="border-color:transparent;">
+                                            <svg style="width:14px;height:14px;" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/></svg>
+                                            {{ $phase['label'] }}
+                                            <span class="shf-pill-role">({{ $phase['role'] }})</span>
+                                        </span>
+                                    @else
+                                        <span class="shf-phase-pill shf-phase-pill--pending">
+                                            {{ $phase['label'] }}
+                                            <span class="shf-pill-role">({{ $phase['role'] }})</span>
+                                        </span>
+                                    @endif
+                                    @if(!$loop->last)
+                                        <svg class="shf-phase-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                    @if($transferSuggestion && $assignment->status === 'in_progress')
+                        <div class="shf-transfer-hint">
+                            <svg style="width:12px;height:12px;display:inline;vertical-align:middle;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                            {{ $transferSuggestion }}
+                        </div>
                     @endif
 
                     {{-- Parallel sub-stages --}}
@@ -153,7 +264,7 @@
                                         <div class="card-body py-2 px-3">
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <strong style="font-size: 0.85rem;">{{ $sub->stage?->stage_name_en }}</strong>
-                                                <span class="shf-badge shf-badge-{{ match(\App\Models\StageAssignment::STATUS_LABELS[$sub->status]['color']) { 'success' => 'green', 'primary' => 'blue', default => 'gray' } }}" style="font-size: 0.65rem;">
+                                                <span class="shf-badge shf-badge-{{ match(\App\Models\StageAssignment::STATUS_LABELS[$sub->status]['color']) { 'success' => 'green', 'primary' => 'blue', default => 'gray' } }} shf-text-2xs">
                                                     {{ \App\Models\StageAssignment::STATUS_LABELS[$sub->status]['label'] }}
                                                 </span>
                                             </div>
@@ -194,8 +305,8 @@
                                                             @endif
                                                             @break
                                                     @endswitch
-                                                    <button type="button" class="btn-accent-sm mt-1 shf-edit-saved" data-target="#edit-{{ $sub->stage_key }}" style="background:linear-gradient(135deg,#6b7280,#9ca3af);font-size:0.65rem;">
-                                                        Edit
+                                                    <button type="button" class="btn-accent-sm mt-1 shf-edit-saved shf-text-2xs" data-target="#edit-{{ $sub->stage_key }}" style="background:linear-gradient(135deg,#6b7280,#9ca3af);">
+                                                        <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg> Edit
                                                     </button>
                                                 </div>
                                                 {{-- Hidden edit form for completed sub-stages --}}
@@ -217,7 +328,7 @@
                                                         @case('property_valuation')
                                                             <div class="mt-2 border-top pt-2">
                                                                 <a href="{{ route('loans.valuation', $loan) }}" class="btn-accent-sm">
-                                                                    <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                                                    <svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
                                                                     Edit Valuation
                                                                 </a>
                                                             </div>
@@ -259,7 +370,7 @@
                                                         @elseif($legalPhase === '2')
                                                             {{-- Phase 2: Bank employee confirms legal advisor and initiates --}}
                                                             <div class="mt-2 border-top pt-2">
-                                                                <div class="alert alert-info py-2 mb-2" style="font-size:0.8rem;">
+                                                                <div class="alert alert-info py-2 mb-2 shf-text-sm">
                                                                     <strong>Legal verification requested.</strong> Confirm or change the legal advisor and click Initiate.
                                                                 </div>
                                                                 <label class="form-label small">Legal Advisor Name <span class="text-danger">*</span></label>
@@ -289,7 +400,7 @@
                                                         @endif
                                                         <div class="mt-2">
                                                             <a href="{{ route('loans.valuation', $loan) }}" class="btn-accent-sm">
-                                                                <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5"/></svg>
+                                                                <svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5"/></svg>
                                                                 {{ $val ? 'Edit Valuation' : 'Fill Valuation Form' }}
                                                             </a>
                                                         </div>
@@ -300,13 +411,13 @@
                                             {{-- Active Queries Banner --}}
                                             @php $subActiveQueries = \App\Models\StageQuery::where('loan_id', $loan->id)->where('stage_key', $sub->stage_key)->whereIn('status', ['pending', 'responded'])->with(['raisedByUser', 'responses.respondedByUser'])->get(); @endphp
                                             @if($subActiveQueries->isNotEmpty())
-                                                <div class="alert alert-warning py-2 mt-2 mb-1" style="font-size:0.8rem;">
+                                                <div class="alert alert-warning py-2 mt-2 mb-1 shf-text-sm">
                                                     <strong>Active Queries ({{ $subActiveQueries->count() }})</strong> — Stage cannot be completed until resolved.
                                                     @foreach($subActiveQueries as $q)
                                                         <div class="border-top mt-2 pt-2">
                                                             <div class="d-flex justify-content-between align-items-center">
                                                                 <strong>{{ $q->raisedByUser->name }}</strong>
-                                                                <span class="shf-badge shf-badge-{{ $q->status === 'pending' ? 'orange' : 'blue' }}" style="font-size:0.6rem;">{{ ucfirst($q->status) }}</span>
+                                                                <span class="shf-badge shf-badge-{{ $q->status === 'pending' ? 'orange' : 'blue' }} shf-text-2xs">{{ ucfirst($q->status) }}</span>
                                                             </div>
                                                             <p class="mb-1">{{ $q->query_text }}</p>
                                                             @foreach($q->responses as $resp)
@@ -319,14 +430,14 @@
                                                             @if($q->status === 'pending')
                                                                 <form class="shf-query-respond mt-1" data-url="{{ route('loans.queries.respond', $q) }}">
                                                                     <div class="input-group input-group-sm">
-                                                                        <input type="text" name="response_text" class="shf-input" style="font-size:0.8rem;" placeholder="Type response..." required>
-                                                                        <button type="submit" class="btn-accent-sm">Respond</button>
+                                                                        <input type="text" name="response_text" class="shf-input shf-text-sm" placeholder="Type response..." required>
+                                                                        <button type="submit" class="btn-accent-sm"><svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg> Respond</button>
                                                                     </div>
                                                                 </form>
                                                             @endif
                                                             {{-- Resolve button (only for user who raised the query, and query is responded) --}}
                                                             @if($q->status === 'responded' && $q->raised_by === auth()->id())
-                                                                <button class="btn-accent-sm mt-1 shf-query-resolve" data-url="{{ route('loans.queries.resolve', $q) }}" style="background:linear-gradient(135deg,#16a34a,#22c55e);font-size:0.65rem;">
+                                                                <button class="btn-accent-sm mt-1 shf-query-resolve shf-text-2xs" data-url="{{ route('loans.queries.resolve', $q) }}" style="background:linear-gradient(135deg,#16a34a,#22c55e);">
                                                                     Resolve Query
                                                                 </button>
                                                             @endif
@@ -340,7 +451,7 @@
                                             @if($subResolvedQueries->isNotEmpty())
                                                 <div class="mt-1">
                                                     <small class="text-muted">
-                                                        <svg style="width:10px;height:10px;display:inline;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"/></svg>
+                                                        <svg style="width:12px;height:12px;display:inline;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"/></svg>
                                                         {{ $subResolvedQueries->count() }} query/queries resolved
                                                     </small>
                                                 </div>
@@ -349,13 +460,13 @@
                                             @if(auth()->user()->hasPermission('manage_loan_stages'))
                                                 <div class="mt-1 d-flex gap-1 flex-wrap">
                                                     @if($sub->status === 'in_progress')
-                                                        <button class="btn-accent-sm shf-raise-query-btn" style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;font-size:0.65rem;" data-loan-id="{{ $loan->id }}" data-stage="{{ $subKey }}">
+                                                        <button class="btn-accent-sm shf-raise-query-btn shf-text-2xs" style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;" data-loan-id="{{ $loan->id }}" data-stage="{{ $subKey }}">
                                                             <span style="font-weight:bold;">?</span> Query
                                                         </button>
                                                     @endif
                                                     {{-- Assign dropdown --}}
                                                     @if($sub->isActionable() && $subUsers->isNotEmpty())
-                                                        <select class="shf-input" style="width:auto;font-size:0.7rem;padding:2px 6px;"
+                                                        <select class="shf-input shf-text-xs" style="width:auto;padding:2px 6px;"
                                                                 data-loan-id="{{ $loan->id }}" data-stage="{{ $subKey }}"
                                                                 onchange="if(this.value){var s=this;$.post('/loans/'+s.dataset.loanId+'/stages/'+s.dataset.stage+'/assign',{_token:$('meta[name=csrf-token]').attr('content'),user_id:s.value},function(r){if(r.success)Swal.fire({icon:'success',title:'Assigned to '+r.assigned_to,timer:1500,showConfirmButton:false})})}">
                                                             <option value="">Assign...</option>
@@ -373,10 +484,10 @@
                                                             @endphp
                                                             @if($trUsers->isNotEmpty())
                                                                 <div class="dropdown d-inline-block">
-                                                                    <button class="btn-accent-sm dropdown-toggle" style="background:linear-gradient(135deg,#6b7280,#9ca3af);font-size:0.6rem;" data-bs-toggle="dropdown">
+                                                                    <button class="btn-accent-sm dropdown-toggle shf-text-2xs" style="background:linear-gradient(135deg,#6b7280,#9ca3af);" data-bs-toggle="dropdown">
                                                                         → {{ $roleLabels[$trRole] ?? ucfirst($trRole) }}
                                                                     </button>
-                                                                    <ul class="dropdown-menu" style="font-size:0.75rem;">
+                                                                    <ul class="dropdown-menu shf-text-xs">
                                                                         @foreach($trUsers as $tru)
                                                                             <li><a class="dropdown-item shf-quick-transfer" href="#" data-loan-id="{{ $loan->id }}" data-stage="{{ $subKey }}" data-user-id="{{ $tru->id }}" data-user-name="{{ $tru->name }}">{{ $tru->name }}</a></li>
                                                                         @endforeach
@@ -494,8 +605,8 @@
                                                 </div>
                                             @endif
                                         </div>
-                                        <button type="button" class="btn-accent-sm mt-2 shf-edit-saved" data-target="#edit-rate_pf" style="background:linear-gradient(135deg,#6b7280,#9ca3af);font-size:0.65rem;">
-                                            Edit
+                                        <button type="button" class="btn-accent-sm mt-2 shf-edit-saved shf-text-2xs" data-target="#edit-rate_pf" style="background:linear-gradient(135deg,#6b7280,#9ca3af);">
+                                            <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg> Edit
                                         </button>
                                     </div>
                                     <div id="edit-rate_pf" style="display:none;">
@@ -543,7 +654,7 @@
                                 {{-- Phase 2: Bank employee sees ALL fields (editable), no hints --}}
                                 @elseif($ratePfPhase === '2')
                                     <div class="mt-2 border-top pt-2">
-                                        <div class="alert alert-info py-2 mb-2" style="font-size:0.8rem;">
+                                        <div class="alert alert-info py-2 mb-2 shf-text-sm">
                                             <strong>Rate request received.</strong> Review and update all details, then return to task owner.
                                         </div>
                                         @include('loans.partials.stage-notes-form', ['fields' => [
@@ -625,8 +736,8 @@
                                                 </div>
                                             @endif
                                         </div>
-                                        <button type="button" class="btn-accent-sm mt-2 shf-edit-saved" data-target="#edit-sanction" style="background:linear-gradient(135deg,#6b7280,#9ca3af);font-size:0.65rem;">
-                                            Edit
+                                        <button type="button" class="btn-accent-sm mt-2 shf-edit-saved shf-text-2xs" data-target="#edit-sanction" style="background:linear-gradient(135deg,#6b7280,#9ca3af);">
+                                            <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg> Edit
                                         </button>
                                     </div>
                                     <div id="edit-sanction" style="display:none;">
@@ -653,7 +764,7 @@
                                 {{-- Phase 2: Bank employee marks sanction letter as generated --}}
                                 @elseif($sanctionPhase === '2')
                                     <div class="mt-2 border-top pt-2">
-                                        <div class="alert alert-info py-2 mb-2" style="font-size:0.8rem;">
+                                        <div class="alert alert-info py-2 mb-2 shf-text-sm">
                                             <strong>Waiting for sanction letter.</strong> Please generate the sanction letter for this loan and click the button below when done.
                                         </div>
                                         <button class="btn-accent-sm shf-sanction-action" data-loan-id="{{ $loan->id }}" data-action="sanction_generated" style="background:linear-gradient(135deg,#16a34a,#22c55e);">
@@ -801,7 +912,7 @@
                                     @if(!empty($chequeList))
                                         <small class="fw-semibold text-muted d-block mb-2">Cheques to be handed over:</small>
                                         <div class="table-responsive mb-2">
-                                            <table class="table table-sm table-hover mb-0" style="font-size:0.8rem;">
+                                            <table class="table table-sm table-hover mb-0 shf-text-sm">
                                                 <thead><tr><th>Cheque No.</th><th>Date</th><th class="text-end">Amount</th></tr></thead>
                                                 <tbody>
                                                     @foreach($chequeList as $chq)
@@ -833,13 +944,13 @@
                             : collect();
                     @endphp
                     @if($mainActiveQueries->isNotEmpty())
-                        <div class="alert alert-warning py-2 mt-2" style="font-size:0.8rem;">
+                        <div class="alert alert-warning py-2 mt-2 shf-text-sm">
                             <strong>Active Queries ({{ $mainActiveQueries->count() }})</strong> — Stage cannot be completed until resolved.
                             @foreach($mainActiveQueries as $q)
                                 <div class="border-top mt-2 pt-2">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <strong>{{ $q->raisedByUser->name }}</strong>
-                                        <span class="shf-badge shf-badge-{{ $q->status === 'pending' ? 'orange' : 'blue' }}" style="font-size:0.6rem;">{{ ucfirst($q->status) }}</span>
+                                        <span class="shf-badge shf-badge-{{ $q->status === 'pending' ? 'orange' : 'blue' }} shf-text-2xs">{{ ucfirst($q->status) }}</span>
                                     </div>
                                     <p class="mb-1">{{ $q->query_text }}</p>
                                     @foreach($q->responses as $resp)
@@ -852,14 +963,14 @@
                                     @if($q->status === 'pending')
                                         <form class="shf-query-respond mt-1" data-url="{{ route('loans.queries.respond', $q) }}">
                                             <div class="input-group input-group-sm">
-                                                <input type="text" name="response_text" class="shf-input" style="font-size:0.8rem;" placeholder="Type response..." required>
-                                                <button type="submit" class="btn-accent-sm">Respond</button>
+                                                <input type="text" name="response_text" class="shf-input shf-text-sm" placeholder="Type response..." required>
+                                                <button type="submit" class="btn-accent-sm"><svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg> Respond</button>
                                             </div>
                                         </form>
                                     @endif
                                     {{-- Resolve button (only for user who raised the query, and query is responded) --}}
                                     @if($q->status === 'responded' && $q->raised_by === auth()->id())
-                                        <button class="btn-accent-sm mt-1 shf-query-resolve" data-url="{{ route('loans.queries.resolve', $q) }}" style="background:linear-gradient(135deg,#16a34a,#22c55e);font-size:0.65rem;">
+                                        <button class="btn-accent-sm mt-1 shf-query-resolve shf-text-2xs" data-url="{{ route('loans.queries.resolve', $q) }}" style="background:linear-gradient(135deg,#16a34a,#22c55e);">
                                             Resolve Query
                                         </button>
                                     @endif
@@ -874,7 +985,7 @@
                         @if($mainResolvedQueries->isNotEmpty())
                             <div class="mt-1">
                                 <small class="text-muted">
-                                    <svg style="width:10px;height:10px;display:inline;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"/></svg>
+                                    <svg style="width:12px;height:12px;display:inline;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"/></svg>
                                     {{ $mainResolvedQueries->count() }} query/queries resolved
                                 </small>
                             </div>
@@ -892,7 +1003,7 @@
                                 {{-- Raise Query button for main stages --}}
                                 @if(in_array($assignment->stage_key, $queryStages))
                                     <button class="btn-accent-sm shf-raise-query-btn" style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;" data-loan-id="{{ $loan->id }}" data-stage="{{ $assignment->stage_key }}">
-                                        <span style="font-weight:bold;font-size:0.8rem;">?</span> Query
+                                        <span class="shf-text-sm" style="font-weight:bold;">?</span> Query
                                     </button>
                                 @endif
                             @endif
@@ -904,7 +1015,7 @@
                                 </button>
                             @endif
                             @if($assignment->isActionable())
-                                <select class="shf-input" style="width: auto; font-size: 0.8rem; padding: 4px 8px;"
+                                <select class="shf-input shf-text-sm" style="width: auto; padding: 4px 8px;"
                                         data-loan-id="{{ $loan->id }}" data-stage="{{ $stageKey }}"
                                         onchange="if(this.value){var s=this;$.post('/loans/'+s.dataset.loanId+'/stages/'+s.dataset.stage+'/assign',{_token:$('meta[name=csrf-token]').attr('content'),user_id:s.value},function(r){if(r.success)Swal.fire({icon:'success',title:'Assigned to '+r.assigned_to,timer:1500,showConfirmButton:false})})}">
                                     <option value="">Assign to...</option>
@@ -923,10 +1034,10 @@
                                     @endphp
                                     @if($roleUsers->isNotEmpty())
                                         <div class="dropdown d-inline-block">
-                                            <button class="btn-accent-sm dropdown-toggle" style="background:linear-gradient(135deg,#6b7280,#9ca3af);font-size:0.7rem;" data-bs-toggle="dropdown">
+                                            <button class="btn-accent-sm dropdown-toggle shf-text-xs" style="background:linear-gradient(135deg,#6b7280,#9ca3af);" data-bs-toggle="dropdown">
                                                 → {{ $roleLabels[$trRole] ?? ucfirst($trRole) }}
                                             </button>
-                                            <ul class="dropdown-menu" style="font-size:0.8rem;">
+                                            <ul class="dropdown-menu shf-text-sm">
                                                 @foreach($roleUsers as $ru)
                                                     <li>
                                                         <a class="dropdown-item shf-quick-transfer" href="#"
@@ -948,7 +1059,7 @@
         @endforeach
 
         <div class="text-center mt-3">
-            <a href="{{ route('loans.transfers', $loan) }}" class="btn btn-sm btn-outline-secondary">Transfer History</a>
+            <a href="{{ route('loans.transfers', $loan) }}" class="btn btn-sm btn-outline-secondary"><svg class="shf-btn-icon" style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Transfer History</a>
         </div>
 
     </div>
@@ -968,8 +1079,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn-accent" id="submitQueryBtn" style="padding: 8px 20px;">Raise Query</button>
+                <button class="btn btn-outline-secondary" data-bs-dismiss="modal"><svg class="shf-btn-icon" style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>Cancel</button>
+                <button class="btn-accent" id="submitQueryBtn" style="padding: 8px 20px;"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Raise Query</button>
             </div>
         </div>
     </div>
@@ -1068,7 +1179,7 @@ $(function() {
                         $input.addClass('is-invalid');
                         var $parent = $input.closest('.col-sm-6, .col-sm-12, [class^="col-sm-"]');
                         if (!$parent.length) $parent = $input.parent();
-                        $parent.append('<div class="shf-field-error text-danger" style="font-size:0.75rem;margin-top:2px;">' + fieldErrors[fieldName] + '</div>');
+                        $parent.append('<div class="shf-field-error text-danger shf-text-xs" style="margin-top:2px;">' + fieldErrors[fieldName] + '</div>');
                         if (!firstErrorField) firstErrorField = $input;
                     }
                 });

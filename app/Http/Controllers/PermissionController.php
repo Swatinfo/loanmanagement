@@ -12,8 +12,9 @@ class PermissionController extends Controller
 {
     public function index()
     {
-        $permissions = Permission::all()->groupBy('group');
-        $roles = ['super_admin', 'admin', 'staff'];
+        // Exclude Loans group — managed separately via Loan Settings → Role Permissions
+        $permissions = Permission::where('group', '!=', 'Loans')->get()->groupBy('group');
+        $roles = ['super_admin', 'admin', 'staff', 'bank_employee'];
 
         // Get current role-permission mappings
         $rolePermissions = [];
@@ -28,8 +29,9 @@ class PermissionController extends Controller
 
     public function update(Request $request)
     {
-        $roles = ['admin', 'staff']; // super_admin always has all, not editable
-        $allPermissions = Permission::pluck('id')->toArray();
+        $roles = ['admin', 'staff', 'bank_employee']; // super_admin always has all, not editable
+        // Only manage non-Loans permissions here (Loans managed in Loan Settings)
+        $allPermissions = Permission::where('group', '!=', 'Loans')->pluck('id')->toArray();
 
         foreach ($roles as $role) {
             // Clear existing

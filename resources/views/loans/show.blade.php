@@ -3,12 +3,8 @@
 @section('header')
     <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-3">
         <div class="d-flex align-items-center gap-2">
-            <a href="{{ route('loans.index') }}" style="color: rgba(255,255,255,0.4); text-decoration: none;">
-                <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-            </a>
             <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">
+                <svg style="width:16px;height:16px;display:inline;margin-right:6px;color:rgba(255,255,255,0.85);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                 Loan #{{ $loan->loan_number }}
             </h2>
             <span
@@ -17,9 +13,10 @@
             </span>
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap">
-            <a href="{{ route('loans.timeline', $loan) }}" class="btn btn-sm btn-outline-light">Timeline</a>
+            <a href="{{ route('loans.index') }}" class="btn-accent-outline btn-accent-sm btn-accent-outline-white"><svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg> Back</a>
+            <a href="{{ route('loans.timeline', $loan) }}" class="btn btn-sm btn-outline-light"><svg class="shf-btn-icon" style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Timeline</a>
             @if (auth()->user()->hasPermission('edit_loan'))
-                <a href="{{ route('loans.edit', $loan) }}" class="btn btn-sm btn-outline-light">Edit</a>
+                <a href="{{ route('loans.edit', $loan) }}" class="btn btn-sm btn-outline-light"><svg class="shf-btn-icon" style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>Edit</a>
                 @if ($loan->status === 'active')
                     <div class="dropdown">
                         <button class="btn btn-sm btn-outline-light dropdown-toggle"
@@ -33,11 +30,11 @@
                     </div>
                 @elseif(in_array($loan->status, ['on_hold', 'cancelled']))
                     <button class="btn btn-sm btn-outline-success shf-status-change"
-                        data-status="active">Reactivate</button>
+                        data-status="active"><svg class="shf-btn-icon" style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Reactivate</button>
                 @endif
             @endif
             @if (auth()->user()->hasPermission('delete_loan'))
-                <button class="btn btn-sm btn-outline-danger" id="deleteLoanBtn">Delete</button>
+                <button class="btn btn-sm btn-outline-danger" id="deleteLoanBtn"><svg class="shf-btn-icon" style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>Delete</button>
             @endif
         </div>
     </div>
@@ -56,7 +53,7 @@
                             @if ($loan->current_owner)
                                 <strong class="ms-1">{{ $loan->current_owner->name }}</strong>
                                 <span class="shf-badge shf-badge-gray ms-1"
-                                    style="font-size: 0.65rem;">{{ $loan->current_owner->task_role_label }}</span>
+                                    class="shf-text-xs">{{ $loan->current_owner->task_role_label }}</span>
                                 <span class="ms-2"><small class="text-muted">with them for</small> <strong
                                         style="color: #f15a29;">{{ $loan->time_with_current_owner }}</strong></span>
                             @else
@@ -180,7 +177,7 @@
                         <div class="shf-section-number">2</div>
                         <span class="shf-section-title" style="color:inherit;">Current Stage</span>
                         @if ($activeQueryCount > 0)
-                            <span class="shf-badge shf-badge-orange" style="font-size:0.6rem;">{{ $activeQueryCount }}
+                            <span class="shf-badge shf-badge-orange" class="shf-text-2xs">{{ $activeQueryCount }}
                                 {{ Str::plural('query', $activeQueryCount) }}</span>
                         @endif
                     </div>
@@ -283,7 +280,7 @@
                                 <div class="shf-section-number">3</div>
                                 <span class="shf-section-title">Document Collection</span>
                             </div>
-                            <a href="{{ route('loans.documents', $loan) }}" class="btn-accent-sm">Collect Documents</a>
+                            <a href="{{ route('loans.documents', $loan) }}" class="btn-accent-sm"><svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg> Collect Documents</a>
                         </div>
                         <div class="shf-section-body">
                             <div class="progress mb-2" style="height: 8px;">
@@ -333,7 +330,7 @@
                                     @endif
                                 </small>
                             </div>
-                            <a href="{{ route('loans.documents', $loan) }}" class="btn-accent-sm">View All</a>
+                            <a href="{{ route('loans.documents', $loan) }}" class="btn-accent-sm"><svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg> View All</a>
                         </div>
                     </div>
                 </div>
@@ -409,7 +406,7 @@
                             <div class="input-group">
                                 <input type="text" id="remarkInput" class="shf-input-sm"
                                     placeholder="Add a remark..." maxlength="5000">
-                                <button type="submit" class="btn-accent-sm">Post</button>
+                                <button type="submit" class="btn-accent-sm"><svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Post</button>
                             </div>
                         </form>
                     @endif

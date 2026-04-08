@@ -1,11 +1,9 @@
 @extends('layouts.app')
 
 @section('header')
-    <div class="d-flex align-items-center gap-2">
-        <a href="{{ route('settings.index') }}" style="color: rgba(255,255,255,0.4); text-decoration: none;">
-            <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-        </a>
-        <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">Workflow Configuration</h2>
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;"><svg style="width:16px;height:16px;display:inline;margin-right:6px;color:rgba(255,255,255,0.85);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg> Workflow Configuration</h2>
+        <a href="{{ route('settings.index') }}" class="btn-accent-outline btn-accent-sm btn-accent-outline-white"><svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg> Back</a>
     </div>
 @endsection
 
@@ -30,7 +28,7 @@
                                     <strong>{{ $bank->name }}</strong>
                                     @if($bank->code) <small class="text-muted">({{ $bank->code }})</small> @endif
                                 </div>
-                                <button class="btn btn-sm btn-outline-danger shf-delete-bank" data-id="{{ $bank->id }}">Delete</button>
+                                <button class="btn btn-sm btn-outline-danger shf-delete-bank" data-id="{{ $bank->id }}"><svg class="shf-btn-icon" style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>Delete</button>
                             </div>
                             @if($bank->products->isNotEmpty())
                                 <div class="ms-3">
@@ -56,7 +54,7 @@
                             <div class="row g-2 align-items-end">
                                 <div class="col-sm-5"><input type="text" name="name" class="form-control form-control-sm" placeholder="Bank name" required></div>
                                 <div class="col-sm-3"><input type="text" name="code" class="form-control form-control-sm" placeholder="Code (optional)"></div>
-                                <div class="col-sm-2"><button type="submit" class="btn btn-sm btn-outline-primary w-100">Save</button></div>
+                                <div class="col-sm-2"><button type="submit" class="btn btn-sm btn-outline-primary w-100"><svg class="shf-btn-icon" style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Save</button></div>
                             </div>
                         </form>
                     </div>
@@ -76,7 +74,7 @@
                                     </select>
                                 </div>
                                 <div class="col-sm-4"><input type="text" name="name" class="form-control form-control-sm" placeholder="Product name" required></div>
-                                <div class="col-sm-2"><button type="submit" class="btn btn-sm btn-outline-primary w-100">Save</button></div>
+                                <div class="col-sm-2"><button type="submit" class="btn btn-sm btn-outline-primary w-100"><svg class="shf-btn-icon" style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Save</button></div>
                             </div>
                         </form>
                     </div>
@@ -93,7 +91,7 @@
                                 @if($branch->code) <small class="text-muted">({{ $branch->code }})</small> @endif
                                 @if($branch->city) <small class="text-muted ms-2">{{ $branch->city }}</small> @endif
                             </div>
-                            <button class="btn btn-sm btn-outline-danger shf-delete-branch" data-id="{{ $branch->id }}">Delete</button>
+                            <button class="btn btn-sm btn-outline-danger shf-delete-branch" data-id="{{ $branch->id }}"><svg class="shf-btn-icon" style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>Delete</button>
                         </div>
                     </div>
                 @endforeach
@@ -108,7 +106,7 @@
                                 <div class="col-sm-2"><input type="text" name="code" class="form-control form-control-sm" placeholder="Code"></div>
                                 <div class="col-sm-2"><input type="text" name="city" class="form-control form-control-sm" placeholder="City"></div>
                                 <div class="col-sm-3"><input type="text" name="phone" class="form-control form-control-sm" placeholder="Phone"></div>
-                                <div class="col-sm-2"><button type="submit" class="btn btn-sm btn-outline-primary w-100">Save</button></div>
+                                <div class="col-sm-2"><button type="submit" class="btn btn-sm btn-outline-primary w-100"><svg class="shf-btn-icon" style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Save</button></div>
                             </div>
                         </form>
                     </div>

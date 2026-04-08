@@ -15,6 +15,18 @@ $(function () {
         }
     });
 
+    // 0c. Auto-expand textareas (fallback for browsers without field-sizing: content)
+    if (!CSS.supports('field-sizing', 'content')) {
+        function autoExpand(el) {
+            el.style.height = 'auto';
+            el.style.height = el.scrollHeight + 'px';
+        }
+        $(document).on('input', 'textarea.shf-input, textarea.shf-input-sm', function () {
+            autoExpand(this);
+        });
+        $('textarea.shf-input, textarea.shf-input-sm').each(function () { autoExpand(this); });
+    }
+
     // 1. Toast auto-dismiss
     $('.shf-toast-wrapper [data-auto-dismiss]').each(function () {
         var $toast = $(this);

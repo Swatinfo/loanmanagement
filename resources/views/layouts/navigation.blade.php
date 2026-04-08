@@ -67,7 +67,7 @@
                     </li>
                 @endif
 
-                @if (auth()->user()->hasPermission('view_loans'))
+                @if (auth()->user()->hasPermission('manage_workflow_config'))
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('loan-settings.*') ? 'shf-nav-active' : 'shf-nav-link' }}" href="{{ route('loan-settings.index') }}">
                             <svg class="me-1" style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,7 +125,7 @@
                 {{-- Notification Bell --}}
                 <a class="nav-link p-1 position-relative" href="{{ route('notifications.index') }}" style="color: rgba(255,255,255,0.7);" title="Notifications">
                     <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" id="notifBadge" style="font-size: 0.6rem; padding: 2px 5px;"></span>
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" id="notifBadge" class="shf-text-2xs" style="padding: 2px 5px;"></span>
                 </a>
 
                 <span class="shf-badge me-1 {{ auth()->user()->isSuperAdmin() ? 'shf-badge-orange' : (auth()->user()->isAdmin() ? 'shf-badge-blue' : 'shf-badge-gray') }}">

@@ -31,15 +31,18 @@
                     <div class="d-flex align-items-center justify-content-center gap-3">
                         @auth
                             <a href="{{ url('/dashboard') }}" class="btn-accent" style="padding: 8px 24px;">
+                                <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
                                 Dashboard
                             </a>
                         @else
                             <a href="{{ route('login') }}" class="btn-accent" style="padding: 8px 24px;">
+                                <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
                                 Log in
                             </a>
 
                             @if (Route::has('register'))
                                 <a href="{{ route('register') }}" class="btn-accent-outline" style="padding: 8px 24px;">
+                                    <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
                                     Register
                                 </a>
                             @endif

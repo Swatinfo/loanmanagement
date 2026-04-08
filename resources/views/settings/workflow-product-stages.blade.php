@@ -1,23 +1,12 @@
 @extends('layouts.app')
 
 @section('header')
-    <div class="d-flex align-items-center gap-2">
-        <a href="{{ route('loan-settings.index') }}#products" class="text-white-50 text-decoration-none"
-            title="Back to Products & Stages">
-            <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-        </a>
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
         <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">
-            <svg style="width:16px;height:16px;display:inline;margin-right:4px;color:#f15a29;" fill="none"
-                stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
+            <svg style="width:16px;height:16px;display:inline;margin-right:6px;color:rgba(255,255,255,0.85);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
             {{ $product->bank->name }} / {{ $product->name }} — Stage Configuration
         </h2>
+        <a href="{{ route('loan-settings.index') }}#products" class="btn-accent-outline btn-accent-sm btn-accent-outline-white"><svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg> Back</a>
     </div>
 @endsection
 
@@ -76,15 +65,15 @@
                                                 class="{{ $stage->parent_stage_key ? 'small' : 'fw-medium' }}">{{ $stage->stage_name_en }}</span>
                                             @if ($isParallelHeader)
                                                 <span class="shf-badge shf-badge-blue"
-                                                    style="font-size: 0.55rem;">Parallel</span>
+                                                    class="shf-text-2xs">Parallel</span>
                                             @endif
                                             @if ($hasSubActions)
                                                 <span class="shf-badge shf-badge-orange"
-                                                    style="font-size: 0.55rem;">{{ count($stage->sub_actions) }}
+                                                    class="shf-text-2xs">{{ count($stage->sub_actions) }}
                                                     sub-stages</span>
                                             @endif
                                             @if (!$isHeaderOnly && !empty($eligibleRoles))
-                                                <small class="text-muted d-none d-sm-inline" style="font-size:0.65rem;">
+                                                <small class="text-muted d-none d-sm-inline" class="shf-text-xs">
                                                     ({{ collect($eligibleRoles)->map(fn($r) => $roleLabels[$r] ?? $r)->implode(', ') }})
                                                 </small>
                                             @endif
@@ -97,7 +86,7 @@
                                             {{-- Always enabled for parent stages — sub-stages control their own state --}}
                                             <input type="hidden" name="stages[{{ $si }}][is_enabled]"
                                                 value="1">
-                                            <small class="text-muted" style="font-size:0.55rem;">—</small>
+                                            <small class="text-muted" class="shf-text-2xs">—</small>
                                         @else
                                             <input type="hidden" name="stages[{{ $si }}][is_enabled]"
                                                 value="0">
@@ -183,7 +172,7 @@
                                                                 class="fw-semibold">{{ $bankLoc->parent?->name ? $bankLoc->parent->name . '/' : '' }}{{ $bankLoc->name }}</small>
                                                             <span
                                                                 class="shf-badge shf-badge-{{ $bankLoc->isState() ? 'blue' : 'green' }}"
-                                                                style="font-size:0.45rem;">{{ $bankLoc->type }}</span>
+                                                                class="shf-text-2xs">{{ $bankLoc->type }}</span>
                                                         </div>
                                                         <div class="d-flex flex-wrap gap-1 flex-grow-1">
                                                             @if ($locEligibleUsers->isNotEmpty())
@@ -191,7 +180,7 @@
                                                                     @php $isChecked = in_array($eu->id, $savedUserIds); @endphp
                                                                     <label
                                                                         class="d-inline-flex align-items-center gap-1 border rounded px-1 py-1 {{ $isChecked ? 'border-primary' : '' }}"
-                                                                        style="font-size:0.68rem;cursor:pointer;background:{{ $isChecked ? '#eef2ff' : '#fff' }};">
+                                                                        class="shf-text-xs" style="cursor:pointer;background:{{ $isChecked ? '#eef2ff' : '#fff' }};">
                                                                         <input type="checkbox"
                                                                             name="stages[{{ $si }}][location_overrides][{{ $overrideIdx }}][users][]"
                                                                             value="{{ $eu->id }}"
@@ -249,10 +238,10 @@
                                                     <span>{{ $subAction['name'] ?? $subAction['key'] }}</span>
                                                     <span
                                                         class="shf-badge shf-badge-{{ ($subAction['type'] ?? '') === 'action_button' ? 'orange' : 'blue' }}"
-                                                        style="font-size:0.45rem;">
+                                                        class="shf-text-2xs">
                                                         {{ ($subAction['type'] ?? '') === 'action_button' ? 'Action' : 'Form' }}
                                                     </span>
-                                                    <small class="text-muted ms-1" style="font-size:0.6rem;">
+                                                    <small class="text-muted ms-1" class="shf-text-xs">
                                                         ({{ collect($saRoles)->map(fn($r) => $roleLabels[$r] ?? $r)->implode(', ') }})
                                                     </small>
                                                 </div>
@@ -324,7 +313,7 @@
                                                                     class="fw-semibold">{{ $saBankLoc->parent?->name ? $saBankLoc->parent->name . '/' : '' }}{{ $saBankLoc->name }}</small>
                                                                 <span
                                                                     class="shf-badge shf-badge-{{ $saBankLoc->isState() ? 'blue' : 'green' }}"
-                                                                    style="font-size:0.45rem;">{{ $saBankLoc->type }}</span>
+                                                                    class="shf-text-2xs">{{ $saBankLoc->type }}</span>
                                                             </div>
                                                             <div class="d-flex flex-wrap gap-1 flex-grow-1">
                                                                 @if ($saLocUsers->isNotEmpty())
@@ -332,7 +321,7 @@
                                                                         @php $isChecked = in_array($sau->id, $saSavedUserIds); @endphp
                                                                         <label
                                                                             class="d-inline-flex align-items-center gap-1 border rounded px-1 py-1 {{ $isChecked ? 'border-primary' : '' }}"
-                                                                            style="font-size:0.65rem;cursor:pointer;background:{{ $isChecked ? '#eef2ff' : '#fff' }};">
+                                                                            class="shf-text-xs" style="cursor:pointer;background:{{ $isChecked ? '#eef2ff' : '#fff' }};">
                                                                             <input type="checkbox"
                                                                                 name="stages[{{ $si }}][sub_actions_override][{{ $saIdx }}][location_overrides][{{ $saOverrideIdx }}][users][]"
                                                                                 value="{{ $sau->id }}"
@@ -368,7 +357,7 @@
                 </div>
 
                 <div class="d-flex justify-content-end gap-3 mt-3 mb-4">
-                    <a href="{{ route('loan-settings.index') }}#products" class="btn btn-outline-secondary">Cancel</a>
+                    <a href="{{ route('loan-settings.index') }}#products" class="btn-accent-outline"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Cancel</a>
                     <button type="submit" class="btn-accent">
                         <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />

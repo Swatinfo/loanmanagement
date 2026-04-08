@@ -1,13 +1,9 @@
 @extends('layouts.app')
 
 @section('header')
-    <div class="d-flex align-items-center gap-2">
-        <a href="{{ route('loans.show', $loan) }}" style="color: rgba(255,255,255,0.4); text-decoration: none;">
-            <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
-        </a>
-        <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">
-            Documents — {{ $loan->loan_number }}
-        </h2>
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;"><svg style="width:16px;height:16px;display:inline;margin-right:6px;color:rgba(255,255,255,0.85);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg> Documents — {{ $loan->loan_number }}</h2>
+        <a href="{{ route('loans.show', $loan) }}" class="btn-accent-outline btn-accent-sm btn-accent-outline-white"><svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg> Back</a>
     </div>
 @endsection
 
@@ -68,11 +64,11 @@
                                 <span class="{{ $doc->isReceived() ? 'text-decoration-line-through text-muted' : '' }}">{{ $doc->document_name_en }}</span>
                                 @if($doc->is_required) <small class="text-danger fw-bold">*</small> @endif
                                 @if($doc->status === 'rejected')
-                                    <span class="shf-badge shf-badge-red" style="font-size:0.6rem;">Rejected</span>
+                                    <span class="shf-badge shf-badge-red" class="shf-text-2xs">Rejected</span>
                                 @elseif($doc->status === 'waived')
-                                    <span class="shf-badge shf-badge-orange" style="font-size:0.6rem;">Waived</span>
+                                    <span class="shf-badge shf-badge-orange" class="shf-text-2xs">Waived</span>
                                 @elseif($doc->isReceived())
-                                    <span class="shf-badge shf-badge-green" style="font-size:0.6rem;">Collected</span>
+                                    <span class="shf-badge shf-badge-green" class="shf-text-2xs">Collected</span>
                                 @endif
                             </div>
                             @if($doc->document_name_gu)
@@ -92,10 +88,10 @@
                                     <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
                                     <span class="text-muted">{{ $doc->file_name }} ({{ $doc->formattedFileSize() }})</span>
                                     @if(auth()->user()->hasPermission('download_loan_documents'))
-                                        <a href="{{ route('loans.documents.download', [$loan, $doc]) }}" class="text-primary" style="font-size:0.65rem;" onclick="event.stopPropagation();">Download</a>
+                                        <a href="{{ route('loans.documents.download', [$loan, $doc]) }}" class="text-primary" class="shf-text-xs" onclick="event.stopPropagation();">Download</a>
                                     @endif
                                     @if(auth()->user()->hasPermission('delete_loan_files'))
-                                        <button class="btn p-0 text-danger shf-doc-delete-file" style="font-size:0.65rem; border:none; background:none;" data-url="{{ route('loans.documents.deleteFile', [$loan, $doc]) }}" onclick="event.stopPropagation();">Delete File</button>
+                                        <button class="btn p-0 text-danger shf-doc-delete-file" class="shf-text-xs" style="border:none; background:none;" data-url="{{ route('loans.documents.deleteFile', [$loan, $doc]) }}" onclick="event.stopPropagation();"><svg class="shf-btn-icon" style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>Delete File</button>
                                     @endif
                                 </small>
                             @endif
@@ -105,7 +101,7 @@
                         @if(!$docsLocked)
                         <div class="d-flex gap-1 flex-shrink-0 shf-doc-actions">
                             @if(auth()->user()->hasPermission('upload_loan_documents'))
-                                <label class="btn-accent-sm" style="font-size:0.65rem; cursor:pointer; margin:0;" title="Upload file" onclick="event.stopPropagation();">
+                                <label class="btn-accent-sm" class="shf-text-xs" style="cursor:pointer; margin:0;" title="Upload file" onclick="event.stopPropagation();">
                                     <svg style="width:10px;height:10px;display:inline;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
                                     {{ $doc->hasFile() ? 'Replace' : 'Upload' }}
                                     <input type="file" class="d-none shf-doc-upload-input" data-url="{{ route('loans.documents.upload', [$loan, $doc]) }}" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx">
@@ -113,12 +109,12 @@
                             @endif
                             @if(auth()->user()->hasPermission('manage_loan_documents'))
                                 @if(!in_array($doc->status, ['received', 'waived']))
-                                    <button class="btn-accent-sm shf-doc-action" style="background:linear-gradient(135deg,#d97706,#f59e0b);font-size:0.65rem;" data-url="{{ route('loans.documents.status', [$loan, $doc]) }}" data-status="waived" title="Waive this document" onclick="event.stopPropagation();">
-                                        Waive
+                                    <button class="btn-accent-sm shf-doc-action" class="shf-text-xs" style="background:linear-gradient(135deg,#d97706,#f59e0b);" data-url="{{ route('loans.documents.status', [$loan, $doc]) }}" data-status="waived" title="Waive this document" onclick="event.stopPropagation();">
+                                        <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg> Waive
                                     </button>
                                 @endif
-                                <button class="btn-accent-sm shf-doc-remove" style="background:linear-gradient(135deg,#dc2626,#ef4444);font-size:0.65rem;" data-url="{{ route('loans.documents.destroy', [$loan, $doc]) }}" title="Remove this document" onclick="event.stopPropagation();">
-                                    Remove
+                                <button class="btn-accent-sm shf-doc-remove" class="shf-text-xs" style="background:linear-gradient(135deg,#dc2626,#ef4444);" data-url="{{ route('loans.documents.destroy', [$loan, $doc]) }}" title="Remove this document" onclick="event.stopPropagation();">
+                                    <svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Remove
                                 </button>
                             @endif
                         </div>
@@ -144,7 +140,7 @@
                                 <input type="text" name="document_name_gu" class="shf-input shf-input-sm" placeholder="Name (Gujarati) — optional">
                             </div>
                             <div class="col-sm-3">
-                                <button type="submit" class="btn-accent-sm w-100">+ Add</button>
+                                <button type="submit" class="btn-accent-sm w-100"><svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg> Add</button>
                             </div>
                         </div>
                     </form>

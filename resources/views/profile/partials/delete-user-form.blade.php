@@ -6,6 +6,7 @@
     </header>
 
     <button type="button" class="btn-accent mt-3" style="background: linear-gradient(135deg, #c0392b, #e74c3c);" data-bs-toggle="modal" data-bs-target="#confirmUserDeletionModal">
+        <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
         {{ __('Delete Account') }}
     </button>
 
@@ -42,9 +43,11 @@
 
                     <div class="modal-footer border-0 px-4 pb-4 pt-0">
                         <button type="button" class="btn-accent-outline" data-bs-dismiss="modal">
+                            <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                             {{ __('Cancel') }}
                         </button>
                         <button type="submit" class="btn-accent ms-2" style="background: linear-gradient(135deg, #c0392b, #e74c3c);">
+                            <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                             {{ __('Delete Account') }}
                         </button>
                     </div>

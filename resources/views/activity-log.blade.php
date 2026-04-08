@@ -2,7 +2,7 @@
 
 @section('header')
     <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">
-        <svg style="width:16px;height:16px;display:inline;margin-right:6px;color:#f15a29;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <svg style="width:16px;height:16px;display:inline;margin-right:6px;color:rgba(255,255,255,0.85);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         Activity Log
     </h2>
 @endsection
@@ -67,7 +67,7 @@
                                 <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                                 Filter
                             </button>
-                            <button type="button" id="btnLogClear" class="btn-accent-outline btn-accent-sm">Clear</button>
+                            <button type="button" id="btnLogClear" class="btn-accent-outline btn-accent-sm"><svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Clear</button>
                         </div>
                     </div>
                 </div>
@@ -182,7 +182,7 @@ $(function() {
                     + '<div class="fw-medium" style="font-size:0.85rem;">' + $('<span>').text(d.user_name).html() + '</div>'
                     + (d.subject !== '—' ? '<div style="color:#6b7280;font-size:0.78rem;">' + d.subject + '</div>' : '')
                     + (d.details !== '—' ? '<div style="color:#6b7280;font-size:0.78rem;margin-top:4px;">' + d.details + '</div>' : '')
-                    + (d.ip_address !== '—' ? '<div style="color:#9ca3af;font-size:0.68rem;margin-top:4px;">IP: ' + d.ip_address + '</div>' : '')
+                    + (d.ip_address !== '—' ? '<div class="shf-text-xs" style="color:#9ca3af;margin-top:4px;">IP: ' + d.ip_address + '</div>' : '')
                     + '</div>';
             }
             $('#logMobileCards').html(html);

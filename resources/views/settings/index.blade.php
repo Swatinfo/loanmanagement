@@ -1,19 +1,10 @@
 @extends('layouts.app')
 
 @section('header')
-    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
-        <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">
-            <svg style="width:16px;height:16px;display:inline;margin-right:6px;color:#f15a29;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-            Quotation Settings
-        </h2>
-        <form method="POST" action="{{ route('settings.reset') }}" id="formResetSettings">
-            @csrf
-            <button type="submit" class="d-inline-flex align-items-center border rounded-pill small fw-semibold" style="padding:4px 16px;border-color:rgba(248,113,113,0.5)!important;color:#fca5a5;background:transparent;">
-                <svg style="width:14px;height:14px;margin-right:6px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                Reset to Defaults
-            </button>
-        </form>
-    </div>
+    <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">
+        <svg style="width:16px;height:16px;display:inline;margin-right:6px;color:rgba(255,255,255,0.85);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Quotation Settings
+    </h2>
 @endsection
 
 @section('content')
@@ -206,9 +197,9 @@
 
                         <div class="d-flex flex-wrap gap-2 mb-3" id="tenureTagsContainer"></div>
 
-                        <div class="d-flex gap-2" style="max-width: 20rem;">
+                        <div class="d-flex align-items-center gap-2" style="max-width: 20rem;">
                             <input type="number" id="newTenureInput" min="1" max="50" placeholder="e.g. 25" class="shf-input flex-grow-1">
-                            <button type="button" id="addTenureBtn" class="btn-accent btn-accent-sm">+ Add</button>
+                            <button type="button" id="addTenureBtn" class="btn-accent-sm"><svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg> Add</button>
                         </div>
 
                         @if(auth()->user()->hasPermission('edit_tenures'))
@@ -241,10 +232,10 @@
                             <div class="doc-type-pane" id="docPane-{{ $docType }}" style="display:none;">
                                 <div class="d-flex flex-column gap-2 mb-3" id="docList-{{ $docType }}"></div>
 
-                                <div class="d-flex gap-2">
+                                <div class="d-flex align-items-center gap-2">
                                     <input type="text" class="shf-input flex-grow-1 newDocEn" placeholder="Document name (English)">
                                     <input type="text" class="shf-input flex-grow-1 newDocGu" placeholder="દસ્તાવેજ નામ (Gujarati)">
-                                    <button type="button" class="btn-accent btn-accent-sm addDocBtn" data-doc-type="{{ $docType }}">+ Add</button>
+                                    <button type="button" class="btn-accent-sm addDocBtn" data-doc-type="{{ $docType }}"><svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg> Add</button>
                                 </div>
                             </div>
                         @endforeach
@@ -395,10 +386,10 @@
                 var guVal = docs[type].gu[idx] || '';
                 html += '<div class="doc-sortable-item d-flex align-items-center gap-2 p-3 rounded" style="background:var(--bg);border:1px solid var(--border);">' +
                     '<span class="doc-drag-handle" style="cursor:grab;color:#9ca3af;font-size:1rem;padding:0 4px;" title="Drag to reorder">⠿</span>' +
-                    '<span class="fw-bold" style="font-size:0.75rem;color:#f15a29;width:1.5rem;">' + (idx + 1) + '.</span>' +
+                    '<span class="fw-bold" style="font-size:0.75rem;color:rgba(255,255,255,0.85);width:1.5rem;">' + (idx + 1) + '.</span>' +
                     '<input type="text" name="documents_en[' + type + '][]" value="' + $('<span>').text(enVal).html() + '" class="shf-input flex-grow-1 small" placeholder="English">' +
                     '<input type="text" name="documents_gu[' + type + '][]" value="' + $('<span>').text(guVal).html() + '" class="shf-input flex-grow-1 small" placeholder="Gujarati">' +
-                    '<button type="button" class="btn-accent-sm removeDocBtn" data-type="' + type + '" data-idx="' + idx + '" style="background:linear-gradient(135deg,#dc2626,#ef4444);padding:3px 8px;"><svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>' +
+                    '<button type="button" class="btn-accent-sm removeDocBtn" data-type="' + type + '" data-idx="' + idx + '" style="background:linear-gradient(135deg,#dc2626,#ef4444);"><svg style="width:10px;height:10px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Remove</button>' +
                     '</div>';
             });
             $('#docList-' + type).html(html);

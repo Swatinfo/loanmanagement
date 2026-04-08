@@ -64,7 +64,7 @@
         </div>
 
         <div class="d-flex align-items-center gap-3">
-            <button type="submit" class="btn-accent">{{ __('Save') }}</button>
+            <button type="submit" class="btn-accent"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> {{ __('Save') }}</button>
 
             @if (session('status') === 'password-updated')
                 <p class="small fw-medium shf-saved-msg mb-0" style="color: #27ae60;">{{ __('Saved.') }}</p>

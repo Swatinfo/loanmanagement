@@ -70,5 +70,8 @@ return [
             'manage_loan_documents', 'upload_loan_documents', 'download_loan_documents',
             'manage_loan_stages', 'add_remarks',
         ],
+        'bank_employee' => [
+            'view_loans', 'add_remarks', 'change_own_password',
+        ],
     ],
 ];

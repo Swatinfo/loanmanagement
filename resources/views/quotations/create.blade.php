@@ -3,11 +3,11 @@
 @section('header')
     <div class="d-flex align-items-center justify-content-between">
         <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">
-            <svg style="width:16px;height:16px;display:inline;margin-right:6px;color:#f15a29;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            <svg style="width:16px;height:16px;display:inline;margin-right:6px;color:rgba(255,255,255,0.85);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             Create Quotation
         </h2>
-        <a href="{{ route('dashboard') }}" class="btn-accent-outline btn-accent-sm">
-            <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+        <a href="{{ route('dashboard') }}" class="btn-accent-outline btn-accent-sm btn-accent-outline-white">
+            <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
             Back
         </a>
     </div>
@@ -161,7 +161,11 @@
             </div>
 
             {{-- Generate Button --}}
-            <div class="text-center py-4">
+            <div class="d-flex justify-content-center gap-3 py-4">
+                <a href="{{ route('dashboard') }}" class="btn-accent-outline" style="padding: 10px 28px; font-size: 0.95rem;">
+                    <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    Cancel
+                </a>
                 <button id="btnGenerate" onclick="handleGenerate()" class="btn-accent" style="padding: 10px 28px; font-size: 0.95rem;">
                     <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     GENERATE PDF PROPOSAL

@@ -6,7 +6,10 @@
 
 @section('header')
     <div class="d-flex align-items-center justify-content-between">
-        <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">Dashboard</h2>
+        <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">
+            <svg style="width:16px;height:16px;display:inline;margin-right:6px;color:rgba(255,255,255,0.85);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            Dashboard
+        </h2>
         <div class="d-flex gap-2">
             @if(auth()->user()->hasPermission('create_quotation'))
                 <a href="{{ route('quotations.create') }}" class="btn-accent btn-accent-sm">
@@ -14,14 +17,6 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                     </svg>
                     New Quotation
-                </a>
-            @endif
-            @if(auth()->user()->hasPermission('create_loan') && !auth()->user()->isBankEmployee())
-                <a href="{{ route('loans.create') }}" class="btn-accent btn-accent-sm" style="background:linear-gradient(135deg,#2563eb,#3b82f6);">
-                    <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    New Loan
                 </a>
             @endif
         </div>
@@ -34,8 +29,11 @@
 
             <!-- Stats Cards -->
             <div class="row g-3 mb-4">
+                @php $statCol = ($canViewQuotations && $loanStats) ? '2' : '4'; @endphp
+
                 {{-- Quotation Stats --}}
-                <div class="col-6 col-md-{{ $loanStats ? '2' : '4' }}">
+                @if($canViewQuotations)
+                <div class="col-6 col-md-{{ $statCol }}">
                     <div class="shf-stat-card">
                         <div class="shf-stat-icon">
                             <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -48,7 +46,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-{{ $loanStats ? '2' : '4' }}">
+                <div class="col-6 col-md-{{ $statCol }}">
                     <div class="shf-stat-card">
                         <div class="shf-stat-icon">
                             <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -61,7 +59,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-6 col-md-{{ $loanStats ? '2' : '4' }}">
+                <div class="col-6 col-md-{{ $statCol }}">
                     <div class="shf-stat-card">
                         <div class="shf-stat-icon">
                             <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,10 +72,11 @@
                         </div>
                     </div>
                 </div>
+                @endif
 
                 {{-- Loan Stats --}}
                 @if($loanStats)
-                    <div class="col-6 col-md-2">
+                    <div class="col-6 col-md-{{ $statCol }}">
                         <div class="shf-stat-card" style="border-left: 3px solid #2563eb;">
                             <div class="shf-stat-icon" style="background:#eff6ff;color:#2563eb;">
                                 <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,7 +89,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-2">
+                    <div class="col-6 col-md-{{ $statCol }}">
                         <div class="shf-stat-card" style="border-left: 3px solid #f15a29;">
                             <div class="shf-stat-icon" style="background:#fff7ed;color:#f15a29;">
                                 <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,7 +102,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-2">
+                    <div class="col-6 col-md-{{ $statCol }}">
                         <div class="shf-stat-card" style="border-left: 3px solid #16a34a;">
                             <div class="shf-stat-icon" style="background:#f0fdf4;color:#16a34a;">
                                 <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,12 +124,14 @@
                     <button class="shf-tab{{ $defaultTab === 'tasks' ? ' active' : '' }}" data-tab="dash-tasks">
                         My Tasks
                         @if($loanStats['my_tasks'] > 0)
-                            <span class="shf-badge shf-badge-orange ms-1" style="font-size:0.6rem;">{{ $loanStats['my_tasks'] }}</span>
+                            <span class="shf-badge shf-badge-orange ms-1" class="shf-text-2xs">{{ $loanStats['my_tasks'] }}</span>
                         @endif
                     </button>
                     <button class="shf-tab{{ $defaultTab === 'loans' ? ' active' : '' }}" data-tab="dash-loans">Loans</button>
                 @endif
-                <button class="shf-tab{{ $defaultTab === 'quotations' ? ' active' : '' }}" data-tab="dash-quotations">Quotations</button>
+                @if($canViewQuotations)
+                    <button class="shf-tab{{ $defaultTab === 'quotations' ? ' active' : '' }}" data-tab="dash-quotations">Quotations</button>
+                @endif
             </div>
 
             {{-- My Tasks Tab --}}
@@ -173,6 +174,7 @@
             @endif
 
             {{-- Quotations Tab --}}
+            @if($canViewQuotations)
             <div class="settings-tab-pane" id="tab-dash-quotations"{!! $defaultTab !== 'quotations' ? ' style="display:none;"' : '' !!}>
             <div class="shf-section" style="border-top-left-radius:0;border-top-right-radius:0;">
                 <div class="shf-section-header">
@@ -255,6 +257,7 @@
                                 Filter
                             </button>
                             <button type="button" id="btn-clear" class="btn-accent-outline btn-accent-sm">
+                                <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                                 Clear
                             </button>
                         </div>
@@ -318,6 +321,7 @@
                 </div>
             </div>
             </div>{{-- /tab-dash-quotations --}}
+            @endif
 
             {{-- Loans Tab --}}
             @if($loanStats)
@@ -355,7 +359,7 @@
                     </div>
                     <div id="loansMobileCardsDash" class="d-md-none p-3"></div>
                     <div id="loansDashFooter" class="text-center py-3" style="border-top:1px solid #f0f0f0;">
-                        <a href="{{ route('loans.index') }}" class="btn-accent-outline btn-accent-sm">View All Loans</a>
+                        <a href="{{ route('loans.index') }}" class="btn-accent-outline btn-accent-sm"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg> View All Loans</a>
                     </div>
                     <div id="loansDashEmptyState" style="display:none;"></div>
                 </div>
@@ -379,8 +383,8 @@
                     <p class="small mb-0" style="color: #6b7280;">This action cannot be undone.</p>
                 </div>
                 <div class="modal-footer justify-content-center gap-2 border-0 pt-0 pb-4">
-                    <button type="button" class="btn-accent-outline btn-accent-sm" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" id="btn-confirm-delete" class="btn-accent btn-accent-sm" style="background: linear-gradient(135deg, #c0392b, #e74c3c);">Delete</button>
+                    <button type="button" class="btn-accent-outline btn-accent-sm" data-bs-dismiss="modal"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Cancel</button>
+                    <button type="button" id="btn-confirm-delete" class="btn-accent btn-accent-sm" style="background: linear-gradient(135deg, #c0392b, #e74c3c);"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Delete</button>
                 </div>
             </div>
         </div>
@@ -416,9 +420,9 @@ $(function() {
         }
     });
 
-    var canViewAll = @json($permissions['view_all']);
-    var canDownload = @json($permissions['download_pdf']);
-    var canDelete = @json($permissions['delete_quotations']);
+    var canViewAll = @json($permissions['view_all'] ?? false);
+    var canDownload = @json($permissions['download_pdf'] ?? false);
+    var canDelete = @json($permissions['delete_quotations'] ?? false);
     var hasFilters = false;
     var deleteUrl = null;
     var deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
@@ -967,10 +971,10 @@ $(function() {
             banksHtml = '<div class="d-flex flex-wrap gap-1 justify-content-end">';
             var show = q.banks.slice(0, 2);
             for (var i = 0; i < show.length; i++) {
-                banksHtml += '<span class="shf-tag" style="padding:2px 6px;font-size:0.65rem;">' + $('<span>').text(show[i]).html() + '</span>';
+                banksHtml += '<span class="shf-tag shf-text-xs" style="padding:2px 6px;">' + $('<span>').text(show[i]).html() + '</span>';
             }
             if (q.banks.length > 2) {
-                banksHtml += '<span class="shf-badge shf-badge-gray" style="font-size:0.65rem;">+' + (q.banks.length - 2) + '</span>';
+                banksHtml += '<span class="shf-badge shf-badge-gray shf-text-2xs">+' + (q.banks.length - 2) + '</span>';
             }
             banksHtml += '</div>';
         }

@@ -123,7 +123,8 @@ class User extends Authenticatable
             'super_admin' => 'Super Admin',
             'admin' => 'Admin',
             'staff' => 'Staff',
-            default => ucfirst($this->role),
+            'bank_employee' => 'Bank Employee',
+            default => ucfirst(str_replace('_', ' ', $this->role)),
         };
     }
 
@@ -141,7 +142,7 @@ class User extends Authenticatable
 
     public function isBankEmployee(): bool
     {
-        return $this->task_role === 'bank_employee';
+        return $this->role === 'bank_employee';
     }
 
     public function isLoanAdvisor(): bool

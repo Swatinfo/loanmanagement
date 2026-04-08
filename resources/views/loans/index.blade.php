@@ -2,13 +2,10 @@
 
 @section('header')
     <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-3">
-        <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">Loans</h2>
-        @if(auth()->user()->hasPermission('create_loan') && !auth()->user()->isBankEmployee())
-            <a href="{{ route('loans.create') }}" class="btn-accent btn-accent-sm">
-                <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                New Loan
-            </a>
-        @endif
+        <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">
+            <svg style="width:16px;height:16px;display:inline;margin-right:6px;color:rgba(255,255,255,0.85);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+            Loans
+        </h2>
     </div>
 @endsection
 
@@ -134,7 +131,7 @@
                             <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
                             Filter
                         </button>
-                        <button type="button" id="btnLoanClear" class="btn-accent-outline btn-accent-sm">Clear</button>
+                        <button type="button" id="btnLoanClear" class="btn-accent-outline btn-accent-sm"><svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Clear</button>
                     </div>
                 </div>
             </div>
@@ -173,15 +170,7 @@
                         <svg style="width:32px;height:32px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
                     </div>
                     <h3 class="font-display fw-semibold" style="font-size:1.125rem;color:#111827;">No loans found</h3>
-                    <p class="mt-1 small" style="color:#6b7280;">Try adjusting your filters or create a new loan.</p>
-                    @if(auth()->user()->hasPermission('create_loan') && !auth()->user()->isBankEmployee())
-                        <div class="mt-4">
-                            <a href="{{ route('loans.create') }}" class="btn-accent">
-                                <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                                New Loan
-                            </a>
-                        </div>
-                    @endif
+                    <p class="mt-1 small" style="color:#6b7280;">Try adjusting your filters or convert a quotation to create a loan.</p>
                 </div>
             </div>
         </div>

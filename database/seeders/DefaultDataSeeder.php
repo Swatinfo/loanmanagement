@@ -34,6 +34,7 @@ class DefaultDataSeeder extends Seeder
         $this->seedBankLocations();
         $this->seedLocationUsers();
         $this->seedBankCharges();
+        $this->seedProducts();
         $this->seedAppConfig();
         $this->seedAppSettings();
         $this->seedQuotations();
@@ -122,7 +123,7 @@ class DefaultDataSeeder extends Seeder
                 'city' => 'Rajkot',
                 'phone' => '+91 99747 89089',
                 'is_active' => true,
-                'manager_id' => 2,
+                'manager_id' => null,
                 'location_id' => 2,
                 'created_at' => '2026-04-06 15:24:26',
                 'updated_at' => '2026-04-07 23:22:31',
@@ -156,11 +157,11 @@ class DefaultDataSeeder extends Seeder
             ['id' => 4, 'stage_key' => 'parallel_processing', 'is_enabled' => true, 'stage_name_en' => 'Parallel Processing', 'stage_name_gu' => 'Parallel Processing', 'sequence_order' => 4, 'is_parallel' => true, 'parent_stage_key' => null, 'stage_type' => 'parallel', 'description_en' => 'Four parallel tracks processed simultaneously', 'description_gu' => null, 'default_role' => null, 'sub_actions' => null],
             ['id' => 5, 'stage_key' => 'app_number', 'is_enabled' => true, 'stage_name_en' => 'Application Number', 'stage_name_gu' => 'Application Number', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Enter bank application number', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor"]', 'sub_actions' => null],
             ['id' => 6, 'stage_key' => 'bsm_osv', 'is_enabled' => true, 'stage_name_en' => 'BSM/OSV Approval', 'stage_name_gu' => 'BSM/OSV Approval', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Bank site and office verification', 'description_gu' => null, 'default_role' => '["bank_employee"]', 'sub_actions' => null],
-            ['id' => 7, 'stage_key' => 'legal_verification', 'is_enabled' => true, 'stage_name_en' => 'Legal Verification', 'stage_name_gu' => 'Legal Verification', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Legal document verification', 'description_gu' => null, 'default_role' => '["loan_advisor"]', 'sub_actions' => null],
+            ['id' => 7, 'stage_key' => 'legal_verification', 'is_enabled' => true, 'stage_name_en' => 'Legal Verification', 'stage_name_gu' => 'Legal Verification', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Legal document verification', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor"]', 'sub_actions' => null],
             ['id' => 8, 'stage_key' => 'technical_valuation', 'is_enabled' => true, 'stage_name_en' => 'Technical Valuation', 'stage_name_gu' => 'Technical Valuation', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Property/asset technical valuation', 'description_gu' => null, 'default_role' => '["branch_manager","office_employee"]', 'sub_actions' => null],
-            ['id' => 9, 'stage_key' => 'rate_pf', 'is_enabled' => true, 'stage_name_en' => 'Rate & PF Request', 'stage_name_gu' => 'Rate & PF Request', 'sequence_order' => 5, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Request interest rate and processing fee from bank', 'description_gu' => null, 'default_role' => null, 'sub_actions' => '[{"key":"bank_rate_details","name":"Bank Rate Details","sequence":1,"roles":["bank_employee"],"type":"form","is_enabled":true},{"key":"processing_charges","name":"Processing & Charges","sequence":2,"roles":["branch_manager","loan_advisor","office_employee"],"type":"form","is_enabled":true}]'],
-            ['id' => 10, 'stage_key' => 'sanction', 'is_enabled' => true, 'stage_name_en' => 'Sanction Letter', 'stage_name_gu' => 'Sanction Letter', 'sequence_order' => 6, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Bank issues sanction letter', 'description_gu' => null, 'default_role' => null, 'sub_actions' => '[{"key":"send_for_sanction","name":"Send for Sanction Letter","sequence":1,"roles":["branch_manager","loan_advisor"],"type":"action_button","action":"send_for_sanction","transfer_to_role":"bank_employee","is_enabled":true},{"key":"sanction_generated","name":"Sanction Letter Generated","sequence":2,"roles":["bank_employee"],"type":"action_button","action":"sanction_generated","transfer_to_role":"loan_advisor","is_enabled":true},{"key":"sanction_details","name":"Sanction Details","sequence":3,"roles":["branch_manager","loan_advisor"],"type":"form","is_enabled":true}]'],
-            ['id' => 11, 'stage_key' => 'docket', 'is_enabled' => true, 'stage_name_en' => 'Docket Login', 'stage_name_gu' => 'Docket Login', 'sequence_order' => 7, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Physical document processing and docket creation', 'description_gu' => null, 'default_role' => '["branch_manager","office_employee"]', 'sub_actions' => null],
+            ['id' => 9, 'stage_key' => 'rate_pf', 'is_enabled' => true, 'stage_name_en' => 'Rate & PF Request', 'stage_name_gu' => 'Rate & PF Request', 'sequence_order' => 5, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Request interest rate and processing fee from bank', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor"]', 'sub_actions' => '[{"key":"bank_rate_details","name":"Bank Rate Details","sequence":1,"roles":["bank_employee"],"type":"form","is_enabled":true},{"key":"processing_charges","name":"Processing & Charges","sequence":2,"roles":["branch_manager","loan_advisor","office_employee"],"type":"form","is_enabled":true}]'],
+            ['id' => 10, 'stage_key' => 'sanction', 'is_enabled' => true, 'stage_name_en' => 'Sanction Letter', 'stage_name_gu' => 'Sanction Letter', 'sequence_order' => 6, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Bank issues sanction letter', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor"]', 'sub_actions' => '[{"key":"send_for_sanction","name":"Send for Sanction Letter","sequence":1,"roles":["branch_manager","loan_advisor"],"type":"action_button","action":"send_for_sanction","transfer_to_role":"bank_employee","is_enabled":true},{"key":"sanction_generated","name":"Sanction Letter Generated","sequence":2,"roles":["bank_employee"],"type":"action_button","action":"sanction_generated","transfer_to_role":"loan_advisor","is_enabled":true},{"key":"sanction_details","name":"Sanction Details","sequence":3,"roles":["branch_manager","loan_advisor"],"type":"form","is_enabled":true}]'],
+            ['id' => 11, 'stage_key' => 'docket', 'is_enabled' => true, 'stage_name_en' => 'Docket Login', 'stage_name_gu' => 'Docket Login', 'sequence_order' => 7, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Physical document processing and docket creation', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","office_employee"]', 'sub_actions' => null],
             ['id' => 12, 'stage_key' => 'kfs', 'is_enabled' => true, 'stage_name_en' => 'KFS Generation', 'stage_name_gu' => 'KFS Generation', 'sequence_order' => 8, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Key Fact Statement generation', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","office_employee"]', 'sub_actions' => null],
             ['id' => 13, 'stage_key' => 'esign', 'is_enabled' => true, 'stage_name_en' => 'E-Sign & eNACH', 'stage_name_gu' => 'E-Sign & eNACH', 'sequence_order' => 9, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Digital signature and eNACH mandate', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","bank_employee"]', 'sub_actions' => null],
             ['id' => 14, 'stage_key' => 'disbursement', 'is_enabled' => true, 'stage_name_en' => 'Disbursement', 'stage_name_gu' => 'Disbursement', 'sequence_order' => 10, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'decision', 'description_en' => 'Fund disbursement - transfer or cheque with OTC handling', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor"]', 'sub_actions' => null],
@@ -169,6 +170,7 @@ class DefaultDataSeeder extends Seeder
         ];
 
         foreach ($stages as $stage) {
+            unset($stage['id']);
             DB::table('stages')->updateOrInsert(
                 ['stage_key' => $stage['stage_key']],
                 array_merge($stage, ['created_at' => now(), 'updated_at' => now()])
@@ -195,14 +197,14 @@ class DefaultDataSeeder extends Seeder
             ['id' => 11, 'name' => 'MILAN DHOLAKIYA', 'email' => 'milan@shfworld.com', 'role' => 'staff', 'is_active' => true, 'created_by' => 2, 'phone' => '8401277654', 'task_role' => 'loan_advisor', 'employee_id' => null, 'default_branch_id' => 1, 'task_bank_id' => null],
             ['id' => 12, 'name' => 'NITIN FALDU', 'email' => 'nitin@shfworld.com', 'role' => 'staff', 'is_active' => true, 'created_by' => 2, 'phone' => '968701525', 'task_role' => 'loan_advisor', 'employee_id' => null, 'default_branch_id' => 1, 'task_bank_id' => null],
             ['id' => 13, 'name' => 'KRUPALI SHILU', 'email' => 'krupali@shfworld.com', 'role' => 'staff', 'is_active' => true, 'created_by' => 2, 'phone' => '9099089072', 'task_role' => 'loan_advisor', 'employee_id' => null, 'default_branch_id' => 1, 'task_bank_id' => null],
-            ['id' => 14, 'name' => 'HDFC Employee 1', 'email' => 'hdfc@manager.cop', 'role' => 'staff', 'is_active' => true, 'created_by' => 1, 'phone' => null, 'task_role' => 'bank_employee', 'employee_id' => null, 'default_branch_id' => null, 'task_bank_id' => null],
-            ['id' => 15, 'name' => 'HDFC Employee 2', 'email' => 'hdfc@manager2.cop', 'role' => 'staff', 'is_active' => true, 'created_by' => 1, 'phone' => null, 'task_role' => 'bank_employee', 'employee_id' => null, 'default_branch_id' => null, 'task_bank_id' => null],
-            ['id' => 16, 'name' => 'Kotak Employee 1', 'email' => 'kotak@manager.cop', 'role' => 'staff', 'is_active' => true, 'created_by' => 1, 'phone' => 'hdfc@manager2.cop', 'task_role' => 'bank_employee', 'employee_id' => null, 'default_branch_id' => null, 'task_bank_id' => 4],
-            ['id' => 17, 'name' => 'Kotak Employee 2', 'email' => 'kotak@manager2.cop', 'role' => 'staff', 'is_active' => true, 'created_by' => 1, 'phone' => null, 'task_role' => 'bank_employee', 'employee_id' => null, 'default_branch_id' => null, 'task_bank_id' => 4],
-            ['id' => 18, 'name' => 'Axix Employee 1', 'email' => 'axis@manager.cop', 'role' => 'staff', 'is_active' => true, 'created_by' => 1, 'phone' => null, 'task_role' => 'bank_employee', 'employee_id' => null, 'default_branch_id' => null, 'task_bank_id' => 3],
-            ['id' => 19, 'name' => 'Axix Employee 2', 'email' => 'axis@manager2.cop', 'role' => 'staff', 'is_active' => true, 'created_by' => 1, 'phone' => null, 'task_role' => 'bank_employee', 'employee_id' => null, 'default_branch_id' => null, 'task_bank_id' => 3],
-            ['id' => 20, 'name' => 'ICICI Employee 1', 'email' => 'icici@manager.cop', 'role' => 'staff', 'is_active' => true, 'created_by' => 1, 'phone' => null, 'task_role' => 'bank_employee', 'employee_id' => null, 'default_branch_id' => null, 'task_bank_id' => 2],
-            ['id' => 21, 'name' => 'ICICI Employee 2', 'email' => 'icici@manager2.com', 'role' => 'staff', 'is_active' => true, 'created_by' => 1, 'phone' => null, 'task_role' => 'bank_employee', 'employee_id' => null, 'default_branch_id' => null, 'task_bank_id' => 2],
+            ['id' => 14, 'name' => 'HDFC Employee 1', 'email' => 'hdfc@manager.cop', 'role' => 'bank_employee', 'is_active' => true, 'created_by' => 1, 'phone' => null, 'task_role' => 'bank_employee', 'employee_id' => null, 'default_branch_id' => null, 'task_bank_id' => null],
+            ['id' => 15, 'name' => 'HDFC Employee 2', 'email' => 'hdfc@manager2.cop', 'role' => 'bank_employee', 'is_active' => true, 'created_by' => 1, 'phone' => null, 'task_role' => 'bank_employee', 'employee_id' => null, 'default_branch_id' => null, 'task_bank_id' => null],
+            ['id' => 16, 'name' => 'Kotak Employee 1', 'email' => 'kotak@manager.cop', 'role' => 'bank_employee', 'is_active' => true, 'created_by' => 1, 'phone' => 'hdfc@manager2.cop', 'task_role' => 'bank_employee', 'employee_id' => null, 'default_branch_id' => null, 'task_bank_id' => 4],
+            ['id' => 17, 'name' => 'Kotak Employee 2', 'email' => 'kotak@manager2.cop', 'role' => 'bank_employee', 'is_active' => true, 'created_by' => 1, 'phone' => null, 'task_role' => 'bank_employee', 'employee_id' => null, 'default_branch_id' => null, 'task_bank_id' => 4],
+            ['id' => 18, 'name' => 'Axix Employee 1', 'email' => 'axis@manager.cop', 'role' => 'bank_employee', 'is_active' => true, 'created_by' => 1, 'phone' => null, 'task_role' => 'bank_employee', 'employee_id' => null, 'default_branch_id' => null, 'task_bank_id' => 3],
+            ['id' => 19, 'name' => 'Axix Employee 2', 'email' => 'axis@manager2.cop', 'role' => 'bank_employee', 'is_active' => true, 'created_by' => 1, 'phone' => null, 'task_role' => 'bank_employee', 'employee_id' => null, 'default_branch_id' => null, 'task_bank_id' => 3],
+            ['id' => 20, 'name' => 'ICICI Employee 1', 'email' => 'icici@manager.cop', 'role' => 'bank_employee', 'is_active' => true, 'created_by' => 1, 'phone' => null, 'task_role' => 'bank_employee', 'employee_id' => null, 'default_branch_id' => null, 'task_bank_id' => 2],
+            ['id' => 21, 'name' => 'ICICI Employee 2', 'email' => 'icici@manager2.com', 'role' => 'bank_employee', 'is_active' => true, 'created_by' => 1, 'phone' => null, 'task_role' => 'bank_employee', 'employee_id' => null, 'default_branch_id' => null, 'task_bank_id' => 2],
             ['id' => 22, 'name' => 'Office Employee1', 'email' => 'vipul@office.com', 'role' => 'staff', 'is_active' => true, 'created_by' => 1, 'phone' => '+91 99747 89089', 'task_role' => 'office_employee', 'employee_id' => null, 'default_branch_id' => 1, 'task_bank_id' => 1],
             ['id' => 23, 'name' => 'Office Employee2', 'email' => 'officeemployee2@shfworld.com', 'role' => 'staff', 'is_active' => true, 'created_by' => 1, 'phone' => null, 'task_role' => 'office_employee', 'employee_id' => null, 'default_branch_id' => 1, 'task_bank_id' => 1],
         ];
@@ -223,6 +225,9 @@ class DefaultDataSeeder extends Seeder
         DB::table('banks')->where('id', 2)->update(['default_employee_id' => 21]);
         DB::table('banks')->where('id', 3)->update(['default_employee_id' => 18]);
         DB::table('banks')->where('id', 4)->update(['default_employee_id' => 17]);
+
+        // Update branch manager after users exist
+        DB::table('branches')->where('id', 1)->update(['manager_id' => 2, 'updated_by' => 1]);
     }
 
     private function seedRolePermissions(): void
@@ -257,6 +262,17 @@ class DefaultDataSeeder extends Seeder
         foreach ($staffPermIds as $permId) {
             DB::table('role_permissions')->insert([
                 'role' => 'staff',
+                'permission_id' => $permId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        // bank_employee permissions (minimal: view_loans, add_remarks, change_own_password)
+        $bankEmployeePermIds = [20, 24, 32];
+        foreach ($bankEmployeePermIds as $permId) {
+            DB::table('role_permissions')->insert([
+                'role' => 'bank_employee',
                 'permission_id' => $permId,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -393,6 +409,34 @@ class DefaultDataSeeder extends Seeder
             DB::table('bank_charges')->updateOrInsert(
                 ['bank_name' => $charge['bank_name']],
                 array_merge($charge, ['created_at' => now(), 'updated_at' => now()])
+            );
+        }
+    }
+
+    private function seedProducts(): void
+    {
+        $products = [
+            // ICICI (bank_id=2)
+            ['bank_id' => 2, 'name' => 'Home Loan'],
+            ['bank_id' => 2, 'name' => 'LAP'],
+            ['bank_id' => 2, 'name' => 'OD'],
+            ['bank_id' => 2, 'name' => 'PRATHAM'],
+            // Axis (bank_id=3)
+            ['bank_id' => 3, 'name' => 'Home Loan'],
+            ['bank_id' => 3, 'name' => 'LAP'],
+            ['bank_id' => 3, 'name' => 'ASHA'],
+            // HDFC (bank_id=1)
+            ['bank_id' => 1, 'name' => 'Home Loan'],
+            ['bank_id' => 1, 'name' => 'LAP'],
+            // Kotak (bank_id=4)
+            ['bank_id' => 4, 'name' => 'Home Loan'],
+            ['bank_id' => 4, 'name' => 'LAP'],
+        ];
+
+        foreach ($products as $product) {
+            DB::table('products')->updateOrInsert(
+                ['bank_id' => $product['bank_id'], 'name' => $product['name']],
+                array_merge($product, ['is_active' => true, 'created_at' => now(), 'updated_at' => now()])
             );
         }
     }

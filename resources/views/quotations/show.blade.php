@@ -2,17 +2,12 @@
 
 @section('header')
     <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-3">
-        <div class="d-flex align-items-center gap-2">
-            <a href="{{ route('dashboard') }}" style="color: rgba(255,255,255,0.4); text-decoration: none;">
-                <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
-            </a>
-            <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">
-                Quotation #{{ $quotation->id }}
-            </h2>
-        </div>
-        <div class="d-flex align-items-center gap-3 flex-wrap">
+        <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">
+            <svg style="width:16px;height:16px;display:inline;margin-right:6px;color:rgba(255,255,255,0.85);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Quotation #{{ $quotation->id }}
+        </h2>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <a href="{{ route('dashboard') }}" class="btn-accent-outline btn-accent-sm btn-accent-outline-white"><svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg> Back</a>
             @if(!$quotation->is_converted && auth()->user()->hasPermission('convert_to_loan'))
                 <a href="{{ route('quotations.convert', $quotation) }}" class="btn-accent btn-accent-sm">
                     <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">

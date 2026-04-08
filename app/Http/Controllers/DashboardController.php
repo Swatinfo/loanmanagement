@@ -17,30 +17,39 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        // Stats for the dashboard cards
-        $statsQuery = Quotation::query();
-        if (! $user->hasPermission('view_all_quotations')) {
-            $statsQuery->where('user_id', $user->id);
-        }
+        // Check if user has any quotation-related permission
+        $canViewQuotations = $user->hasPermission('create_quotation')
+            || $user->hasPermission('view_own_quotations')
+            || $user->hasPermission('view_all_quotations');
 
-        $stats = [
-            'total' => (clone $statsQuery)->count(),
-            'today' => (clone $statsQuery)->whereDate('created_at', today())->count(),
-            'this_month' => (clone $statsQuery)->whereMonth('created_at', now()->month)
-                ->whereYear('created_at', now()->year)->count(),
-        ];
-
-        // Get users for the "Created By" filter (admin/super_admin only)
+        // Quotation stats (only if user has quotation access)
+        $stats = null;
         $users = [];
-        if ($user->hasPermission('view_all_quotations')) {
-            $users = User::select('id', 'name')->orderBy('name')->get();
-        }
+        $permissions = [];
 
-        $permissions = [
-            'view_all' => $user->hasPermission('view_all_quotations'),
-            'download_pdf' => $user->hasPermission('download_pdf'),
-            'delete_quotations' => $user->hasPermission('delete_quotations'),
-        ];
+        if ($canViewQuotations) {
+            $statsQuery = Quotation::query();
+            if (! $user->hasPermission('view_all_quotations')) {
+                $statsQuery->where('user_id', $user->id);
+            }
+
+            $stats = [
+                'total' => (clone $statsQuery)->count(),
+                'today' => (clone $statsQuery)->whereDate('created_at', today())->count(),
+                'this_month' => (clone $statsQuery)->whereMonth('created_at', now()->month)
+                    ->whereYear('created_at', now()->year)->count(),
+            ];
+
+            if ($user->hasPermission('view_all_quotations')) {
+                $users = User::select('id', 'name')->orderBy('name')->get();
+            }
+
+            $permissions = [
+                'view_all' => $user->hasPermission('view_all_quotations'),
+                'download_pdf' => $user->hasPermission('download_pdf'),
+                'delete_quotations' => $user->hasPermission('delete_quotations'),
+            ];
+        }
 
         // Loan stats + my tasks (if user has loan access)
         $loanStats = null;
@@ -71,13 +80,15 @@ class DashboardController extends Controller
             $defaultTab = 'tasks';
         } elseif ($recentLoans > 0) {
             $defaultTab = 'loans';
-        } else {
+        } elseif ($canViewQuotations) {
             $defaultTab = 'quotations';
+        } else {
+            $defaultTab = 'tasks';
         }
 
         return view('dashboard', compact(
             'stats', 'users', 'permissions',
-            'loanStats', 'defaultTab'
+            'loanStats', 'defaultTab', 'canViewQuotations'
         ));
     }
 
@@ -294,7 +305,7 @@ class DashboardController extends Controller
                 'status_label' => '<span class="shf-badge '.($task->status === 'in_progress' ? 'shf-badge-blue' : 'shf-badge-gray').'">'
                     .($task->status === 'in_progress' ? 'In Progress' : 'Pending').'</span>',
                 'assigned_at' => $task->updated_at->diffForHumans(),
-                'actions_html' => '<a href="'.route('loans.stages', $loan).'" class="btn-accent-sm">View</a>',
+                'actions_html' => '<a href="'.route('loans.stages', $loan).'" class="btn-accent-sm"><svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg> View</a>',
                 'location_name' => $locationName,
             ];
         });
@@ -362,7 +373,7 @@ class DashboardController extends Controller
                 'stage_name' => '<small>'.($stageNames[$loan->current_stage] ?? ucwords(str_replace('_', ' ', $loan->current_stage ?? '—'))).'</small>',
                 'status_label' => '<span class="shf-badge shf-badge-'.$badgeColor.'">'.($sl['label'] ?? ucfirst($loan->status)).'</span>',
                 'created_at' => $loan->created_at?->format('d M Y'),
-                'actions_html' => '<a href="'.route('loans.show', $loan).'" class="btn-accent-sm">View</a>',
+                'actions_html' => '<a href="'.route('loans.show', $loan).'" class="btn-accent-sm"><svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg> View</a>',
                 'location_name' => $locationName,
             ];
         });

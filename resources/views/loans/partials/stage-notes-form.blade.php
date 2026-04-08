@@ -48,7 +48,7 @@
             @endforeach
             @if(!$isDisabled)
                 <div class="col-12">
-                    <button type="submit" class="btn-accent-sm">Save Details</button>
+                    <button type="submit" class="btn-accent-sm"><svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Save Details</button>
                 </div>
             @endif
         </div>

@@ -1,0 +1,98 @@
+Paralal Processing
+	-> Don't allow other parallal stage or next stage until the Application number is entered and also we need to ask user option to select S+1,S+2,S+3 and custom in which they will selects the date and save this sub stage is completed
+
+BSM/OSV
+	Auto Assign to default Bank Employee also can assigne to eligibal bank employee	
+	Bank Employee Presses Completed and this sub stage is completed
+	
+Legal updated complet work flow
+	Main Task Owner Presses "Send To Bank" Add the Suggested Legal Adviosr in textbox manadatory
+	Legal Advisor will be  shown but bank employee can change it but mandatory field and Bank Employee Presses "Initiate", 
+	Now task return backs to main task owner( who has created the loan)
+	now task owner can assign to other loan advisor eligibal office employees or bank manager or they can click complete and this sub stage is completed
+
+Technical Valuation
+	Assigned to Office Employee
+	valuation form
+		-> proprty type always property no other options
+		-> in property type
+			Residential Bunglow
+			Residential Flat
+			Commerical
+			Industrial
+			Land
+			Mix Used
+	Make address non mandatory
+	add latitude and longitude fields	
+	remove market value and govenment value
+	rename land area now add land rate and should calculate valuation amount
+	add construction area, construction rate and should calculate valuation amount
+	now add final valuation amount which is sum of both land area valuation amount and construction area valuation amount
+	
+	show map form from latitude and longitude
+
+	
+
+Rate & PF Request
+	now new flow will be loan advisor or eligibal user will enters the details and presses "Send to Bank"
+	now bank employee will change the Bank Rate Details and Clicks "save" and to bank employee 
+	now it sould come back to eligibal user
+	then eligibal user will presses "Completed" and then task is completed
+	rename Bank Rate (%) to Bank Margin (%)
+
+Sanction Letter
+	now in Sanction Letter form 
+		remove Sanction Letter No. 
+		remove Validity Period 
+	make Sanctioned Rate (%) readonly 
+	add emi amount
+	keep docket date logic as it is and check docket date is autocalculated as per our s+1,s+2,s+3 or custom and also make sure user can not change the senction date
+	
+Docket Login
+	remove Docket Number *,Documents Submitted, Submitted To , Acknowledgement No. 
+	Login Date: default today
+	
+	when save task should be sent to office employee or eligibal user
+	
+	then office employee or eligibal user will click completed and task is assigned back to morgage advisor or loan creator show expected docket login date and show how many days left or how many days went past from due date
+	
+KFS Generation		
+		
+		Eligible user click "KFS Generated" and task is completed and E-Sign & eNACH is opend and assigned to Bank Employee
+
+E-Sign & eNACH
+			remove all fields
+			"Bank Employee" Clicks E-Sign & eNACH Generated then taks is assign to eligibal user
+			now eligibal user Clicks E-Sign & eNACH completed with customer then task is assign back to bank employee
+			now "Bank Employee Again Clicks Completed then task is completed
+			
+			
+			
+
+		
+Disbursement
+	remove DD
+	now when FUND Transfer 
+		rename Account Number to Loan Account Number
+		remove Reference / UTR Number, and IFSC Code
+	now when Cheque
+
+		remove Reference / UTR Number
+		now we can have multiple cheques can be issuesed so for each cheques number we need to take
+		Cheque Number, Cheque Date, cheque amount		
+		not total of all cheque amount should be less then or equals to Amount	
+		remove OTC option and detais
+
+		now when data is saved we need to mark the stage is completed and then new stage OTC is opend and assigned to task creator
+
+OTC Stage
+	now we can have two option 
+	enters the handover date and save then the whole loan is completed
+	the second option is assign the OTC to office employee
+		if assigned to office employee
+		then office employee enters the handover date and saves then the whole loan task is complete
+
+
+	
+	
+	

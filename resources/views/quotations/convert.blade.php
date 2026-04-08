@@ -1,15 +1,9 @@
 @extends('layouts.app')
 
 @section('header')
-    <div class="d-flex align-items-center gap-2">
-        <a href="{{ route('quotations.show', $quotation) }}" style="color: rgba(255,255,255,0.4); text-decoration: none;">
-            <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-            </svg>
-        </a>
-        <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;">
-            Convert Quotation #{{ $quotation->id }} to Loan Task
-        </h2>
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <h2 class="font-display fw-semibold text-white" style="font-size: 1.25rem; margin: 0;"><svg style="width:16px;height:16px;display:inline;margin-right:6px;color:rgba(255,255,255,0.85);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg> Convert Quotation #{{ $quotation->id }} to Loan Task</h2>
+        <a href="{{ route('quotations.show', $quotation) }}" class="btn-accent-outline btn-accent-sm btn-accent-outline-white"><svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg> Back</a>
     </div>
 @endsection
 
@@ -156,7 +150,7 @@
 
             {{-- Submit --}}
             <div class="d-flex justify-content-end gap-3 mb-4">
-                <a href="{{ route('quotations.show', $quotation) }}" class="btn btn-outline-secondary">Cancel</a>
+                <a href="{{ route('quotations.show', $quotation) }}" class="btn-accent-outline"><svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Cancel</a>
                 <button type="submit" class="btn-accent" style="padding: 10px 24px; font-weight: 600;">
                     <svg style="width:16px;height:16px;margin-right:4px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
