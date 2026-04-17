@@ -1,107 +1,128 @@
 # General Tasks
 
-## Overview
+Personal / delegated tasks — separate from loan workflow stages. Any user can create tasks for themselves or assign to others. Optional link to a loan.
 
-Personal and delegated task management system, separate from loan workflow. Any logged-in user can create tasks.
+## Surfaces
 
-## Model: `GeneralTask`
+- `/general-tasks` — list (DataTable)
+- `/general-tasks/create` — via modal (on dashboard or list page)
+- `/general-tasks/{id}` — show with comments
+- `/general-tasks/{id}/edit`, DELETE — creator only
+- `/general-tasks/{id}/status` — PATCH (creator or assignee)
+- `/general-tasks/{id}/comments` — POST to add, DELETE to remove own
 
-### Statuses
-| Status | Badge |
-|--------|-------|
-| pending | gray |
-| in_progress | blue |
-| completed | green |
-| cancelled | red |
+**No permission gate on the routes** — all authenticated users can use tasks. Visibility & edit rights are enforced inside the model and controller.
 
-### Priorities
-| Priority | Badge |
-|----------|-------|
-| low | gray |
-| normal | blue |
-| high | orange |
-| urgent | red |
+## Model
 
-### Fields
-- title, description, due_date, priority, status
-- created_by (FK users — task creator)
-- assigned_to (FK users — nullable, task assignee)
-- loan_detail_id (FK loan_details — nullable, optional loan link)
-- completed_at (timestamp — set when status = completed)
+`GeneralTask` (table `general_tasks`):
 
-## Visibility (`scopeVisibleTo`)
+- `title`, `description`, `created_by`, `assigned_to`, `loan_detail_id`
+- `status`: `pending` / `in_progress` / `completed` / `cancelled`
+- `priority`: `low` / `normal` / `high` / `urgent`
+- `due_date`, `completed_at`
 
-1. **view_all_tasks** permission → sees everything (admin, read-only)
-2. **Own tasks** → created_by = user OR assigned_to = user
-3. **BDH** → also sees tasks from users in their branches (via user_branches pivot)
+Constants: `STATUSES`, `STATUS_LABELS` (with badge CSS classes), `PRIORITIES`, `PRIORITY_LABELS`.
 
-## Controller: `GeneralTaskController`
+Relationships: `creator`, `assignee`, `loan`, `comments` (HasMany `GeneralTaskComment`, latest first).
 
-### No Permission Gate
-All logged-in users can access task routes. No `permission:` middleware.
+Scopes: `scopeVisibleTo($user)`, `scopePending()` (status in pending, in_progress).
 
-### Routes
-- `GET /general-tasks` → index (DataTable list)
-- `POST /general-tasks` → store (create)
-- `GET /general-tasks/{task}` → show (detail page)
-- `PUT /general-tasks/{task}` → update
-- `DELETE /general-tasks/{task}` → destroy
-- `PATCH /general-tasks/{task}/status` → updateStatus
-- `POST /general-tasks/{task}/comments` → storeComment
-- `DELETE /general-tasks/{task}/comments/{comment}` → destroyComment
-- `GET /general-tasks/search-loans` → AJAX loan search
-- `GET /general-tasks/data` → DataTable server-side data
+Accessors: `statusBadgeHtml`, `priorityBadgeHtml`, `isOverdue`.
 
-### DataTable Filters
-- View: my_tasks_and_assigned, my_tasks, assigned_to_me, my_branch (BDH), all (admin)
-- Status: pending, in_progress, completed, cancelled
-- Priority: low, normal, high, urgent
-- Search: title, assignee name, creator name, loan number/customer
+Methods: `isVisibleTo`, `isEditableBy` (creator only), `canChangeStatus` (creator OR assignee), `isDeletableBy` (creator only).
 
-### After Create
-Redirects to task show page, not list.
+### Visibility scope
+
+`scopeVisibleTo($user)`:
+
+1. If user has `view_all_tasks` permission → all tasks (read-only in UI for admins)
+2. Else OR-union:
+   - `created_by = user` OR `assigned_to = user` (own tasks)
+   - If user has a branch (BDH / branch manager): tasks where `created_by` or `assigned_to` is in that user's branch (via `user_branches` pivot)
+
+## Create flow
+
+`GeneralTaskController@store`:
+
+Validation:
+- `title` required, max 255
+- `description` nullable, max 5000
+- `assigned_to` nullable exists:users (null = self-task)
+- `loan_detail_id` nullable exists:loan_details
+- `priority` required, in PRIORITIES
+- `due_date` required, d/m/Y format
+
+Steps:
+
+1. Convert date from d/m/Y to Y-m-d
+2. Create `GeneralTask`
+3. If `assigned_to` is set AND different from creator → `NotificationService::notify()` to the assignee
+4. Log activity with assignee name
+
+**After creation, redirect to the task show page** (`/general-tasks/{id}`) — not back to the list.
+
+## Status changes
+
+`PATCH /general-tasks/{id}/status`:
+
+- Validation: `status` in STATUSES
+- Auth: creator OR assigned_to can change status
+- **Only the creator** can cancel
+- When transitioning to `completed`: set `completed_at = now()`
+- When reverting from `completed`: clear `completed_at`
+- If assignee completed a task assigned by someone else → notify creator
+
+Response: `{ success, status, status_html }`.
 
 ## Comments
 
-`GeneralTaskComment` model:
-- body text, user_id, general_task_id
-- Created by any user who can view the task
-- Delete by comment author only
+`POST /general-tasks/{id}/comments` — body: `body` (max 5000). Auth: anyone who can view the task (`isVisibleTo`).
 
-## Loan Link
+On comment post:
+- Notify the other party (if creator comments → notify assignee; if assignee → notify creator)
+- Log activity with truncated comment text
 
-Tasks can optionally link to a loan via `loan_detail_id`:
-- Search endpoint: `/general-tasks/search-loans`
-- Searches by loan number, application number, customer name
+`DELETE /general-tasks/{id}/comments/{comment}` — only the comment author.
 
-## Notifications
+## Listing & filters
 
-- Task assignment → notify assignee
-- Task completion → notify creator (if different from completer)
-- Comment added → notify task participants
+`GET /general-tasks/data` (DataTables server-side):
 
-## Dashboard Integration
+Filters:
+- `view`: `my_tasks_and_assigned` (default), `my_tasks`, `assigned_to_me`, `my_branch` (BDH), `all` (admin)
+- `status`: `active` (pending + in_progress), `pending`, `in_progress`, `completed`, `cancelled`
+- `priority`
+- Search across title, assignee name, creator name, loan number, customer name
 
-"Personal Tasks" tab on dashboard with:
-- Create task modal (opens directly, no redirect)
-- Stat cards: pending, in progress, overdue, completed
-- Default tab when user has overdue tasks
+Due-date urgency badges (computed per row, excludes completed/cancelled):
+- overdue, due_today, due_tomorrow, due_soon
 
-## Views
+## Dashboard integration
 
-| View | Purpose |
-|------|---------|
-| general-tasks/index.blade.php | DataTable list with filters |
-| general-tasks/show.blade.php | Task detail with comments section |
+- **Personal Tasks** tab on the dashboard uses `/dashboard/task-data`
+- Default-tab priority: overdue tasks → pending tasks → other tabs
+- **New Task** button on the dashboard opens an inline modal (`#dashCreateTaskModal`) — creates the task, closes modal, reloads the tab
 
-## Edit/Delete Rules
+## Loan linking
 
-- Only task creator can edit or delete
-- Admin has view_all_tasks (read-only, cannot edit)
+Optional `loan_detail_id` creates a back-reference between the task and a loan. UI includes autocomplete at `/general-tasks/search-loans?q=` (min 2 chars) that matches by loan number, app number, customer name.
 
-## Status Change Rules
+Tasks don't create stage assignments — they're purely informational / tracking outside the workflow.
 
-- Task creator can change to any status (pending, in_progress, completed, cancelled)
-- Task assignee can change status (pending, in_progress, completed) but cannot cancel
-- Server-side guard in `updateStatus()`: only creator can set status to cancelled
-- View uses `canChangeStatus(user)` to show/hide status buttons
+## Delete
+
+`DELETE /general-tasks/{id}`:
+- Creator only (`isDeletableBy`)
+- Activity logged with title
+- Soft delete not in use — rows are permanently removed
+
+## Related activity types
+
+- `task_created`, `task_updated`, `task_status_changed`, `task_comment_added`, `task_deleted`, `task_comment_deleted`
+
+## See also
+
+- `.claude/routes-reference.md` — full routes list
+- `.claude/database-schema.md` — `general_tasks`, `general_task_comments` tables
+- `dashboard.md` — dashboard tab integration

@@ -66,7 +66,9 @@
                             {{-- Valuation Date --}}
                             <div class="col-sm-6">
                                 <label class="shf-form-label">Valuation Date <span class="text-danger">*</span></label>
-                                <input type="text" name="valuation_date" class="shf-input shf-datepicker"
+                                <input type="text" name="valuation_date" class="shf-input shf-datepicker-custom"
+                                    data-min-date="{{ $v?->created_at ? $v->created_at->format('d/m/Y') : now()->subDays(3)->format('d/m/Y') }}"
+                                    data-max-date="{{ $v?->created_at ? now()->format('d/m/Y') : now()->addDay()->format('d/m/Y') }}"
                                     value="{{ old('valuation_date', $v?->valuation_date?->format('d/m/Y') ?? now()->format('d/m/Y')) }}"
                                     required>
                             </div>
@@ -301,6 +303,12 @@
                 format: 'dd/mm/yyyy',
                 autoclose: true,
                 todayHighlight: true
+            });
+            $('.shf-datepicker-custom').each(function() {
+                var opts = { format: 'dd/mm/yyyy', autoclose: true, todayHighlight: true };
+                if ($(this).data('min-date')) opts.startDate = $(this).data('min-date');
+                if ($(this).data('max-date')) opts.endDate = $(this).data('max-date');
+                $(this).datepicker(opts);
             });
 
             // ---- Leaflet Map ----

@@ -476,36 +476,39 @@
 
                 {{-- Stage Master Tab --}}
                 <div class="settings-tab-pane p-4 shf-collapse-hidden" id="tab-master-stages"{!! $activeTab !== 'master-stages' ? '' : '' !!}>
-                    <p class="text-muted mb-3">Global stage configuration. Set the default responsible role for each stage.
-                        Product-specific stages inherit from these defaults.</p>
+                    <p class="text-muted mb-3">Configure which role handles each stage. Set global defaults and override per bank.</p>
+
+                    @php
+                        $roleOptions = [
+                            'task_owner' => 'Task Owner',
+                            'bank_employee' => 'Bank Employee',
+                            'office_employee' => 'Office Employee',
+                        ];
+                        $activeBanksForConfig = $banks->where('is_active', true);
+                    @endphp
 
                     <form method="POST" action="{{ route('loan-settings.master-stages.save') }}" id="masterStagesForm">
                         @csrf
-                        @php
-                            $mainStages = $stages->whereNull('parent_stage_key');
-                            $childStages = $stages->whereNotNull('parent_stage_key');
-                        @endphp
 
-                        {{-- Column header --}}
                         @foreach ($stages as $stage)
                             @php
+                                $si = $loop->index;
                                 $isParallelHeader = $stage->is_parallel && !$stage->parent_stage_key;
                                 $hasSubActions = !empty($stage->sub_actions) && is_array($stage->sub_actions);
+                                $isHeaderOnly = $isParallelHeader;
                             @endphp
+
                             <div class="shf-stage-card {{ $stage->parent_stage_key ? 'shf-stage-card--child' : '' }}">
-                                <input type="hidden" name="stages[{{ $loop->index }}][id]"
-                                    value="{{ $stage->id }}">
+                                <input type="hidden" name="stages[{{ $si }}][id]" value="{{ $stage->id }}">
 
                                 <div class="shf-stage-header">
                                     <div class="shf-stage-header-title">
                                         @if ($stage->parent_stage_key)
                                             <span class="text-muted">↳</span>
                                         @endif
-                                        <strong
-                                            class="{{ $stage->parent_stage_key ? 'fw-medium' : '' }}">{{ $stage->stage_name_en }}</strong>
+                                        <strong class="{{ $stage->parent_stage_key ? 'fw-medium' : '' }}">{{ $stage->stage_name_en }}</strong>
                                         @if ($stage->stage_name_gu)
-                                            <small
-                                                class="text-muted d-none d-sm-inline">({{ $stage->stage_name_gu }})</small>
+                                            <small class="text-muted d-none d-sm-inline">({{ $stage->stage_name_gu }})</small>
                                         @endif
                                         @if ($stage->is_parallel)
                                             <span class="shf-badge shf-badge-blue shf-text-2xs">Parallel</span>
@@ -514,401 +517,126 @@
                                             <span class="shf-badge shf-badge-orange shf-text-2xs">Decision</span>
                                         @endif
                                         @if ($hasSubActions)
-                                            <span
-                                                class="shf-badge shf-badge-orange shf-text-2xs">{{ count($stage->sub_actions) }}
-                                                sub-stages</span>
+                                            <span class="shf-badge shf-badge-orange shf-text-2xs">{{ count($stage->sub_actions) }} phases</span>
                                         @endif
                                     </div>
-                                    @if (!$isParallelHeader && !$hasSubActions)
-                                        <input type="hidden" name="stages[{{ $loop->index }}][is_enabled]"
-                                            value="0">
-                                        <input type="checkbox" name="stages[{{ $loop->index }}][is_enabled]"
-                                            value="1" class="shf-toggle shf-master-stage-toggle"
-                                            {{ $stage->is_enabled ? 'checked' : '' }}>
+                                    @if (!$isHeaderOnly)
+                                        <input type="hidden" name="stages[{{ $si }}][is_enabled]" value="0">
+                                        <input type="checkbox" name="stages[{{ $si }}][is_enabled]" value="1"
+                                            class="shf-toggle" {{ $stage->is_enabled ? 'checked' : '' }}>
                                     @else
-                                        <input type="hidden" name="stages[{{ $loop->index }}][is_enabled]"
-                                            value="1">
+                                        <input type="hidden" name="stages[{{ $si }}][is_enabled]" value="1">
                                     @endif
                                 </div>
 
-                                {{-- Description + notes + roles --}}
                                 <div class="shf-stage-body">
                                     @if ($stage->description_en)
-                                        <small class="text-muted d-block shf-text-xs">{{ $stage->description_en }}</small>
-                                    @endif
-                                    @php
-                                        $stagePhases = match ($stage->stage_key) {
-                                            'inquiry' => [
-                                                [
-                                                    'role' => 'Loan Advisor / Branch Manager',
-                                                    'action' => 'Creates loan with customer details',
-                                                ],
-                                                ['note' => 'Auto-completed when converting from quotation'],
-                                            ],
-                                            'document_selection' => [
-                                                [
-                                                    'role' => 'Loan Advisor / Branch Manager',
-                                                    'action' => 'Selects required documents for the loan type',
-                                                ],
-                                                ['note' => 'Auto-completed when converting from quotation'],
-                                            ],
-                                            'document_collection' => [
-                                                [
-                                                    'role' => 'Loan Advisor',
-                                                    'action' =>
-                                                        'Collects and verifies all required documents from customer',
-                                                ],
-                                                ['role' => 'Loan Advisor', 'action' => 'Uploads document files'],
-                                                [
-                                                    'note' =>
-                                                        'Cannot complete until all required documents are collected',
-                                                ],
-                                            ],
-                                            'parallel_processing' => [
-                                                ['note' => 'Container — all sub-stages run simultaneously'],
-                                                ['note' => 'Application Number must complete first to unlock others'],
-                                            ],
-                                            'app_number' => [
-                                                [
-                                                    'role' => 'Loan Advisor',
-                                                    'action' => 'Enters bank application number',
-                                                ],
-                                                [
-                                                    'role' => 'Loan Advisor',
-                                                    'action' => 'Selects docket timeline (S+1 / S+2 / S+3 / Custom)',
-                                                ],
-                                                ['note' => 'Must complete before other parallel stages start'],
-                                            ],
-                                            'bsm_osv' => [
-                                                [
-                                                    'role' => 'Bank Employee',
-                                                    'action' => 'Performs BSM/OSV site verification',
-                                                ],
-                                                [
-                                                    'note' =>
-                                                        'Auto-assigned to default bank employee. Clicks Complete when done',
-                                                ],
-                                            ],
-                                            'legal_verification' => [
-                                                [
-                                                    'phase' => '1',
-                                                    'role' => 'Task Owner',
-                                                    'action' => 'Enters suggested legal advisor name → Send to Bank',
-                                                ],
-                                                [
-                                                    'phase' => '2',
-                                                    'role' => 'Bank Employee',
-                                                    'action' => 'Confirms legal advisor name → Initiate Legal',
-                                                ],
-                                                [
-                                                    'phase' => '3',
-                                                    'role' => 'Task Owner',
-                                                    'action' => 'Reviews, can reassign or Complete',
-                                                ],
-                                            ],
-                                            'technical_valuation' => [
-                                                [
-                                                    'phase' => '1',
-                                                    'role' => 'Task Owner',
-                                                    'action' => 'Clicks "Send for Technical Valuation" → transfers to Office Employee',
-                                                ],
-                                                [
-                                                    'phase' => '2',
-                                                    'role' => 'Office Employee',
-                                                    'action' => 'Fills valuation form (land area, rate, construction, lat/lng) → Complete',
-                                                ],
-                                                ['note' => 'OE assigned from product stage config. Stage auto-completes when form is saved.'],
-                                            ],
-                                            'property_valuation' => [
-                                                [
-                                                    'role' => 'Office Employee',
-                                                    'action' =>
-                                                        'Fills property valuation form (same as Technical Valuation)',
-                                                ],
-                                                ['note' => 'Dedicated property valuation for LAP products'],
-                                            ],
-                                            'rate_pf' => [
-                                                [
-                                                    'phase' => '1',
-                                                    'role' => 'Task Owner',
-                                                    'action' => 'Fills rates, PF (% or amount), GST, admin charges → Send to Bank',
-                                                ],
-                                                [
-                                                    'phase' => '2',
-                                                    'role' => 'Bank Employee',
-                                                    'action' => 'Reviews/edits all fields → Save & Return to Task Owner',
-                                                ],
-                                                [
-                                                    'phase' => '3',
-                                                    'role' => 'Task Owner',
-                                                    'action' => 'Reviews bank changes (original values shown) → auto-completes',
-                                                ],
-                                                ['note' => 'Total PF and Total Admin auto-calculated (readonly). All dates past-only except Valid Until.'],
-                                            ],
-                                            'sanction' => [
-                                                [
-                                                    'phase' => '1',
-                                                    'role' => 'Task Owner',
-                                                    'action' => 'Sends for sanction letter generation → Bank',
-                                                ],
-                                                [
-                                                    'phase' => '2',
-                                                    'role' => 'Bank Employee',
-                                                    'action' => 'Marks sanction letter generated → Returns',
-                                                ],
-                                                [
-                                                    'phase' => '3',
-                                                    'role' => 'Task Owner',
-                                                    'action' => 'Enters sanction date, amount, EMI → Complete',
-                                                ],
-                                                ['note' => 'Docket date auto-calculated from sanction date + offset'],
-                                            ],
-                                            'docket' => [
-                                                [
-                                                    'phase' => '1',
-                                                    'role' => 'Task Owner',
-                                                    'action' => 'Enters login date (past only) → Send to Office Employee',
-                                                ],
-                                                [
-                                                    'phase' => '2',
-                                                    'role' => 'Office Employee',
-                                                    'action' => 'Reviews → clicks "Generate KFS" → Docket completes, KFS assigned to Task Owner',
-                                                ],
-                                                ['note' => 'Shows expected docket date with days remaining/overdue. No future dates allowed.'],
-                                            ],
-                                            'kfs' => [
-                                                [
-                                                    'role' => 'Task Owner',
-                                                    'action' => 'Reviews KFS → clicks "KFS Complete" → E-Sign assigned to Task Owner',
-                                                ],
-                                                ['note' => 'Auto-assigned to task owner from docket completion'],
-                                            ],
-                                            'esign' => [
-                                                [
-                                                    'phase' => '1',
-                                                    'role' => 'Task Owner',
-                                                    'action' => 'Sends for E-Sign & eNACH → Bank Employee',
-                                                ],
-                                                [
-                                                    'phase' => '2',
-                                                    'role' => 'Bank Employee',
-                                                    'action' => 'Generates E-Sign & eNACH docs → Returns to Task Owner',
-                                                ],
-                                                [
-                                                    'phase' => '3',
-                                                    'role' => 'Task Owner',
-                                                    'action' => 'Completes signing with customer → Returns to Bank',
-                                                ],
-                                                [
-                                                    'phase' => '4',
-                                                    'role' => 'Bank Employee',
-                                                    'action' => 'Confirms → Complete. Disbursement assigned to Office Employee',
-                                                ],
-                                                ['note' => 'Auto-assigned to task owner from KFS completion. Disbursement uses product stage OE config.'],
-                                            ],
-                                            'disbursement' => [
-                                                [
-                                                    'role' => 'Office Employee',
-                                                    'action' => 'Processes disbursement — chooses Fund Transfer or Cheque',
-                                                ],
-                                                ['note' => 'Auto-assigned to Office Employee from product stage config'],
-                                                ['note' => 'Fund Transfer → loan completes immediately (OTC skipped)'],
-                                                ['note' => 'Cheque → enters cheque details → advances to OTC Clearance'],
-                                            ],
-                                            'otc_clearance' => [
-                                                [
-                                                    'role' => 'Task Owner',
-                                                    'action' =>
-                                                        'Enters cheque handover date, or assigns to Office Employee',
-                                                ],
-                                                [
-                                                    'role' => 'Office Employee',
-                                                    'action' => 'Enters handover date if assigned',
-                                                ],
-                                                ['note' => 'When completed, loan is marked as Completed'],
-                                            ],
-                                            default => null,
-                                        };
-                                    @endphp
-                                    @if ($stagePhases)
-                                        @php
-                                            $roleCssClass = function ($role) {
-                                                if (str_contains($role, 'Bank Employee')) {
-                                                    return 'shf-role-bank-employee';
-                                                }
-                                                if (str_contains($role, 'Office Employee')) {
-                                                    return 'shf-role-office-employee';
-                                                }
-                                                if (str_contains($role, 'Branch Manager')) {
-                                                    return 'shf-role-branch-manager';
-                                                }
-                                                if (str_contains($role, 'Loan Advisor')) {
-                                                    return 'shf-role-loan-advisor';
-                                                }
-                                                return 'shf-role-task-owner';
-                                            };
-                                            $roleBgClass = function ($role) {
-                                                if (str_contains($role, 'Bank Employee')) {
-                                                    return 'shf-role-bg-bank-employee';
-                                                }
-                                                if (str_contains($role, 'Office Employee')) {
-                                                    return 'shf-role-bg-office-employee';
-                                                }
-                                                if (str_contains($role, 'Branch Manager')) {
-                                                    return 'shf-role-bg-branch-manager';
-                                                }
-                                                if (str_contains($role, 'Loan Advisor')) {
-                                                    return 'shf-role-bg-loan-advisor';
-                                                }
-                                                return 'shf-role-bg-task-owner';
-                                            };
-                                            $masterTransfer = match ($stage->stage_key) {
-                                                'inquiry',
-                                                'document_selection',
-                                                'document_collection',
-                                                'app_number'
-                                                    => 'Transfer to: Loan Advisor, Branch Manager',
-                                                'bsm_osv' => 'Transfer to: Bank Employee (same bank)',
-                                                'legal_verification' => 'Auto-transfers: Task Owner ↔ Bank Employee',
-                                                'technical_valuation' => 'Auto-transfers: Task Owner → Office Employee',
-                                                'property_valuation'
-                                                    => 'Transfer to: Office Employee, Branch Manager',
-                                                'rate_pf'
-                                                    => 'Auto-transfers: Task Owner → Bank Employee → Task Owner',
-                                                'sanction' => 'Auto-transfers: Task Owner → Bank Employee → Task Owner',
-                                                'docket'
-                                                    => 'Auto-transfers: Task Owner → Office Employee',
-                                                'kfs' => 'Assigned to Task Owner from docket completion',
-                                                'esign' => 'Auto-transfers: Task Owner → Bank Employee → Task Owner → Bank Employee',
-                                                'disbursement' => 'Assigned to Office Employee (product stage config)',
-                                                'otc_clearance'
-                                                    => 'Transfer to: Office Employee, Loan Advisor, Branch Manager',
-                                                default => null,
-                                            };
-                                        @endphp
-                                        <div class="shf-stage-notes">
-                                            @foreach ($stagePhases as $sp)
-                                                @if (isset($sp['phase']))
-                                                    <div class="shf-phase-step">
-                                                        <span
-                                                            class="shf-phase-num {{ $roleBgClass($sp['role']) }}">{{ $sp['phase'] }}</span>
-                                                        <span><strong
-                                                                class="{{ $roleCssClass($sp['role']) }}">{{ $sp['role'] }}</strong>
-                                                            — {{ $sp['action'] }}</span>
-                                                    </div>
-                                                @elseif(isset($sp['role']))
-                                                    <div>
-                                                        <span class="shf-role-dot {{ $roleBgClass($sp['role']) }}"></span>
-                                                        <strong
-                                                            class="{{ $roleCssClass($sp['role']) }}">{{ $sp['role'] }}</strong>
-                                                        — {{ $sp['action'] }}
-                                                    </div>
-                                                @elseif(isset($sp['note']))
-                                                    <div class="shf-note-line">
-                                                        <svg class="shf-icon-2xs shf-icon-inline" fill="none"
-                                                            stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                        </svg>
-                                                        {{ $sp['note'] }}
-                                                    </div>
-                                                @endif
-                                            @endforeach
-                                            @if ($masterTransfer)
-                                                <div class="shf-transfer-line">
-                                                    <svg class="shf-icon-2xs shf-icon-inline" fill="none"
-                                                        stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round"
-                                                            stroke-width="2"
-                                                            d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                                    </svg>
-                                                    {{ $masterTransfer }}
-                                                </div>
-                                            @endif
-                                        </div>
+                                        <small class="text-muted d-block shf-text-xs mb-2">{{ $stage->description_en }}</small>
                                     @endif
 
-                                    <div class="shf-stage-roles">
-                                        @if ($isParallelHeader)
-                                            <small class="text-muted">— Group label —</small>
-                                        @elseif($hasSubActions)
-                                            <small class="text-muted">— See sub-stages —</small>
+                                    @if (!$isHeaderOnly)
+                                        @if ($hasSubActions)
+                                            {{-- Multi-phase: one dropdown per phase --}}
+                                            <div class="mb-2">
+                                                <div class="shf-form-label d-block mb-1">Default Phase Roles</div>
+                                                @foreach ($stage->sub_actions as $phaseIdx => $phase)
+                                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                                        <span class="shf-phase-num shf-role-bg-task-owner" style="width:22px;height:22px;font-size:0.65rem;">{{ $phaseIdx + 1 }}</span>
+                                                        <span class="shf-text-xs" style="min-width:140px;">{{ $phase['name'] ?? $phase['key'] }}</span>
+                                                        <select name="stages[{{ $si }}][phase_roles][{{ $phaseIdx }}]" class="shf-input-sm" style="width:160px;">
+                                                            @foreach ($roleOptions as $rv => $rl)
+                                                                <option value="{{ $rv }}" {{ ($phase['role'] ?? 'task_owner') === $rv ? 'selected' : '' }}>{{ $rl }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    </div>
+                                                @endforeach
+                                            </div>
                                         @else
-                                            @php $stageRoles = is_array($stage->default_role) ? $stage->default_role : ($stage->default_role ? [$stage->default_role] : []); @endphp
-                                            <div class="shf-role-section-label d-block">Eligible Roles</div>
-                                            <div class="d-flex flex-wrap gap-1 shf-role-checkboxes">
-                                                @foreach ($workflowRoles->whereNotIn('slug', ['super_admin', 'admin']) as $wfR) @php $role = $wfR->slug; $label = $wfR->name; @endphp
-                                                    <label
-                                                        class="shf-role-checkbox-label d-inline-flex align-items-center gap-1 me-1">
-                                                        <input type="checkbox"
-                                                            name="stages[{{ $loop->parent->index }}][default_role][]"
-                                                            value="{{ $role }}" class="shf-checkbox"
-                                                            {{ in_array($role, $stageRoles) ? 'checked' : '' }}>
-                                                        {{ $label }}
-                                                    </label>
+                                            {{-- Single-phase: one dropdown --}}
+                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                <span class="shf-form-label mb-0">Default Role</span>
+                                                <select name="stages[{{ $si }}][assigned_role]" class="shf-input-sm" style="width:180px;">
+                                                    @foreach ($roleOptions as $rv => $rl)
+                                                        <option value="{{ $rv }}" {{ ($stage->assigned_role ?? 'task_owner') === $rv ? 'selected' : '' }}>{{ $rl }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        @endif
+
+                                        {{-- Bank Configuration --}}
+                                        @if ($activeBanksForConfig->isNotEmpty())
+                                            <div class="shf-collapsible shf-filter-open mt-2" data-target="#bank-config-{{ $stage->id }}">
+                                                <span class="shf-form-label mb-0 shf-clickable">Bank Configuration</span>
+                                                <svg class="shf-collapse-arrow shf-icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                                @php
+                                                    $overrideCount = $activeBanksForConfig->filter(function($b) use ($stage, $bankStageConfigs) {
+                                                        return isset($bankStageConfigs[$b->id . '_' . $stage->id]);
+                                                    })->count();
+                                                @endphp
+                                                @if ($overrideCount > 0)
+                                                    <span class="shf-badge shf-badge-orange shf-text-2xs ms-1">{{ $overrideCount }} custom</span>
+                                                @endif
+                                            </div>
+                                            <div id="bank-config-{{ $stage->id }}" class="mt-2" style="border-left:3px solid var(--accent-dim);padding-left:12px;">
+                                                @foreach ($activeBanksForConfig as $bank)
+                                                    @php
+                                                        $bsc = $bankStageConfigs[$bank->id . '_' . $stage->id] ?? null;
+                                                        $bankHasOverride = $bsc !== null;
+                                                    @endphp
+                                                    <div class="d-flex align-items-start gap-2 mb-2 py-1 {{ !$loop->last ? 'border-bottom' : '' }}">
+                                                        <div style="min-width:120px;flex-shrink:0;" class="d-flex align-items-center gap-1">
+                                                            <strong class="shf-text-xs">{{ $bank->name }}</strong>
+                                                        </div>
+                                                        <div class="d-flex flex-wrap align-items-center gap-1">
+                                                            @if ($hasSubActions)
+                                                                {{-- Per-phase dropdowns for this bank --}}
+                                                                @foreach ($stage->sub_actions as $phaseIdx => $phase)
+                                                                    @php
+                                                                        $phaseDefault = $phase['role'] ?? 'task_owner';
+                                                                        $bankPhaseRole = $bsc?->phase_roles[(string)$phaseIdx] ?? $phaseDefault;
+                                                                        $phaseIsOverride = $bankPhaseRole !== $phaseDefault;
+                                                                    @endphp
+                                                                    <div class="d-inline-flex align-items-center gap-1 me-2 mb-1">
+                                                                        <span class="shf-text-2xs text-muted">P{{ $phaseIdx + 1 }}:</span>
+                                                                        <select name="bank_configs[{{ $bank->id }}][{{ $stage->id }}][phase_roles][{{ $phaseIdx }}]"
+                                                                            class="shf-input-sm shf-text-xs {{ $phaseIsOverride ? 'shf-input-override' : '' }}" style="width:140px;padding:2px 4px;">
+                                                                            @foreach ($roleOptions as $rv => $rl)
+                                                                                <option value="{{ $rv }}" {{ $bankPhaseRole === $rv ? 'selected' : '' }}>{{ $rl }}</option>
+                                                                            @endforeach
+                                                                        </select>
+                                                                    </div>
+                                                                @endforeach
+                                                            @else
+                                                                {{-- Single dropdown for this bank --}}
+                                                                @php
+                                                                    $stageDefault = $stage->assigned_role ?? 'task_owner';
+                                                                    $bankRole = $bsc?->assigned_role ?? $stageDefault;
+                                                                    $singleIsOverride = $bankRole !== $stageDefault;
+                                                                @endphp
+                                                                <select name="bank_configs[{{ $bank->id }}][{{ $stage->id }}][assigned_role]"
+                                                                    class="shf-input-sm shf-text-xs {{ $singleIsOverride ? 'shf-input-override' : '' }}" style="width:160px;padding:2px 4px;">
+                                                                    @foreach ($roleOptions as $rv => $rl)
+                                                                        <option value="{{ $rv }}" {{ $bankRole === $rv ? 'selected' : '' }}>{{ $rl }}</option>
+                                                                    @endforeach
+                                                                </select>
+                                                            @endif
+                                                        </div>
+                                                    </div>
                                                 @endforeach
                                             </div>
                                         @endif
-                                    </div>
-                                </div>{{-- close shf-stage-body --}}
-                            </div>{{-- close shf-stage-card --}}
-
-                            {{-- Sub-actions with role assignment + enable/disable --}}
-                            @if ($hasSubActions)
-                                @foreach ($stage->sub_actions as $saIdx => $subAction)
-                                    @php $saEnabled = $subAction['is_enabled'] ?? true; @endphp
-                                    <div class="shf-stage-card shf-stage-card--child"
-                                        style="margin-left:36px;border-left-color:#d97706;">
-                                        <div class="shf-stage-header">
-                                            <div class="shf-stage-header-title">
-                                                <span class="text-muted">⤷</span>
-                                                <strong
-                                                    class="fw-medium">{{ $subAction['name'] ?? $subAction['key'] }}</strong>
-                                                <span
-                                                    class="shf-badge shf-badge-{{ ($subAction['type'] ?? '') === 'action_button' ? 'orange' : 'blue' }} shf-text-2xs">
-                                                    {{ ($subAction['type'] ?? '') === 'action_button' ? 'Action' : 'Form' }}
-                                                </span>
-                                                @if (!empty($subAction['transfer_to_role']))
-                                                    <span class="text-muted shf-text-xs">→
-                                                        {{ $subAction['transfer_to_role'] }}</span>
-                                                @endif
-                                            </div>
-                                            <input type="hidden"
-                                                name="stages[{{ $loop->parent->index }}][sub_actions][{{ $saIdx }}][is_enabled]"
-                                                value="0">
-                                            <input type="checkbox"
-                                                name="stages[{{ $loop->parent->index }}][sub_actions][{{ $saIdx }}][is_enabled]"
-                                                value="1" class="shf-toggle shf-master-substage-toggle"
-                                                {{ $saEnabled ? 'checked' : '' }}>
-                                        </div>
-                                        <div class="shf-stage-body">
-                                            @php $saRoles = $subAction['roles'] ?? []; @endphp
-                                            <div class="shf-substage-role-label d-block">Sub-action Roles</div>
-                                            <div class="d-flex flex-wrap gap-1 shf-role-checkboxes">
-                                                @foreach ($workflowRoles->whereNotIn('slug', ['super_admin', 'admin']) as $wfR) @php $role = $wfR->slug; $label = $wfR->name; @endphp
-                                                    <label
-                                                        class="shf-substage-checkbox-label d-inline-flex align-items-center gap-1 me-1">
-                                                        <input type="checkbox"
-                                                            name="stages[{{ $loop->parent->parent->index }}][sub_actions][{{ $saIdx }}][roles][]"
-                                                            value="{{ $role }}" class="shf-checkbox"
-                                                            {{ in_array($role, $saRoles) ? 'checked' : '' }}>
-                                                        {{ $label }}
-                                                    </label>
-                                                @endforeach
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            @endif
+                                    @else
+                                        <small class="text-muted">— Group label —</small>
+                                    @endif
+                                </div>
+                            </div>
                         @endforeach
 
                         @if (auth()->user()->hasPermission('manage_workflow_config'))
                             <div class="d-flex justify-content-end mt-3">
                                 <button type="submit" class="btn-accent">
                                     <svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M5 13l4 4L19 7" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                     </svg>
                                     Save Stage Defaults
                                 </button>
@@ -1499,64 +1227,7 @@
                     });
                 });
 
-                // --- Stage Master form validation ---
-                $('#masterStagesForm').on('submit', function(e) {
-                    var hasError = false;
-                    var firstErrorEl = null;
-
-                    // Clear previous
-                    $('.shf-master-stage, .shf-master-substage').css({
-                        'outline': '',
-                        'background': ''
-                    });
-                    $('.shf-inline-error').remove();
-
-                    function addInlineError($row, msg) {
-                        hasError = true;
-                        if (!firstErrorEl) firstErrorEl = $row;
-                        $row.css({
-                            'outline': '2px solid #dc3545',
-                            'background': '#fff5f5'
-                        });
-                        $row.append(
-                            '<div class="shf-inline-error text-danger mt-1 shf-text-xs">* ' +
-                            msg + '</div>');
-                    }
-
-                    // Validate enabled stages
-                    $('.shf-master-stage').each(function() {
-                        var $row = $(this);
-                        var $toggle = $row.find('.shf-master-stage-toggle');
-                        if (!$toggle.length || !$toggle.is(':checked')) return;
-                        var $roleBoxes = $row.find('.shf-role-checkboxes');
-                        if (!$roleBoxes.length) return;
-                        if ($roleBoxes.find('input[type="checkbox"]:checked').length === 0) {
-                            addInlineError($row, 'Select at least one role');
-                        }
-                    });
-
-                    // Validate enabled sub-stages
-                    $('.shf-master-substage').each(function() {
-                        var $row = $(this);
-                        var $toggle = $row.find('.shf-master-substage-toggle');
-                        if (!$toggle.length || !$toggle.is(':checked')) return;
-                        var $roleBoxes = $row.find('.shf-role-checkboxes');
-                        if (!$roleBoxes.length) return;
-                        if ($roleBoxes.find('input[type="checkbox"]:checked').length === 0) {
-                            addInlineError($row, 'Select at least one role');
-                        }
-                    });
-
-                    if (hasError) {
-                        e.preventDefault();
-                        if (firstErrorEl) {
-                            $('html, body').animate({
-                                scrollTop: $(firstErrorEl).offset().top - 100
-                            }, 300);
-                        }
-                        return false;
-                    }
-                });
+                // Stage Master form — no special validation needed (dropdowns always have a value)
             });
         </script>
     @endpush

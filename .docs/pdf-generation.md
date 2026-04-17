@@ -1,85 +1,147 @@
 # PDF Generation
 
-## Overview
+Bank-comparison quotation PDFs with EMI tables, bilingual documents, and company branding. Implemented via `PdfGenerationService` with a three-tier fallback.
 
-The system generates bilingual comparison PDFs for loan quotations. Three-tier generation strategy with client-side offline fallback.
+## Strategy
 
-## Server-Side: `PdfGenerationService`
+The service tries, in order:
 
-### Generation Strategy (priority order)
+1. If `config('app.pdf_use_microservice') === true` → **microservice only**
+2. Else if Chrome is available on the host → **Chrome headless** (falls back to microservice on failure)
+3. Else → **microservice only**
 
-1. **Microservice-only mode** — if `app.pdf_use_microservice` is true, skip Chrome
-2. **Chrome headless** — render HTML → `--print-to-pdf` (fastest, no external dependency needed)
-3. **Microservice fallback** — cURL POST to configurable endpoint
+Chrome produces the best output (full CSS3 + web fonts + Gujarati shaping). Microservice is a Node.js Puppeteer endpoint maintained separately — meant to handle servers without Chrome.
 
-### Chrome Path Detection
+## Config keys
 
-Auto-detects per OS:
-- **Windows:** `C:\Program Files\Google\Chrome\Application\chrome.exe` and `C:\Program Files (x86)\...`
-- **Linux:** `google-chrome`, `google-chrome-stable`, `chromium-browser`, `chromium`
-- **macOS:** `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
-- Override via `app.chrome_path` env variable
+| Key | Env var | Default | Purpose |
+|---|---|---|---|
+| `app.pdf_use_microservice` | `PDF_USE_MICROSERVICE` | `false` | Force microservice path |
+| `app.chrome_path` | `CHROME_PATH` | auto-detect | Explicit Chrome binary path |
+| `app.pdf_service_url` | `PDF_SERVICE_URL` | `http://127.0.0.1:3000/pdf` | POST endpoint |
+| `app.pdf_service_key` | `PDF_SERVICE_KEY` | (none) | Sent as `X-API-Key` header if set |
 
-### Microservice Config
-- `app.pdf_service_url` — endpoint (default: `http://127.0.0.1:3000/pdf`)
-- `app.pdf_service_key` — API key sent as `X-API-Key` header
+### Chrome auto-detection
 
-### File Storage
-- Output: `storage/app/pdfs/Loan_Proposal_{customerName}_{date}_{time}.pdf`
-- Temp HTML: `storage/app/tmp/` (auto-cleaned)
+`getChromePath()` checks common paths per OS:
 
-## HTML Template (`renderHtml()`)
+- Windows: `C:\Program Files\Google\Chrome\Application\chrome.exe`, x86 variant
+- Linux / macOS: `/usr/bin/google-chrome`, `/usr/bin/chromium`, `/usr/bin/chromium-browser`, `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`, etc.
+- Fallback: bare `chrome` or `chromium` (relies on PATH)
 
-### Structure
-- Full HTML5 document with embedded CSS (no external dependencies)
-- Embedded fonts: Jost, Archivo, NotoSansGujarati (base64 woff2/ttf)
-- A4 page size with print margins
+`isChromeAvailable()` additionally verifies `exec()` isn't disabled and the binary exists (or is in PATH).
 
-### Pages
-1. **Documents page** — customer details, prepared-by info, numbered document list (bilingual)
-2. **EMI comparison pages** — one page per 2 tenure columns, all banks as rows
-3. **Charges comparison page** — all banks side by side with charge breakdown
-4. **Additional notes** — if provided
+## Method entry point
 
-### Template Data
-```php
-[
-    'customerName', 'customerType', 'loanAmount', 'date',
-    'companyPhone', 'companyEmail',
-    'tenures' => [5, 10, 15, 20],
-    'banks' => [
-        ['name', 'roiMin', 'roiMax', 'charges' => [...], 'emiByTenure' => [...]]
-    ],
-    'documents' => [['en' => '...', 'gu' => '...']],
-    'additionalNotes', 'ourServices',
-    'preparedByName', 'preparedByMobile'
-]
+`PdfGenerationService::generate(array $data): array`
+
+### Returns
+
+- Success: `['success' => true, 'filename' => 'Loan_Proposal_...pdf', 'path' => '/abs/path']`
+- Failure: `['error' => 'human-readable']`
+
+### Steps
+
+1. `renderHtml($data)` — produces the full HTML page
+2. Ensure `storage/app/temp/` and `storage/app/pdfs/` exist
+3. Build filename: `Loan_Proposal_{sanitizedName}_{YYYY-MM-DD}_{His}.pdf`
+4. Write HTML to temp file
+5. Run selected strategy (Chrome or microservice)
+6. Cleanup temp HTML (except when microservice was used directly and still needs it)
+7. Return result
+
+## Chrome headless invocation
+
+Platform-aware shell command:
+
+**Windows:**
+```
+"C:\...\chrome.exe" --headless --disable-gpu --no-sandbox ^
+  --run-all-compositor-stages-before-draw ^
+  --user-data-dir="{tempProfile}" ^
+  --print-to-pdf="{output.pdf}" --no-pdf-header-footer "{input.html}"
 ```
 
-### Features
-- Fixed header on every page (logo, customer info)
-- Fixed footer (services disclaimer)
-- Bilingual amount in words (English / Gujarati)
-- Indian number formatting (lakh/crore comma system)
-- Branded vs plain toggle (removes SHF logo/info)
-- Dynamic column sizing for 1-6 banks
+**Linux / macOS:**
+```
+/path/to/chrome --headless --disable-gpu --no-sandbox \
+  --run-all-compositor-stages-before-draw \
+  --user-data-dir={tempProfile} \
+  --print-to-pdf={output.pdf} --no-pdf-header-footer {input.html}
+```
 
-## Client-Side: `pdf-renderer.js`
+Flags explained:
+- `--headless` — no GUI
+- `--disable-gpu`, `--no-sandbox` — server stability
+- `--run-all-compositor-stages-before-draw` — forces full render
+- `--user-data-dir=...` — fresh profile per run (cleaned up after)
+- `--no-pdf-header-footer` — no Chrome-injected date/URL header
+- `--print-to-pdf=...` — output target
 
-### `PdfRenderer.renderHtml(data, logoBase64)`
-- Mirrors server template exactly for offline use
-- Returns HTML string
+After execution:
+- On Windows: 500 ms sleep if the output file isn't immediately present (file flush quirk)
+- Delete the temp profile directory
+- Return error if the output file is still missing
 
-### `PdfRenderer.generateOfflinePdf(payload, config, logoBase64)`
-- Builds data from offline cache
-- Opens HTML in new tab → triggers print dialog
-- iOS fallback: downloads HTML file (iOS lacks print support)
-- Popup blocker fallback: downloads HTML instead
+## Microservice invocation
 
-## Download Endpoints
+cURL POST to `config('app.pdf_service_url')`:
 
-| Route | Purpose |
-|-------|---------|
-| `quotations/{quotation}/download` | Download PDF by quotation ID |
-| `download-pdf?file={filename}` | Download PDF by filename |
-| `quotations/{quotation}/preview-html` | Preview as HTML (super_admin) |
+- Content-Type: `application/json`
+- Optional header `X-API-Key: {pdf_service_key}`
+- Body: `{ "html": "..." }`
+- 5s connect timeout, 60s total timeout
+
+Response bytes are written to the target PDF file. HTTP ≠ 200 or empty body → error.
+
+## Template
+
+`renderHtml()` builds a single HTML document with inline CSS. Structure:
+
+- `<head>`: `@font-face` for Jost, Archivo, and NotoSansGujarati (loaded from `public/fonts/`); page setup via `@page { size: A4; margin: 0 }`
+- Cover: logo, company header, customer info, loan amount in Indian format + bilingual words
+- Per-bank page(s): bank logo + name, ROI range, charges table, EMI comparison table per tenure
+- Documents page: bilingual document list (EN + GU columns)
+- Footer: prepared-by info + disclaimer
+
+Bilingual labels provided by the `$labels` constructor array — English + Gujarati pairs for section titles, table headers, etc.
+
+## Fonts
+
+Local woff2 / ttf files in `public/fonts/`:
+
+- Jost — display/headers (400, 500, 600, 700)
+- Archivo — body (400, 500, 600)
+- NotoSansGujarati — Gujarati text (regular, bold)
+
+Referenced via absolute `file://` URIs inside the template so Chrome headless can load them without a running web server.
+
+## Security considerations
+
+- Filename is sanitized from `customerName` — no path separators, no control chars
+- HTML is the project's own template — input strings (customer name, notes) are escaped via Blade `{{ }}` when in view; inside the service they're escaped via `htmlspecialchars()` before injection
+- Chrome's `--user-data-dir` isolates profile state; directory deleted after run
+- Microservice endpoint should be reachable only from the app host (localhost by default) or protected by `pdf_service_key`
+
+## Caching
+
+Branded PDFs:
+- Filename + path stored on `quotations.pdf_filename` / `quotations.pdf_path` on first generation
+- Re-downloads serve the cached file when present
+- Regenerated only when file missing or on explicit re-generation path
+
+Plain PDFs:
+- Always regenerated; not cached
+
+## Troubleshooting
+
+- **"Chrome not found"** — set `CHROME_PATH` env or install Chrome; or set `PDF_USE_MICROSERVICE=true` and configure the microservice.
+- **Empty / truncated PDF** — check `storage/logs/laravel.log`. The service logs both the Chrome command and exit code. For microservice failures, it logs HTTP code + cURL error.
+- **Gujarati rendering broken** — verify `NotoSansGujarati` font files exist and are readable. Chrome headless will silently fall back to default font (which has no Gujarati glyphs).
+- **Chrome hangs / PDF never created** — pages with unresolvable external resources. Prefer `file://` URIs or base64-embedded images in the template.
+
+## See also
+
+- `.claude/services-reference.md` — `PdfGenerationService` method list
+- `quotations.md` — quotation flow that calls this service
+- `offline-pwa.md` — client-side PDF render via `window.print()` for offline use

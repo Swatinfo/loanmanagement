@@ -1,351 +1,302 @@
 # Services Reference
 
-All 13 services + 1 trait in `app/Services/` and `app/Traits/`.
-
----
+13 services in `app/Services/`. Orchestrate domain logic; called from controllers, never from views. Services are constructor-injected via Laravel's container (no explicit binding).
 
 ## ConfigService
 
-Manages application configuration stored in `app_config` table with `config/app-defaults.php` fallback.
+Reads/writes `app_config` table (key `main`) and merges with `config/app-defaults.php`.
 
-### Methods
-| Method | Signature | Purpose |
-|--------|-----------|---------|
-| `load()` | `(): array` | Load config from DB (key='main'), merge with defaults. Returns full config. |
-| `save()` | `(array $config): void` | Persist config to AppConfig table |
-| `reset()` | `(): array` | Reset to defaults and persist |
-| `get()` | `(string $key, $default = null)` | Dot-notation access (e.g., 'iomCharges.thresholdAmount') |
-| `updateSection()` | `(string $section, $value): array` | Update specific section, returns full config |
-| `updateMany()` | `(array $updates): array` | Batch update multiple keys |
+| Method | Signature | Notes |
+|---|---|---|
+| `load` | `(): array` | Returns merged config; seeds from defaults if row missing |
+| `save` | `(array $config): void` | Upserts `app_config.main` |
+| `reset` | `(): array` | Overwrites DB with `config('app-defaults')` |
+| `get` | `(string $key, $default = null)` | Dot-notation read (e.g., `iomCharges.fixedCharge`) |
+| `updateSection` | `(string $section, $value): array` | Dot-notation write + save |
+| `updateMany` | `(array $updates): array` | Batch dot-notation writes + single save |
 
-### Key behavior
-- Sequential arrays from DB replace defaults entirely (deletions respected)
-- Merges via `array_replace_recursive` with special handling for indexed arrays
-- Caches merged config in memory during request
+### Merge behavior
 
----
+`mergeWithDefaults()` uses `array_replace_recursive($defaults, $loaded)`, then `replaceSequentialArrays()` walks the merged tree and **entirely replaces any sequential (indexed) array** with the DB value. Result:
 
-## DisbursementService
+- **Assoc arrays** (e.g., `iomCharges.*`): merged per key. New default keys appear even if not in DB.
+- **Sequential arrays** (e.g., `banks`, `documents_en.proprietor`, `tenures`): replaced from DB, so UI deletions are respected.
 
-Processes loan disbursement transactions.
+### Double-encode pitfall
 
-### Methods
-| Method | Signature | Purpose |
-|--------|-----------|---------|
-| `processDisbursement()` | `(LoanDetail $loan, array $data): DisbursementDetail` | Create/update disbursement. Fund_transfer skips OTC; cheque proceeds to OTC. Completes disbursement stage. |
-
-### Business logic
-- Wraps in DB transaction
-- `bank_account_number` collected for both fund_transfer and cheque types
-- Completes 'disbursement' stage via LoanStageService
-- Fund transfer: skips OTC stage, may complete loan
-- Cheque: loan proceeds to OTC clearance
-- Logs activity, notifies if loan completed
-
-**Dependencies:** LoanStageService, NotificationService
-
----
-
-## LoanConversionService
-
-Converts quotations to loans or creates loans directly.
-
-### Methods
-| Method | Signature | Purpose |
-|--------|-----------|---------|
-| `convertFromQuotation()` | `(Quotation $quotation, int $bankIndex, array $extra = []): LoanDetail` | Convert quotation → loan. Auto-completes inquiry + doc_selection, auto-assigns doc_collection. |
-| `createDirectLoan()` | `(array $data): LoanDetail` | Create loan without quotation. current_stage = 'inquiry'. |
-
-### Conversion flow
-1. Validate quotation not already converted
-2. Create Customer record
-3. Create LoanDetail (status=active, current_stage=document_collection)
-4. Copy documents from quotation via LoanDocumentService
-5. Initialize all stages, auto-complete first 2
-6. Auto-assign document_collection to best-fit user
-7. Set due_date = now + 7 days
-
-**Dependencies:** LoanStageService, LoanDocumentService
-
----
-
-## LoanDocumentService
-
-Manages loan documents: population, status tracking, file uploads.
-
-### Methods
-| Method | Signature | Purpose |
-|--------|-----------|---------|
-| `populateFromQuotation()` | `(LoanDetail $loan, Quotation $quotation): void` | Copy docs from quotation |
-| `populateFromDefaults()` | `(LoanDetail $loan): void` | Load docs from config by customer_type |
-| `updateStatus()` | `(LoanDocument $doc, string $status, int $userId, ?string $rejectedReason): void` | Update doc status (pending/received/rejected) |
-| `getProgress()` | `(LoanDetail $loan): array` | Returns: total, resolved, received, rejected, pending, percentage |
-| `allRequiredResolved()` | `(LoanDetail $loan): bool` | Check if all required docs resolved |
-| `addDocument()` | `(LoanDetail $loan, string $nameEn, ?string $nameGu, bool $required): LoanDocument` | Add custom document |
-| `removeDocument()` | `(LoanDocument $doc): void` | Delete document + file |
-| `uploadFile()` | `(LoanDocument $doc, UploadedFile $file, int $userId): LoanDocument` | Upload file, auto-mark received if pending |
-| `deleteFile()` | `(LoanDocument $doc): void` | Delete file only, keep document record |
-
-### File storage
-- Path: `storage/app/loan-documents/{loan_id}/{document_id}_{timestamp}.{ext}`
-- Auto-status on upload: pending → received
-
-**Dependencies:** ConfigService
-
----
-
-## LoanStageService
-
-Core workflow engine managing loan stage lifecycle.
-
-### Static Methods
-| Method | Purpose |
-|--------|---------|
-| `getStageRoleEligibility(stageKey)` | Get eligible roles for a stage from Stage.default_role |
-| `getAllStageRoleEligibility()` | Map of [stage_key => roles[]] |
-
-### Query Methods
-| Method | Purpose |
-|--------|---------|
-| `getOrderedStages()` | All enabled main stages in order |
-| `getStageByKey(key)` | Retrieve Stage by key |
-| `getSubStages(parentKey)` | Sub-stages of parent |
-| `isParallelStage(key)` | Check if parallel |
-| `getMainStageKeys()` | Array of enabled main stage keys |
-| `getLoanStageStatus(loan)` | All stage assignments sorted by sequence |
-
-### Initialization
-| Method | Purpose |
-|--------|---------|
-| `initializeStages(loan)` | Create 14+ stage assignments and LoanProgress |
-| `autoCompleteStages(loan, stageKeys)` | Auto-complete specific stages |
-
-### Stage Transitions
-| Method | Purpose |
-|--------|---------|
-| `updateStageStatus(loan, stageKey, newStatus, userId)` | Update status with validation. Blocks if pending queries. Triggers handleStageCompletion. |
-| `revertStageIfIncomplete(loan, stageKey, isStillComplete)` | Soft-revert completed stage to in_progress if data no longer meets criteria |
-| `handleStageCompletion(loan, completedStageKey)` | Post-completion: parallel sequencing, OTC skip, next stage advancement, auto-assignment |
-| `getNextStage(currentStageKey)` | Next main stage key in sequence |
-| `canStartStage(loan, stageKey)` | Validate dependencies met |
-
-### Assignment
-| Method | Purpose |
-|--------|---------|
-| `assignStage(loan, stageKey, userId)` | Assign stage to user |
-| `skipStage(loan, stageKey, userId)` | Mark stage as skipped |
-| `autoAssignStage(loan, stageKey)` | Auto-assign to best-fit user |
-| `autoAssignParallelSubStages(loan)` | Auto-assign app_number only; others wait |
-| `assignNextStage(loan, nextKey)` | Start next stage (in_progress) and auto-assign. Extracted from handleStageCompletion for reuse. |
-| `findBestAssignee(stageKey, branchId, bankId, productId, loanCreatorId, advisorId)` | Priority: ProductStage config → advisor → bank default → role+branch → any role |
-
-### Transfer & Rejection
-| Method | Purpose |
-|--------|---------|
-| `transferStage(loan, stageKey, toUserId, reason)` | Transfer with StageTransfer history |
-| `rejectLoan(loan, stageKey, reason, userId)` | Set loan to rejected status |
-
-### Parallel Processing
-| Method | Purpose |
-|--------|---------|
-| `checkParallelCompletion(loan)` | Check all subs complete → advance to rate_pf via assignNextStage() |
-| `getParallelSubStages(loan)` | Get parallel sub-stages with relations |
-
-### Progress
-| Method | Purpose |
-|--------|---------|
-| `recalculateProgress(loan)` | Recalculate percentage and workflow snapshot |
-
-### Key parallel flow
-1. parallel_processing starts → app_number auto-assigned
-2. app_number completes → bsm_osv starts
-3. bsm_osv completes → legal_verification + technical_valuation start
-4. All subs complete → rate_pf auto-advances
-
-### Key business rules
-- Fund_transfer disbursement skips OTC, completes loan
-- Cheque disbursement → OTC clearance
-- rate_pf requires is_sanctioned = true
-- Docket expected date from app_number notes
-- Sanction letter notes require `tenure_months`; EMI cannot exceed sanctioned amount (validated server-side in `saveNotes()` and `getSanctionRequiredFields()`)
-- Rate & PF Phase 3 has a `complete` action in `ratePfAction()` that calls `updateStageStatus($loan, 'rate_pf', 'completed')`
-
----
-
-## LoanTimelineService
-
-Builds complete loan lifecycle timeline.
-
-### Methods
-| Method | Signature | Purpose |
-|--------|-----------|---------|
-| `getTimeline()` | `(LoanDetail $loan): Collection` | Merge all events sorted by date |
-
-### Timeline entry types
-quotation_created, converted, loan_created, stage_started, stage_completed, stage_skipped, transfer, query_raised, query_response, remark, rejected, disbursement, completed
-
----
-
-## NotificationService
-
-In-app notification management.
-
-### Methods
-| Method | Purpose |
-|--------|---------|
-| `notify(userId, title, message, type, loanId, stageKey, link)` | Create generic notification |
-| `notifyStageAssignment(loan, stageKey, userId)` | Notify of stage assignment |
-| `notifyStageCompleted(loan, stageKey)` | Notify creator + advisor |
-| `notifyLoanCompleted(loan)` | Notify creator + advisor |
-| `markRead(notification)` | Mark single as read |
-| `markAllRead(userId)` | Mark all as read |
-| `getUnreadCount(userId)` | Count of unread |
-
----
-
-## NumberToWordsService
-
-Number formatting for Indian financial system.
-
-### Methods
-| Method | Purpose |
-|--------|---------|
-| `toEnglish(int $num)` | "Twelve Lakh Thirty Four Thousand Rupees" |
-| `toGujarati(int $num)` | Gujarati equivalent |
-| `toBilingual(int $num)` | "English / Gujarati" |
-| `formatIndianNumber($num)` | "12,34,567" |
-| `formatCurrency($num)` | "₹ 12,34,567" |
-
----
-
-## PdfGenerationService
-
-Generates quotation comparison PDFs.
-
-### Methods
-| Method | Purpose |
-|--------|---------|
-| `generate(array $data)` | Generate PDF. Three-tier: microservice flag → Chrome headless → microservice fallback. Returns ['success', 'filename', 'path'] or ['error'] |
-| `renderHtml(array $data)` | Render complete HTML with embedded fonts, multi-page layout |
-| `getTypeLabel(string $type)` | Bilingual customer type label |
-
-### PDF generation strategy
-1. If `app.pdf_use_microservice` → microservice only
-2. Try Chrome headless `--print-to-pdf`
-3. Fallback to microservice (cURL to configurable URL)
-
-### Storage
-- `storage/app/pdfs/Loan_Proposal_{customerName}_{date}_{time}.pdf`
-- Temp HTML in `storage/app/tmp/`
-
-### Config
-- `app.pdf_use_microservice`, `app.pdf_service_url`, `app.pdf_service_key`, `app.chrome_path`
+`AppConfig.config_json` is cast to `array`. Always pass raw arrays to `updateSection`/`updateMany`; never `json_encode()` yourself — the cast handles serialization.
 
 ---
 
 ## PermissionService
 
-3-tier permission resolution system.
+3-tier resolution for `User->hasPermission($slug)`:
 
-### Methods
-| Method | Purpose |
-|--------|---------|
-| `userHasPermission(user, slug)` | Resolution: super_admin bypass → user override → role grant |
-| `userRolesHavePermission(user, slug)` | Check role-level only |
-| `getUserPermissions(user)` | All permissions as [slug => bool] |
-| `getGroupedPermissions()` | Permissions grouped by group |
-| `clearUserCache(user)` | Clear user cache |
-| `clearRoleCache()` | Clear role cache |
-| `clearAllCaches()` | Clear all |
+1. `$user->hasRole('super_admin')` → `true`
+2. User-specific override in `user_permissions` → `grant`/`deny`
+3. Any `role_permission` row across user's roles → `true`; else `false`
 
-### Caching
-- 5-minute TTL per user/role combination
-- Keys: `user_perms:{id}`, `user_role_ids:{id}`, `role_perms:{ids}`
+| Method | Signature | Notes |
+|---|---|---|
+| `userHasPermission` | `(User, string): bool` | Main entry |
+| `userRolesHavePermission` | `(User, string): bool` | Only checks role-level |
+| `getUserPermissions` | `(User): array` | `[slug => bool]` for all permissions |
+| `getGroupedPermissions` | `(): array` | `[group => [Permission,...]]` |
+| `clearUserCache` | `(User): void` | Call after user roles or overrides change |
+| `clearRoleCache` | `(): void` | Call after any role_permission change |
+| `clearAllCaches` | `(): void` | After bulk edits or permission schema change |
+
+### Cache
+
+| Key | TTL | Populated by |
+|---|---|---|
+| `user_perms:{userId}` | 300s | `getUserOverride()` — maps slug → grant/deny for that user |
+| `user_role_ids:{userId}` | 300s | `getUserRoleIds()` |
+| `role_perms:{sortedRoleIds}` | 300s | `getRolePermissionSlugs()` — unique slugs across the role set |
 
 ---
 
 ## QuotationService
 
-Validates input, generates PDF, saves quotation to DB.
+Constructor: `ConfigService`, `PdfGenerationService`.
 
-### Methods
-| Method | Signature | Purpose |
-|--------|-----------|---------|
-| `generate()` | `(array $input, int $userId): array` | Full pipeline: validate → compute charges/EMI → generate PDF → save DB |
+### `generate(array $input, int $userId): array`
 
-### Validation
-- customerName, customerType: required
-- loanAmount: required, > 0, ≤ 1 lakh crore
-- banks: required array with roiMin/roiMax > 0, ≤ 30%
+Validates input, renders PDF, persists Quotation + QuotationBank + QuotationEmi + QuotationDocument, updates `bank_charges` for latest reference.
 
-### Processing flow
-1. Load config (tenures, services, company info)
-2. Build template data with charges/EMI per bank per tenure
-3. Generate PDF via PdfGenerationService
-4. Save Quotation + QuotationBank + QuotationEmi + QuotationDocument in transaction
-5. Update bank_charges table
-6. Log activity
+Validation rules (inline in service):
+- `customerName`, `customerType`, `loanAmount` required
+- `loanAmount` ≤ 10^12
+- `banks[]` required array
+- Per bank: `roiMin`, `roiMax` in (0, 30], `roiMin ≤ roiMax`
 
-**Dependencies:** ConfigService, PdfGenerationService
+Return shapes:
+- Success: `['success' => true, 'quotation' => Quotation]`
+- Validation/error: `['error' => string]`
+- PDF generated but DB failed: `['success' => false, 'error' => string, 'filename' => string]` (PDF still usable)
+
+### `private updateBankCharges(array $banks): void`
+
+Upserts `bank_charges` by `bank_name` with the last-used charge values for future pre-fill.
 
 ---
 
-## RemarkService
+## PdfGenerationService
 
-Manages loan stage remarks.
+Three-tier fallback:
 
-### Methods
+1. If `app.pdf_use_microservice=true` → microservice only
+2. Else try Chrome headless (if `isChromeAvailable()`) → fallback to microservice on failure
+3. Else microservice only
+
+### `generate(array $data): array`
+
+Returns `['success' => true, 'filename' => ..., 'path' => ...]` or `['error' => string]`. Writes HTML to `storage/app/temp/`, PDF to `storage/app/pdfs/Loan_Proposal_{Name}_{date}_{time}.pdf`.
+
+Config keys read:
+- `app.pdf_use_microservice`
+- `app.chrome_path` (auto-detected from common Win/Linux/macOS paths if empty)
+- `app.pdf_service_url` (default `http://127.0.0.1:3000/pdf`)
+- `app.pdf_service_key` (sent as `X-API-Key` if set)
+
+Chrome command flags: `--headless --disable-gpu --no-sandbox --run-all-compositor-stages-before-draw --print-to-pdf=... --no-pdf-header-footer --user-data-dir=...`. Temp user-data dir is cleaned after each run.
+
+---
+
+## NumberToWordsService
+
+Static-style helpers for Indian numbering + bilingual words.
+
+| Method | Signature |
+|---|---|
+| `toEnglish` | `(int): string` — "Twelve Lakh ... Rupees" |
+| `toGujarati` | `(int): string` — "... રૂપિયા" |
+| `toBilingual` | `(int): string` — "English / Gujarati" |
+| `formatIndianNumber` | `($num): string` — "12,34,567" |
+| `formatCurrency` | `($num): string` — "₹ 12,34,567" |
+
+---
+
+## LoanConversionService
+
+Constructor: `LoanStageService`, `LoanDocumentService`.
+
+### `convertFromQuotation(Quotation, int $bankIndex, array $extra = []): LoanDetail`
+
+Inside DB transaction:
+1. Guard if already converted
+2. Create Customer from quotation + extras
+3. Build `LoanDetail` (status=active, current_stage=document_collection)
+4. `generateLoanNumber()` → `SHF-YYYYMM-NNNN`
+5. Freeze `workflow_config` via `LoanStageService::buildWorkflowSnapshot()`
+6. Populate documents via `LoanDocumentService::populateFromQuotation`
+7. `initializeStages` → all stage_assignments
+8. `autoCompleteStages(['inquiry','document_selection'])`
+9. Auto-assign `document_collection` stage
+10. Log `convert_to_loan` activity
+
+### `createDirectLoan(array $data): LoanDetail`
+
+Similar flow but starts at `inquiry`; documents pulled from `ConfigService` defaults by customer type.
+
+---
+
+## LoanStageService (workflow engine)
+
+No injected deps. Talks directly to Stage, StageAssignment, StageTransfer, BankStageConfig, ProductStage, Bank, User, Branch, LoanProgress.
+
+### Role resolution
+
 | Method | Purpose |
-|--------|---------|
-| `addRemark(loanId, userId, remark, stageKey)` | Create remark with optional stage context |
-| `getRemarks(loanId, stageKey)` | Get remarks, optionally filtered by stage |
+|---|---|
+| `getStageRoleEligibility(string): array` (static) | Reads `Stage.default_role` |
+| `getAllStageRoleEligibility(): array` (static) | Cached map of all stages |
+| `resolveStageRole(string, ?int $bankId): string` | bank override → stage default → `task_owner` |
+| `resolvePhaseRole(string, int $phaseIndex, ?int $bankId): string` | bank override → `Stage.sub_actions[i].role` → `task_owner` |
+| `buildWorkflowSnapshot(?bankId, ?productId, ?branchId, ?locationId): array` | Returns nested `{stage_key: {role, default_user_id, phases: {idx: {role, default_user_id}}}}`, frozen at loan creation |
+| `getLoanStageRole(LoanDetail, string): string` | Reads from frozen snapshot, falls back to live |
+| `getLoanPhaseRole(LoanDetail, string, int): string` | Same, for phases |
+| `findUserForRole(string, LoanDetail, string, ?int $phaseIndex = null): ?int` | Snapshot default → role-specific resolution (task_owner → advisor/creator; bank_employee → bank default for city; office_employee → branch default) |
+
+### Stage queries
+
+`getOrderedStages()`, `getStageByKey($key)`, `getSubStages($parentKey)`, `isParallelStage($key)`, `getMainStageKeys()`.
+
+### Initialization
+
+- `initializeStages(LoanDetail)` — creates all `stage_assignments` + `loan_progress`
+- `autoCompleteStages(LoanDetail, array $keys)` — bulk-completes given stages; used on conversion
+
+### Transitions
+
+- `updateStageStatus(LoanDetail, string, string, ?int $userId): StageAssignment` — validates via `StageAssignment::canTransitionTo()`, blocks on pending queries, runs `handleStageCompletion()` post-update
+- `revertStageIfIncomplete(LoanDetail, string, bool $isStillComplete): bool` — soft-revert when collected data becomes incomplete; reverts subsequent stages too
+- `getNextStage(string): ?string` — next main stage by sequence_order
+- `canStartStage(LoanDetail, string): bool` — prerequisite checker (sub-stage needs parent in_progress; `rate_pf` needs `is_sanctioned` + any parallel sub done)
+
+### `handleStageCompletion(LoanDetail, string)` (protected)
+
+Orchestration logic:
+- **app_number** done → start `bsm_osv` only
+- **bsm_osv** done → start remaining parallel subs (legal_verification, technical_valuation, sanction_decision)
+- All parallel subs done → mark `parallel_processing` complete, advance to `rate_pf`
+- **sanction** done → compute `expected_docket_date` from app_number stage notes (custom_docket_date OR docket_days_offset)
+- **disbursement** (fund_transfer) → skip `otc_clearance`, mark loan `completed`
+- **otc_clearance** done → mark loan `completed`
+- Sequential advance + auto-assign next stage otherwise
+
+### Assignment & transfer
+
+- `assignStage(LoanDetail, string, int $userId)` — manual assign
+- `skipStage(LoanDetail, string, ?int $userId)` — marks skipped
+- `autoAssignStage(LoanDetail, string): ?StageAssignment` — uses `findBestAssignee()`
+- `autoAssignParallelSubStages(LoanDetail)` — only starts `app_number` first; rest wait
+- `findBestAssignee(stageKey, branchId, bankId, productId, creatorId, advisorId): ?int` — priority: product_stage_users → advisor → bank default per city → bank employee per branch → any bank employee → default OE for branch → creator → fallback role match
+- `transferStage(LoanDetail, string, int $toUserId, ?string $reason)` — updates assignment, creates StageTransfer, reassigns open queries
+
+### Rejection
+
+`rejectLoan(LoanDetail, string $stageKey, string $reason, ?int $userId): LoanDetail` — status=rejected, sets rejected_at/by/stage, closes active stage assignment.
+
+### Progress
+
+`recalculateProgress(LoanDetail): LoanProgress` — rebuilds counts + workflow_snapshot.
+
+---
+
+## LoanDocumentService
+
+Constructor: `ConfigService`.
+
+| Method | Purpose |
+|---|---|
+| `populateFromQuotation(LoanDetail, Quotation)` | Copies quotation documents as pending |
+| `populateFromDefaults(LoanDetail)` | Reads config `documents_en` / `documents_gu` by customer_type |
+| `updateStatus(LoanDocument, string $status, int $userId, ?string $rejectedReason)` | pending / received / rejected / waived; sets received_date/by when received |
+| `getProgress(LoanDetail): array` | `{total, resolved, received, rejected, pending, percentage}` |
+| `allRequiredResolved(LoanDetail): bool` | Gate for auto-completing document_collection stage |
+| `addDocument(LoanDetail, string $en, ?string $gu, bool $required = true): LoanDocument` | Adds custom doc with next sort_order |
+| `removeDocument(LoanDocument)` | Deletes file too |
+| `uploadFile(LoanDocument, UploadedFile, int $userId): LoanDocument` | Stores to `loan-documents/{loanId}/{docId}_{ts}.{ext}`; auto-marks received if pending |
+| `deleteFile(LoanDocument)` | Removes file only; keeps record |
+
+---
+
+## DisbursementService
+
+Constructor: `LoanStageService`.
+
+### `processDisbursement(LoanDetail, array $data): DisbursementDetail`
+
+Inside DB transaction:
+1. Upsert `disbursement_details` for loan
+2. If `disbursement_type=fund_transfer`: refresh relationships so `handleStageCompletion` can detect & skip OTC
+3. Mark `disbursement` stage completed → triggers stage service completion flow
+4. Log activity
+5. If loan completed, notify creator + advisor
 
 ---
 
 ## StageQueryService
 
-Two-way query system on loan stages.
-
-### Methods
 | Method | Purpose |
-|--------|---------|
-| `raiseQuery(assignment, queryText, userId)` | Create query, notify stage assignee |
-| `respondToQuery(query, responseText, userId)` | Add response, mark as 'responded', notify raiser |
-| `resolveQuery(query, userId)` | Mark resolved with timestamp |
-| `getQueriesForStage(assignment)` | Get all queries with responses |
+|---|---|
+| `raiseQuery(StageAssignment, string $text, int $userId): StageQuery` | Creates query (status=pending); notifies stage assignee |
+| `respondToQuery(StageQuery, string $text, int $userId): QueryResponse` | Appends response, sets query status=responded; notifies raiser |
+| `resolveQuery(StageQuery, int $userId): StageQuery` | status=resolved + timestamps |
+| `getQueriesForStage(StageAssignment): Collection` | All queries for a stage assignment |
+
+Pending/responded queries **block stage completion** via a check inside `LoanStageService::updateStageStatus()`.
 
 ---
 
-## HasAuditColumns Trait
+## RemarkService
 
-Auto-fills audit columns on model events.
-
-| Event | Action |
-|-------|--------|
-| creating | Set `updated_by` if column exists and user authenticated |
-| updating | Set `updated_by` if column exists and user authenticated |
-| deleting | Set `deleted_by` on soft delete if column exists and user authenticated |
-
-Uses `Schema::hasColumn()` for defensive checking. Uses `saveQuietly()` on delete to avoid triggering update events.
+| Method | Purpose |
+|---|---|
+| `addRemark(int $loanId, int $userId, string $remark, ?string $stageKey = null): Remark` | Logs activity w/ preview |
+| `getRemarks(int $loanId, ?string $stageKey = null): Collection` | If stageKey set, filters `stage_key = $key OR NULL` (general + stage) |
 
 ---
 
-## ReportController
+## NotificationService
 
-Turnaround time reporting with role-based data scoping.
-
-### Methods
 | Method | Purpose |
-|--------|---------|
-| `turnaround()` | Render turnaround report page with filters (bank, product, branch, user, date range) |
-| `turnaroundData()` | JSON endpoint for report data: overall TAT and stage-wise TAT |
-| `getUserScope(user)` | Determine scope: 'all' (super_admin/admin), 'branch' (BM/BDH), 'self' (others) |
-| `applyRoleScope(query, user, scope)` | Apply visibility filters to loan query based on user's scope |
+|---|---|
+| `notify(int $userId, string $title, string $msg, string $type='info', ?int $loanId, ?string $stageKey, ?string $link): ShfNotification` | Generic |
+| `notifyStageAssignment(LoanDetail, string, int $userId): ShfNotification` | "Stage X assigned for Loan Y" |
+| `notifyStageCompleted(LoanDetail, string): void` | Sent to creator + advisor (excluding current user) |
+| `notifyLoanCompleted(LoanDetail): void` | Same audience |
+| `markRead(ShfNotification): void` | |
+| `markAllRead(int $userId): void` | |
+| `getUnreadCount(int $userId): int` | |
 
-### Data scoping
-- **super_admin / admin** → all loans
-- **branch_manager / bdh** → loans from user's branches
-- **Others** → own loans (created_by or assigned_advisor)
+UI polls `/api/notifications/count` every 60s (see `layouts/app.blade.php`).
 
-### Period presets
-Current Month (default), Last Month, Current Quarter, Last Quarter, Current Year, Last Year, All Time, Custom Range
+---
+
+## LoanTimelineService
+
+### `getTimeline(LoanDetail): Collection`
+
+Merges 9+ event types into a single chronological collection (each entry: `{type, date, title, description, user, icon, color}`):
+- quotation_created (if converted)
+- converted_to_loan (if from quotation)
+- loan_created (if direct)
+- stage_started / stage_completed_or_skipped
+- transfers
+- query_raised / query_response
+- remarks
+- loan_rejected (if rejected)
+- disbursement_processed
+- loan_completed (if completed)
+
+---
+
+## Conventions
+
+- **Transactions**: `convertFromQuotation`, `createDirectLoan`, `processDisbursement`, `generate` (DB-save phase) — wrapped in `DB::transaction`.
+- **Activity logs**: services log via `ActivityLog::log($action, $subject, $properties)` after write.
+- **Notifications**: sent inside the same request; no queue.
+- **Cache invalidation**: `PermissionService` caches are the only service-level cache; `Role::clearAdvisorCache()` for advisor-eligible lookups.
+- **Validation**: services trust inputs validated by controllers; `QuotationService::generate` is the only exception — it re-validates because it's also called by the offline sync API.

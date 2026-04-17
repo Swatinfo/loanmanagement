@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\Bank;
+use App\Models\BankStageConfig;
 use App\Models\Branch;
 use App\Models\Permission;
+use App\Models\ProductStage;
 use App\Models\Stage;
 use App\Models\User;
 use App\Services\PermissionService;
@@ -34,53 +36,136 @@ class LoanSettingsController extends Controller
             $rolePermissions[$wfRole->slug] = $wfRole->permissions()->pluck('permissions.id')->toArray();
         }
 
-        return view('loan-settings.index', compact('banks', 'branches', 'stages', 'enabledStages', 'activeBranches', 'allActiveUsers', 'loanPermissions', 'rolePermissions', 'workflowRoles'));
+        // Bank stage configs for Stage Master tab (bank-wise role overrides)
+        $bankStageConfigs = BankStageConfig::all()->groupBy(function ($c) {
+            return $c->bank_id.'_'.$c->stage_id;
+        })->map->first();
+
+        return view('loan-settings.index', compact('banks', 'branches', 'stages', 'enabledStages', 'activeBranches', 'allActiveUsers', 'loanPermissions', 'rolePermissions', 'workflowRoles', 'bankStageConfigs'));
     }
 
     /**
-     * Save master stage default roles.
+     * Save master stage defaults + bank-wise role overrides.
      */
     public function saveMasterStages(Request $request)
     {
         $stages = $request->input('stages', []);
+        $bankConfigs = $request->input('bank_configs', []);
+        $validRoles = ['task_owner', 'bank_employee', 'office_employee'];
+        $changedBankStages = []; // Track which bank+stage combos changed for propagation
 
         foreach ($stages as $stageData) {
             if (empty($stageData['id'])) {
                 continue;
             }
 
-            $roles = $stageData['default_role'] ?? [];
-            $allRoleSlugs = \App\Models\Role::pluck('slug')->toArray();
-            $validRoles = array_intersect($roles, $allRoleSlugs);
+            $stage = Stage::find($stageData['id']);
+            if (! $stage) {
+                continue;
+            }
+
+            $assignedRole = in_array($stageData['assigned_role'] ?? '', $validRoles)
+                ? $stageData['assigned_role']
+                : $stage->assigned_role;
 
             $updateData = [
                 'is_enabled' => ($stageData['is_enabled'] ?? 0) ? true : false,
-                'default_role' => ! empty($validRoles) ? array_values($validRoles) : null,
+                'assigned_role' => $assignedRole,
             ];
 
-            // Update sub-action roles if submitted
-            if (! empty($stageData['sub_actions'])) {
-                $stage = Stage::find($stageData['id']);
-                if ($stage && is_array($stage->sub_actions)) {
-                    $subActions = $stage->sub_actions;
-                    foreach ($stageData['sub_actions'] as $saIdx => $saData) {
-                        if (isset($subActions[$saIdx])) {
-                            $saRoles = $saData['roles'] ?? [];
-                            $subActions[$saIdx]['roles'] = array_values(array_intersect($saRoles, $allRoleSlugs));
-                            $subActions[$saIdx]['is_enabled'] = ($saData['is_enabled'] ?? 0) ? true : false;
-                        }
+            // Update sub-action phase roles
+            if (! empty($stageData['phase_roles']) && is_array($stage->sub_actions)) {
+                $subActions = $stage->sub_actions;
+                foreach ($stageData['phase_roles'] as $phaseIdx => $phaseRole) {
+                    if (isset($subActions[$phaseIdx]) && in_array($phaseRole, $validRoles)) {
+                        $subActions[$phaseIdx]['role'] = $phaseRole;
                     }
-                    $updateData['sub_actions'] = $subActions;
                 }
+                $updateData['sub_actions'] = $subActions;
             }
 
-            Stage::where('id', $stageData['id'])->update($updateData);
+            $stage->update($updateData);
 
             // When a stage is disabled, also disable it in all product stage configs
             if (! $updateData['is_enabled']) {
-                \App\Models\ProductStage::where('stage_id', $stageData['id'])->update(['is_enabled' => false]);
+                ProductStage::where('stage_id', $stage->id)->update(['is_enabled' => false]);
             }
         }
+
+        // Save bank-wise role overrides
+        foreach ($bankConfigs as $bankId => $bankStages) {
+            foreach ($bankStages as $stageId => $config) {
+                $stage = Stage::find($stageId);
+                if (! $stage) {
+                    continue;
+                }
+
+                $bankRole = in_array($config['assigned_role'] ?? '', $validRoles) ? $config['assigned_role'] : null;
+                $phaseRoles = [];
+                $hasPhaseOverride = false;
+
+                if (! empty($config['phase_roles']) && is_array($config['phase_roles'])) {
+                    $subActions = $stage->sub_actions ?? [];
+                    foreach ($config['phase_roles'] as $phaseIdx => $phaseRole) {
+                        if (in_array($phaseRole, $validRoles)) {
+                            $phaseRoles[(string) $phaseIdx] = $phaseRole;
+                            // Check if different from master default
+                            $masterRole = $subActions[$phaseIdx]['role'] ?? 'task_owner';
+                            if ($phaseRole !== $masterRole) {
+                                $hasPhaseOverride = true;
+                            }
+                        }
+                    }
+                }
+
+                // Only save bank config if it differs from master default
+                $isDifferent = ($bankRole && $bankRole !== $stage->assigned_role) || $hasPhaseOverride;
+
+                if ($isDifferent) {
+                    $existing = BankStageConfig::where('bank_id', $bankId)->where('stage_id', $stageId)->first();
+                    $newData = [
+                        'assigned_role' => ($bankRole && $bankRole !== $stage->assigned_role) ? $bankRole : null,
+                        'phase_roles' => $hasPhaseOverride ? $phaseRoles : null,
+                    ];
+
+                    if ($existing) {
+                        $oldRole = $existing->assigned_role;
+                        $oldPhases = $existing->phase_roles;
+                        $existing->update($newData);
+                        if ($oldRole !== $newData['assigned_role'] || $oldPhases !== $newData['phase_roles']) {
+                            $changedBankStages[] = ['bank_id' => (int) $bankId, 'stage_id' => (int) $stageId];
+                        }
+                    } else {
+                        BankStageConfig::create(array_merge($newData, [
+                            'bank_id' => (int) $bankId,
+                            'stage_id' => (int) $stageId,
+                        ]));
+                        $changedBankStages[] = ['bank_id' => (int) $bankId, 'stage_id' => (int) $stageId];
+                    }
+                } else {
+                    // Remove override if it matches master default
+                    $deleted = BankStageConfig::where('bank_id', $bankId)->where('stage_id', $stageId)->delete();
+                    if ($deleted) {
+                        $changedBankStages[] = ['bank_id' => (int) $bankId, 'stage_id' => (int) $stageId];
+                    }
+                }
+            }
+        }
+
+        // Propagate: clear product stage overrides for changed bank+stage combos
+        foreach ($changedBankStages as $change) {
+            $productIds = \App\Models\Product::where('bank_id', $change['bank_id'])->pluck('id');
+            if ($productIds->isNotEmpty()) {
+                ProductStage::whereIn('product_id', $productIds)
+                    ->where('stage_id', $change['stage_id'])
+                    ->update(['sub_actions_override' => null]);
+            }
+        }
+
+        ActivityLog::log('master_stages_updated', null, [
+            'updated_by' => auth()->user()->name,
+            'bank_overrides_changed' => count($changedBankStages),
+        ]);
 
         return redirect()->route('loan-settings.index', ['tab' => 'master-stages'])
             ->with('success', 'Stage defaults saved');

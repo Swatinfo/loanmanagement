@@ -33,12 +33,6 @@ class PermissionController extends Controller
 
         foreach ($editableRoles as $role) {
             // Get current Loans-group permissions for this role (preserve them)
-            $loansPermIds = $role->permissions()
-                ->whereHas('permission', fn ($q) => $q->where('group', 'Loans'))
-                ->pluck('permissions.id')
-                ->toArray();
-
-            // Workaround: get Loans permissions via direct query
             $loansPermIds = \DB::table('role_permission')
                 ->join('permissions', 'permissions.id', '=', 'role_permission.permission_id')
                 ->where('role_permission.role_id', $role->id)

@@ -2,11 +2,10 @@
 
 namespace App\Models;
 
+use App\Traits\HasAuditColumns;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Traits\HasAuditColumns;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Bank extends Model
@@ -59,6 +58,11 @@ class Bank extends Model
             ->where('is_default', true)
             ->whereNull('location_id')
             ->value('user_id');
+    }
+
+    public function stageConfigs(): HasMany
+    {
+        return $this->hasMany(BankStageConfig::class);
     }
 
     public function locations(): BelongsToMany

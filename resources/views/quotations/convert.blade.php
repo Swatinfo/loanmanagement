@@ -183,7 +183,7 @@
             </div>
 
             {{-- Submit --}}
-            <div class="d-flex justify-content-end gap-3 mb-4">
+            <div class="shf-form-actions d-flex justify-content-end gap-3 mb-4">
                 <a href="{{ route('quotations.show', $quotation) }}" class="btn-accent-outline"><svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Cancel</a>
                 <button type="submit" class="btn-accent fw-semibold" style="padding:10px 24px">
                     <svg style="width:16px;height:16px;margin-right:4px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">

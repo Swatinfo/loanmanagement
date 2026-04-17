@@ -73,6 +73,12 @@ class LoanConversionService
             // Populate documents from quotation
             $this->documentService->populateFromQuotation($loan, $quotation);
 
+            // Snapshot workflow config (frozen at loan creation)
+            $workflowConfig = $this->stageService->buildWorkflowSnapshot(
+                $loan->bank_id, $loan->product_id, $loan->branch_id, $loan->location_id
+            );
+            $loan->update(['workflow_config' => $workflowConfig]);
+
             // Initialize stages and auto-complete inquiry + document_selection
             $this->stageService->initializeStages($loan);
             $this->stageService->autoCompleteStages($loan, ['inquiry', 'document_selection']);
@@ -120,6 +126,12 @@ class LoanConversionService
                 'assigned_advisor' => $data['assigned_advisor'] ?? auth()->id(),
                 'notes' => $data['notes'] ?? null,
             ]);
+
+            // Snapshot workflow config (frozen at loan creation)
+            $workflowConfig = $this->stageService->buildWorkflowSnapshot(
+                $loan->bank_id, $loan->product_id, $loan->branch_id
+            );
+            $loan->update(['workflow_config' => $workflowConfig]);
 
             // Populate documents from defaults
             $this->documentService->populateFromDefaults($loan);

@@ -125,7 +125,7 @@
                 </div>
             </div>
 
-            <div class="d-flex justify-content-end gap-3 mb-4">
+            <div class="shf-form-actions d-flex justify-content-end gap-3 mb-4">
                 <a href="{{ route('loans.show', $loan) }}" class="btn-accent-outline"><svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Cancel</a>
                 <button type="submit" class="btn-accent fw-semibold" style="padding:10px 24px"><svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Update Loan</button>
             </div>

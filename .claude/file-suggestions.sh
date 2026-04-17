@@ -1,6 +1,6 @@
 #!/bin/bash
 # File suggestion script for Claude Code @ autocomplete
-# Returns key entry points for the quotationshf project
+# Returns key entry points for the shf_loan_quotation project
 
 # Read query from stdin JSON
 QUERY=$(cat | sed -n 's/.*"query"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' 2>/dev/null || echo "")

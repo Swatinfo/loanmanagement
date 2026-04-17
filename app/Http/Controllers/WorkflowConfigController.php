@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\Bank;
+use App\Models\BankStageConfig;
 use App\Models\Branch;
 use App\Models\LoanDetail;
 use App\Models\Product;
@@ -119,7 +120,28 @@ class WorkflowConfigController extends Controller
             ->with(['employerBanks', 'locations', 'roles'])
             ->orderBy('name')->get();
 
-        return view('settings.workflow-product-stages', compact('product', 'stages', 'productStages', 'branches', 'allActiveUsers'));
+        // Load bank-level stage config for this product's bank
+        $bankStageConfigs = BankStageConfig::where('bank_id', $product->bank_id)
+            ->get()
+            ->keyBy('stage_id');
+
+        // Build resolved roles per stage and phase (bank config → master default)
+        $resolvedRoles = [];
+        foreach ($stages as $stage) {
+            $bsc = $bankStageConfigs[$stage->id] ?? null;
+            $resolvedRoles[$stage->id] = [
+                'role' => $bsc?->assigned_role ?? $stage->assigned_role ?? 'task_owner',
+                'phases' => [],
+            ];
+            if (is_array($stage->sub_actions)) {
+                foreach ($stage->sub_actions as $idx => $sa) {
+                    $resolvedRoles[$stage->id]['phases'][$idx] = $bsc?->phase_roles[(string) $idx]
+                        ?? $sa['role'] ?? 'task_owner';
+                }
+            }
+        }
+
+        return view('settings.workflow-product-stages', compact('product', 'stages', 'productStages', 'branches', 'allActiveUsers', 'resolvedRoles'));
     }
 
     public function saveProductStages(Request $request, Product $product)
@@ -206,10 +228,10 @@ class WorkflowConfigController extends Controller
                 }
             }
 
-            // Save location-based user assignments
+            // Save location-based user assignments (stage-level, phase_index = null)
             if (isset($stageData['location_overrides']) && is_array($stageData['location_overrides'])) {
-                // Delete only location-based assignments (keep branch-based)
-                $productStage->branchUsers()->whereNull('branch_id')->whereNotNull('location_id')->delete();
+                // Delete only location-based, stage-level assignments
+                $productStage->branchUsers()->whereNull('branch_id')->whereNotNull('location_id')->whereNull('phase_index')->delete();
 
                 foreach ($stageData['location_overrides'] as $override) {
                     $locationId = $override['location_id'] ?? null;
@@ -226,6 +248,37 @@ class WorkflowConfigController extends Controller
                             'user_id' => $userId,
                             'is_default' => (int) $userId === (int) $defaultUserId,
                         ]);
+                    }
+                }
+            }
+
+            // Save phase-level location user assignments
+            if (isset($stageData['phase_location_overrides']) && is_array($stageData['phase_location_overrides'])) {
+                foreach ($stageData['phase_location_overrides'] as $phaseIdx => $phaseOverrides) {
+                    // Delete existing phase-level location assignments for this phase
+                    $productStage->branchUsers()->whereNull('branch_id')->whereNotNull('location_id')
+                        ->where('phase_index', (int) $phaseIdx)->delete();
+
+                    if (! is_array($phaseOverrides)) {
+                        continue;
+                    }
+                    foreach ($phaseOverrides as $override) {
+                        $locationId = $override['location_id'] ?? null;
+                        if (! $locationId) {
+                            continue;
+                        }
+                        $userIds = array_filter($override['users'] ?? []);
+                        $defaultUserId = $override['default'] ?? null;
+                        foreach ($userIds as $userId) {
+                            \App\Models\ProductStageUser::create([
+                                'product_stage_id' => $productStage->id,
+                                'branch_id' => null,
+                                'location_id' => $locationId,
+                                'user_id' => $userId,
+                                'is_default' => (int) $userId === (int) $defaultUserId,
+                                'phase_index' => (int) $phaseIdx,
+                            ]);
+                        }
                     }
                 }
             }

@@ -6,7 +6,6 @@ use App\Models\LoanDetail;
 use App\Models\StageQuery;
 use App\Models\User;
 use App\Services\LoanStageService;
-use App\Services\NotificationService;
 use App\Services\StageQueryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -86,11 +85,14 @@ class LoanStageController extends Controller
                     }
                 } elseif (! $this->isStageDataComplete($stageKey, $assignment)) {
                     $missingFields = $this->getFieldErrors($stageKey, $assignment->getNotesData());
-                    $msg = ! empty($missingFields)
-                        ? 'Cannot complete — missing: '.implode(', ', array_values($missingFields))
-                        : 'Cannot complete — required details not filled.';
+                    if (! empty($missingFields)) {
+                        return response()->json([
+                            'error' => 'Please fill all required fields',
+                            'field_errors' => $missingFields,
+                        ], 422);
+                    }
 
-                    return response()->json(['error' => $msg], 422);
+                    return response()->json(['error' => 'Cannot complete — required details not filled.'], 422);
                 }
             }
         }
@@ -256,33 +258,28 @@ class LoanStageController extends Controller
                 'sanction_original_assignee' => $assignment->assigned_to,
             ]);
 
-            $bankEmployeeId = $validated['transfer_to'] ?? null ?? $loan->assigned_bank_employee;
-            if (! $bankEmployeeId) {
-                $bankEmployeeId = $this->findBankEmployee($loan);
+            $transferTo = $validated['transfer_to'] ?? null;
+            if (! $transferTo) {
+                $phase2Role = $this->stageService->getLoanPhaseRole($loan, 'sanction', 1);
+                $transferTo = $this->stageService->findUserForRole($phase2Role, $loan, 'sanction', 1);
             }
 
-            if ($bankEmployeeId) {
-                $this->stageService->transferStage($loan, 'sanction', (int) $bankEmployeeId, 'Sent for sanction letter generation');
+            if ($transferTo) {
+                $this->stageService->transferStage($loan, 'sanction', (int) $transferTo, 'Sent for sanction letter generation');
             }
 
             return response()->json(['success' => true, 'message' => 'Sent for sanction letter generation']);
         }
 
         if ($validated['action'] === 'sanction_generated') {
-            $notesData = $assignment->getNotesData();
             $assignment->mergeNotesData(['sanction_phase' => '3']);
 
             $transferTo = $validated['transfer_to'] ?? null;
             if (! $transferTo) {
-                $originalAssignee = $notesData['sanction_original_assignee'] ?? null;
-                if ($originalAssignee) {
-                    $origUser = User::find($originalAssignee);
-                    if ($origUser && $origUser->hasRole('bank_employee')) {
-                        $originalAssignee = null;
-                    }
-                }
-                $transferTo = $originalAssignee ?? $loan->created_by;
+                $phase3Role = $this->stageService->getLoanPhaseRole($loan, 'sanction', 2);
+                $transferTo = $this->stageService->findUserForRole($phase3Role, $loan, 'sanction', 2);
             }
+
             if ($transferTo) {
                 $this->stageService->transferStage($loan, 'sanction', (int) $transferTo, 'Sanction letter generated');
             }
@@ -310,16 +307,17 @@ class LoanStageController extends Controller
                 'suggested_legal_advisor' => $validated['suggested_legal_advisor'] ?? '',
             ]);
 
-            $bankEmployeeId = $validated['transfer_to'] ?? null ?? $loan->assigned_bank_employee;
-            if (! $bankEmployeeId) {
-                $bankEmployeeId = $this->findBankEmployee($loan);
+            $transferTo = $validated['transfer_to'] ?? null;
+            if (! $transferTo) {
+                $phase2Role = $this->stageService->getLoanPhaseRole($loan, 'legal_verification', 1);
+                $transferTo = $this->stageService->findUserForRole($phase2Role, $loan, 'legal_verification', 1);
             }
 
-            if ($bankEmployeeId) {
-                $this->stageService->transferStage($loan, 'legal_verification', (int) $bankEmployeeId, 'Sent to bank for legal verification');
+            if ($transferTo) {
+                $this->stageService->transferStage($loan, 'legal_verification', (int) $transferTo, 'Sent for legal verification');
             }
 
-            return response()->json(['success' => true, 'message' => 'Sent to bank employee for legal verification']);
+            return response()->json(['success' => true, 'message' => 'Sent for legal verification']);
         }
 
         if ($validated['action'] === 'initiate_legal') {
@@ -328,9 +326,14 @@ class LoanStageController extends Controller
                 'confirmed_legal_advisor' => $validated['suggested_legal_advisor'] ?? $assignment->getNotesData()['suggested_legal_advisor'] ?? '',
             ]);
 
-            $transferTo = $validated['transfer_to'] ?? null ?? $assignment->getNotesData()['legal_original_assignee'] ?? $loan->created_by;
+            $transferTo = $validated['transfer_to'] ?? null;
+            if (! $transferTo) {
+                $phase3Role = $this->stageService->getLoanPhaseRole($loan, 'legal_verification', 2);
+                $transferTo = $this->stageService->findUserForRole($phase3Role, $loan, 'legal_verification', 2);
+            }
+
             if ($transferTo) {
-                $this->stageService->transferStage($loan, 'legal_verification', (int) $transferTo, 'Legal initiated, transferred back to task owner');
+                $this->stageService->transferStage($loan, 'legal_verification', (int) $transferTo, 'Legal initiated, transferred back');
             }
 
             return response()->json(['success' => true, 'message' => 'Legal initiated, transferred to task owner']);
@@ -353,18 +356,17 @@ class LoanStageController extends Controller
             'tv_original_assignee' => $assignment->assigned_to,
         ]);
 
-        $officeEmployeeId = $validated['transfer_to'] ?? null;
-        if (! $officeEmployeeId) {
-            $officeEmployeeId = app(LoanStageService::class)->findBestAssignee(
-                'technical_valuation', $loan->branch_id, $loan->bank_id, $loan->product_id, $loan->created_by, $loan->assigned_advisor
-            );
+        $transferTo = $validated['transfer_to'] ?? null;
+        if (! $transferTo) {
+            $phase2Role = $this->stageService->getLoanPhaseRole($loan, 'technical_valuation', 1);
+            $transferTo = $this->stageService->findUserForRole($phase2Role, $loan, 'technical_valuation', 1);
         }
 
-        if ($officeEmployeeId) {
-            $this->stageService->transferStage($loan, 'technical_valuation', (int) $officeEmployeeId, 'Sent for technical valuation');
+        if ($transferTo) {
+            $this->stageService->transferStage($loan, 'technical_valuation', (int) $transferTo, 'Sent for technical valuation');
         }
 
-        return response()->json(['success' => true, 'message' => 'Sent to office employee for technical valuation']);
+        return response()->json(['success' => true, 'message' => 'Sent for technical valuation']);
     }
 
     public function esignAction(Request $request, LoanDetail $loan): JsonResponse
@@ -376,51 +378,61 @@ class LoanStageController extends Controller
 
         $assignment = $loan->stageAssignments()->where('stage_key', 'esign')->firstOrFail();
 
-        // Phase 1 → 2: Advisor sends to bank employee
+        // Phase 1 → 2
         if ($validated['action'] === 'send_for_esign') {
-            $bankEmployeeId = $validated['transfer_to'] ?? null ?? $loan->assigned_bank_employee;
-            if (! $bankEmployeeId) {
-                $bankEmployeeId = $this->findBankEmployee($loan);
-            }
-
             $assignment->mergeNotesData([
                 'esign_phase' => '2',
                 'esign_original_assignee' => $assignment->assigned_to,
             ]);
 
-            if ($bankEmployeeId) {
-                $this->stageService->transferStage($loan, 'esign', (int) $bankEmployeeId, 'Sent for E-Sign & eNACH generation');
+            $transferTo = $validated['transfer_to'] ?? null;
+            if (! $transferTo) {
+                $phase2Role = $this->stageService->getLoanPhaseRole($loan, 'esign', 1);
+                $transferTo = $this->stageService->findUserForRole($phase2Role, $loan, 'esign', 1);
             }
 
-            return response()->json(['success' => true, 'message' => 'Sent to bank employee for E-Sign & eNACH']);
+            if ($transferTo) {
+                $this->stageService->transferStage($loan, 'esign', (int) $transferTo, 'Sent for E-Sign & eNACH generation');
+            }
+
+            return response()->json(['success' => true, 'message' => 'Sent for E-Sign & eNACH generation']);
         }
 
-        // Phase 2 → 3: Bank employee generated, transfer to advisor
+        // Phase 2 → 3
         if ($validated['action'] === 'esign_generated') {
             $assignment->mergeNotesData([
                 'esign_phase' => '3',
                 'esign_bank_employee' => $assignment->assigned_to,
             ]);
 
-            $transferTo = $validated['transfer_to'] ?? null ?? $assignment->getNotesData()['esign_original_assignee'] ?? $loan->created_by;
+            $transferTo = $validated['transfer_to'] ?? null;
+            if (! $transferTo) {
+                $phase3Role = $this->stageService->getLoanPhaseRole($loan, 'esign', 2);
+                $transferTo = $this->stageService->findUserForRole($phase3Role, $loan, 'esign', 2);
+            }
+
             if ($transferTo) {
-                $this->stageService->transferStage($loan, 'esign', (int) $transferTo, 'E-Sign & eNACH generated, sent for customer completion');
+                $this->stageService->transferStage($loan, 'esign', (int) $transferTo, 'E-Sign docs generated, sent for customer completion');
             }
 
             return response()->json(['success' => true, 'message' => 'Sent to task owner for customer completion']);
         }
 
-        // Phase 3 → 4: Advisor completed with customer, transfer back to bank
+        // Phase 3 → 4
         if ($validated['action'] === 'esign_customer_done') {
-            $notesData = $assignment->getNotesData();
             $assignment->mergeNotesData(['esign_phase' => '4']);
 
-            $bankEmployeeId = $validated['transfer_to'] ?? null ?? $notesData['esign_bank_employee'] ?? $loan->assigned_bank_employee;
-            if ($bankEmployeeId) {
-                $this->stageService->transferStage($loan, 'esign', (int) $bankEmployeeId, 'E-Sign completed with customer, returned to bank');
+            $transferTo = $validated['transfer_to'] ?? null;
+            if (! $transferTo) {
+                $phase4Role = $this->stageService->getLoanPhaseRole($loan, 'esign', 3);
+                $transferTo = $this->stageService->findUserForRole($phase4Role, $loan, 'esign', 3);
             }
 
-            return response()->json(['success' => true, 'message' => 'Returned to bank employee for final confirmation']);
+            if ($transferTo) {
+                $this->stageService->transferStage($loan, 'esign', (int) $transferTo, 'E-Sign completed with customer, returned for confirmation');
+            }
+
+            return response()->json(['success' => true, 'message' => 'Returned for final confirmation']);
         }
 
         // Phase 4: Bank employee confirms → complete stage
@@ -455,19 +467,17 @@ class LoanStageController extends Controller
             'docket_original_assignee' => $assignment->assigned_to,
         ]);
 
-        $officeEmployeeId = $validated['transfer_to'] ?? null;
-        if (! $officeEmployeeId) {
-            $officeEmployee = User::whereHas('roles', fn ($q) => $q->where('slug', 'office_employee'))
-                ->where('is_active', true)
-                ->first();
-            $officeEmployeeId = $officeEmployee?->id;
+        $transferTo = $validated['transfer_to'] ?? null;
+        if (! $transferTo) {
+            $phase2Role = $this->stageService->getLoanPhaseRole($loan, 'docket', 1);
+            $transferTo = $this->stageService->findUserForRole($phase2Role, $loan, 'docket', 1);
         }
 
-        if ($officeEmployeeId) {
-            $this->stageService->transferStage($loan, 'docket', (int) $officeEmployeeId, 'Sent for docket login');
+        if ($transferTo) {
+            $this->stageService->transferStage($loan, 'docket', (int) $transferTo, 'Sent for docket review');
         }
 
-        return response()->json(['success' => true, 'message' => 'Sent to office employee for docket login']);
+        return response()->json(['success' => true, 'message' => 'Sent for docket review']);
     }
 
     public function ratePfAction(Request $request, LoanDetail $loan): JsonResponse
@@ -493,14 +503,17 @@ class LoanStageController extends Controller
             'admin_charges_gst_percent' => 'Admin GST %',
         ];
 
-        $missing = [];
+        $fieldErrors = [];
         foreach ($requiredFields as $field => $label) {
             if (! isset($notesData[$field]) || $notesData[$field] === '' || $notesData[$field] === null) {
-                $missing[] = $label;
+                $fieldErrors[$field] = $label.' is required';
             }
         }
-        if (! empty($missing)) {
-            return response()->json(['error' => 'Missing required fields: '.implode(', ', $missing)], 422);
+        if (! empty($fieldErrors)) {
+            return response()->json([
+                'error' => 'Please fill all required fields',
+                'field_errors' => $fieldErrors,
+            ], 422);
         }
 
         if ($validated['action'] === 'send_to_bank') {
@@ -520,24 +533,30 @@ class LoanStageController extends Controller
                 'original_values' => $originalValues,
             ]);
 
-            $bankEmployeeId = $validated['transfer_to'] ?? null ?? $loan->assigned_bank_employee;
-            if (! $bankEmployeeId) {
-                $bankEmployeeId = $this->findBankEmployee($loan);
+            $transferTo = $validated['transfer_to'] ?? null;
+            if (! $transferTo) {
+                $phase2Role = $this->stageService->getLoanPhaseRole($loan, 'rate_pf', 0);
+                $transferTo = $this->stageService->findUserForRole($phase2Role, $loan, 'rate_pf', 0);
             }
 
-            if ($bankEmployeeId) {
-                $this->stageService->transferStage($loan, 'rate_pf', (int) $bankEmployeeId, 'Sent for bank rate review');
+            if ($transferTo) {
+                $this->stageService->transferStage($loan, 'rate_pf', (int) $transferTo, 'Sent for bank rate review');
             }
 
-            return response()->json(['success' => true, 'message' => 'Sent to bank employee for review']);
+            return response()->json(['success' => true, 'message' => 'Sent for rate review']);
         }
 
         if ($validated['action'] === 'return_to_owner') {
             $assignment->mergeNotesData(['rate_pf_phase' => '3']);
 
-            $transferTo = $validated['transfer_to'] ?? null ?? $notesData['rate_pf_original_assignee'] ?? $loan->created_by;
+            $transferTo = $validated['transfer_to'] ?? null;
+            if (! $transferTo) {
+                $phase3Role = $this->stageService->getLoanPhaseRole($loan, 'rate_pf', 1);
+                $transferTo = $this->stageService->findUserForRole($phase3Role, $loan, 'rate_pf', 1);
+            }
+
             if ($transferTo) {
-                $this->stageService->transferStage($loan, 'rate_pf', (int) $transferTo, 'Bank reviewed rate details, returned to task owner');
+                $this->stageService->transferStage($loan, 'rate_pf', (int) $transferTo, 'Bank reviewed rate details, returned');
             }
 
             return response()->json(['success' => true, 'message' => 'Returned to task owner']);
@@ -848,9 +867,9 @@ class LoanStageController extends Controller
                 });
             }
 
-            // Filter office employees by loan's branch
-            if ($role === 'office_employee' && $loan->branch_id) {
-                $query->whereHas('branches', fn ($q) => $q->where('branches.id', $loan->branch_id));
+            // Filter office employees by loan's bank
+            if ($role === 'office_employee' && $loan->bank_id) {
+                $query->whereHas('employerBanks', fn ($q) => $q->where('banks.id', $loan->bank_id));
             }
 
             // Filter branch-based roles by loan's branch
@@ -858,49 +877,27 @@ class LoanStageController extends Controller
                 $query->whereHas('branches', fn ($q) => $q->where('branches.id', $loan->branch_id));
             }
         } else {
-            // No role filter — return users eligible for this stage's default roles
-            $eligibleRoles = LoanStageService::getStageRoleEligibility($stageKey);
-            if (! empty($eligibleRoles)) {
-                $query->whereHas('roles', fn ($q) => $q->whereIn('slug', $eligibleRoles));
+            // No role filter — resolve from loan's workflow config
+            $resolvedRole = $this->stageService->getLoanStageRole($loan, $stageKey);
+            if ($resolvedRole === 'task_owner') {
+                $query->whereHas('roles', fn ($q) => $q->whereIn('slug', ['loan_advisor', 'branch_manager', 'bdh']));
+            } else {
+                $query->whereHas('roles', fn ($q) => $q->where('slug', $resolvedRole));
+            }
+            if (in_array($resolvedRole, ['bank_employee', 'office_employee']) && $loan->bank_id) {
+                $query->whereHas('employerBanks', fn ($bq) => $bq->where('banks.id', $loan->bank_id));
             }
         }
 
         $users = $query->orderBy('name')->limit(50)->get();
 
-        // Determine default user for the requested role
-        $defaultUserId = null;
-        if ($role === 'bank_employee' && $loan->bank_id) {
-            // Use bank's default employee for the loan's city
-            $bank = \App\Models\Bank::find($loan->bank_id);
-            $cityId = $loan->branch_id ? \App\Models\Branch::find($loan->branch_id)?->location_id : null;
-            $defaultUserId = $bank?->getDefaultEmployeeForCity($cityId);
-        } elseif ($role === 'office_employee' && $loan->branch_id) {
-            // Use branch's default office employee
-            $defaultUserId = User::where('is_active', true)
-                ->whereHas('roles', fn ($q) => $q->where('slug', 'office_employee'))
-                ->whereHas('branches', fn ($q) => $q->where('branches.id', $loan->branch_id)->where('user_branches.is_default_office_employee', true))
-                ->value('id');
-        } elseif ($role && in_array($role, ['loan_advisor', 'branch_manager', 'bdh'])) {
-            // Use loan creator if they have the requested role
-            $creator = User::where('id', $loan->created_by)->where('is_active', true)->first();
-            if ($creator && $creator->hasRole($role)) {
-                $defaultUserId = $creator->id;
-            }
-        }
+        // Determine default user from loan's workflow config snapshot
+        $resolvedRole = $role ?: $this->stageService->getLoanStageRole($loan, $stageKey);
+        $defaultUserId = $this->stageService->findUserForRole($resolvedRole, $loan, $stageKey);
 
         // Ensure default is in the returned list
         if ($defaultUserId && ! $users->contains('id', $defaultUserId)) {
             $defaultUserId = null;
-        }
-
-        // Fallback: try product stage config
-        if (! $defaultUserId && $loan->product_id) {
-            $bestAssignee = $this->stageService->findBestAssignee(
-                $stageKey, $loan->branch_id, $loan->bank_id, $loan->product_id, $loan->created_by, $loan->assigned_advisor
-            );
-            if ($bestAssignee && $users->contains('id', $bestAssignee)) {
-                $defaultUserId = $bestAssignee;
-            }
         }
 
         return response()->json(['users' => $users, 'default_user_id' => $defaultUserId]);

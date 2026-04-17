@@ -1000,6 +1000,26 @@ select.is-invalid,
     .shf-section-title {
         font-size: 0.85rem;
     }
+
+    /* Form action buttons: compact on mobile, no full-width stretch */
+    .shf-form-actions {
+        flex-wrap: wrap;
+        justify-content: center !important;
+        gap: 8px !important;
+    }
+
+    .shf-form-actions .btn-accent,
+    .shf-form-actions .btn-accent-outline {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        font-size: 0.75rem;
+        padding: 7px 14px;
+    }
+
+    /* Prevent inline style overrides from making buttons too wide */
+    .shf-form-actions .btn-accent[style*="padding"] {
+        padding: 7px 14px !important;
+    }
 }
 
 /* ---- Mobile table: card layout ---- */
@@ -1735,7 +1755,7 @@ input[type="checkbox"]:disabled+label {
     padding: 2px 0;
 }
 
-.shf-stage-notes .shf-phase-num {
+.shf-phase-num {
     flex-shrink: 0;
     width: 20px;
     height: 20px;
@@ -1746,6 +1766,9 @@ input[type="checkbox"]:disabled+label {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+
+.shf-stage-notes .shf-phase-num {
     margin-top: 1px;
 }
 
@@ -2348,6 +2371,11 @@ input[type="checkbox"]:disabled+label {
 /* ── Form Helpers ── */
 .shf-input-readonly {
     background: #f8f9fa;
+}
+
+.shf-input-override {
+    border-color: var(--accent) !important;
+    background: var(--accent-dim) !important;
 }
 
 .shf-select-compact {

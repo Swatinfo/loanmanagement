@@ -53,11 +53,21 @@
                             <div class="shf-text-xs text-muted mt-1" data-amount-words></div>
                         </div>
                     @elseif(($field['type'] ?? 'text') === 'date')
+                        @php
+                            $dpClass = 'shf-datepicker-past'; // default: past only
+                            if (!empty($field['min_date']) || !empty($field['max_date'])) {
+                                $dpClass = 'shf-datepicker-custom';
+                            } elseif (!empty($field['allow_future'])) {
+                                $dpClass = 'shf-datepicker';
+                            }
+                        @endphp
                         <input type="text" name="{{ $field['name'] }}"
-                            class="shf-input shf-input-sm {{ empty($field['readonly']) ? (!empty($field['allow_future']) ? 'shf-datepicker' : 'shf-datepicker-past') : '' }}"
+                            class="shf-input shf-input-sm {{ empty($field['readonly']) ? $dpClass : '' }}"
                             value="{{ $fieldValue($field) }}" placeholder="dd/mm/yyyy" autocomplete="off"
                             {{ $isDisabled ? 'disabled' : '' }}
-                            {{ !empty($field['readonly']) ? 'readonly style=background:#f8f9fa;' : '' }}>
+                            {{ !empty($field['readonly']) ? 'readonly style=background:#f8f9fa;' : '' }}
+                            @if (!empty($field['min_date'])) data-min-date="{{ $field['min_date'] }}" @endif
+                            @if (!empty($field['max_date'])) data-max-date="{{ $field['max_date'] }}" @endif>
                     @else
                         <input type="{{ $field['type'] ?? 'text' }}" name="{{ $field['name'] }}"
                             class="shf-input shf-input-sm" value="{{ $fieldValue($field) }}"

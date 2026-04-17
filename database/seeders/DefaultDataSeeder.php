@@ -29,6 +29,7 @@ class DefaultDataSeeder extends Seeder
         $this->seedBranches();
         $this->seedBanks();
         $this->seedStages();
+        $this->seedBankStageConfigs();
         $this->seedUsers();
         $this->seedRoleAssignments();
         $this->seedRolePermissionMappings();
@@ -48,8 +49,11 @@ class DefaultDataSeeder extends Seeder
         $this->seedQuotationEmi();
         $this->seedQuotationDocuments();*/
 
-        // Clear any loan references from quotations
-        DB::table('quotations')->whereNotNull('loan_id')->update(['loan_id' => null]);
+        // Clear quotations from previous seeder runs (fresh ones created below)
+        DB::table('quotation_documents')->delete();
+        DB::table('quotation_emi')->delete();
+        DB::table('quotation_banks')->delete();
+        DB::table('quotations')->delete();
 
         $this->seedSampleQuotationAndLoan();
     }
@@ -232,23 +236,45 @@ class DefaultDataSeeder extends Seeder
     private function seedStages(): void
     {
         $stages = [
-            ['id' => 1, 'stage_key' => 'inquiry', 'is_enabled' => true, 'stage_name_en' => 'Loan Inquiry', 'stage_name_gu' => 'Loan Inquiry', 'sequence_order' => 1, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Initial customer and loan details entry', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor"]', 'sub_actions' => null],
-            ['id' => 2, 'stage_key' => 'document_selection', 'is_enabled' => true, 'stage_name_en' => 'Document Selection', 'stage_name_gu' => 'Document Selection', 'sequence_order' => 2, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Select required documents for the loan', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor"]', 'sub_actions' => null],
-            ['id' => 3, 'stage_key' => 'document_collection', 'is_enabled' => true, 'stage_name_en' => 'Document Collection', 'stage_name_gu' => 'Document Collection', 'sequence_order' => 3, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Collect and verify all required documents', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor"]', 'sub_actions' => null],
-            ['id' => 4, 'stage_key' => 'parallel_processing', 'is_enabled' => true, 'stage_name_en' => 'Parallel Processing', 'stage_name_gu' => 'Parallel Processing', 'sequence_order' => 4, 'is_parallel' => true, 'parent_stage_key' => null, 'stage_type' => 'parallel', 'description_en' => 'Four parallel tracks processed simultaneously', 'description_gu' => null, 'default_role' => null, 'sub_actions' => null],
-            ['id' => 5, 'stage_key' => 'app_number', 'is_enabled' => true, 'stage_name_en' => 'Application Number', 'stage_name_gu' => 'Application Number', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Enter bank application number', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor"]', 'sub_actions' => null],
-            ['id' => 6, 'stage_key' => 'bsm_osv', 'is_enabled' => true, 'stage_name_en' => 'BSM/OSV Approval', 'stage_name_gu' => 'BSM/OSV Approval', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Bank site and office verification', 'description_gu' => null, 'default_role' => '["bank_employee"]', 'sub_actions' => null],
-            ['id' => 7, 'stage_key' => 'sanction_decision', 'is_enabled' => true, 'stage_name_en' => 'Loan Sanction Decision', 'stage_name_gu' => "\u{0ab2}\u{0acb}\u{0aa8} \u{0aae}\u{0a82}\u{0a9c}\u{0ac2}\u{0ab0}\u{0ac0} \u{0aa8}\u{0abf}\u{0ab0}\u{0acd}\u{0aa3}\u{0aaf}", 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Loan sanction approval with escalation ladder', 'description_gu' => null, 'default_role' => '["office_employee","branch_manager","bdh"]', 'sub_actions' => null],
-            ['id' => 8, 'stage_key' => 'legal_verification', 'is_enabled' => true, 'stage_name_en' => 'Legal Verification', 'stage_name_gu' => 'Legal Verification', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Legal document verification', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","bank_employee"]', 'sub_actions' => null],
-            ['id' => 9, 'stage_key' => 'property_valuation', 'is_enabled' => true, 'stage_name_en' => 'Property Valuation', 'stage_name_gu' => 'Property Valuation', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Dedicated property valuation for LAP', 'description_gu' => null, 'default_role' => '["branch_manager","office_employee"]', 'sub_actions' => null],
-            ['id' => 10, 'stage_key' => 'technical_valuation', 'is_enabled' => true, 'stage_name_en' => 'Technical Valuation', 'stage_name_gu' => 'Technical Valuation', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Property/asset technical valuation', 'description_gu' => null, 'default_role' => '["branch_manager","office_employee"]', 'sub_actions' => null],
-            ['id' => 11, 'stage_key' => 'rate_pf', 'is_enabled' => true, 'stage_name_en' => 'Rate & PF Request', 'stage_name_gu' => 'Rate & PF Request', 'sequence_order' => 5, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Request interest rate and processing fee from bank', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","bank_employee"]', 'sub_actions' => '[{"key":"bank_rate_details","name":"Bank Rate Details","sequence":1,"roles":["bank_employee"],"type":"form","is_enabled":true},{"key":"processing_charges","name":"Processing & Charges","sequence":2,"roles":["branch_manager","loan_advisor","office_employee"],"type":"form","is_enabled":true}]'],
-            ['id' => 12, 'stage_key' => 'sanction', 'is_enabled' => true, 'stage_name_en' => 'Sanction Letter', 'stage_name_gu' => 'Sanction Letter', 'sequence_order' => 6, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Bank issues sanction letter', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","bank_employee"]', 'sub_actions' => '[{"key":"send_for_sanction","name":"Send for Sanction Letter","sequence":1,"roles":["branch_manager","loan_advisor"],"type":"action_button","action":"send_for_sanction","transfer_to_role":"bank_employee","is_enabled":true},{"key":"sanction_generated","name":"Sanction Letter Generated","sequence":2,"roles":["bank_employee"],"type":"action_button","action":"sanction_generated","transfer_to_role":"loan_advisor","is_enabled":true},{"key":"sanction_details","name":"Sanction Details","sequence":3,"roles":["branch_manager","loan_advisor"],"type":"form","is_enabled":true}]'],
-            ['id' => 13, 'stage_key' => 'docket', 'is_enabled' => true, 'stage_name_en' => 'Docket Login', 'stage_name_gu' => 'Docket Login', 'sequence_order' => 7, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Physical document processing and docket creation', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","office_employee"]', 'sub_actions' => null],
-            ['id' => 14, 'stage_key' => 'kfs', 'is_enabled' => true, 'stage_name_en' => 'KFS Generation', 'stage_name_gu' => 'KFS Generation', 'sequence_order' => 8, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Key Fact Statement generation', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","office_employee"]', 'sub_actions' => null],
-            ['id' => 15, 'stage_key' => 'esign', 'is_enabled' => true, 'stage_name_en' => 'E-Sign & eNACH', 'stage_name_gu' => 'E-Sign & eNACH', 'sequence_order' => 9, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Digital signature and eNACH mandate', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","bank_employee"]', 'sub_actions' => null],
-            ['id' => 16, 'stage_key' => 'disbursement', 'is_enabled' => true, 'stage_name_en' => 'Disbursement', 'stage_name_gu' => 'Disbursement', 'sequence_order' => 10, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'decision', 'description_en' => 'Fund disbursement - transfer or cheque with OTC handling', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","office_employee"]', 'sub_actions' => null],
-            ['id' => 17, 'stage_key' => 'otc_clearance', 'is_enabled' => true, 'stage_name_en' => 'OTC Clearance', 'stage_name_gu' => 'OTC Clearance', 'sequence_order' => 11, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Cheque handover and OTC clearance', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","office_employee"]', 'sub_actions' => null],
+            ['id' => 1, 'stage_key' => 'inquiry', 'is_enabled' => true, 'stage_name_en' => 'Loan Inquiry', 'stage_name_gu' => 'Loan Inquiry', 'sequence_order' => 1, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Initial customer and loan details entry', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor"]', 'assigned_role' => 'task_owner', 'sub_actions' => null],
+            ['id' => 2, 'stage_key' => 'document_selection', 'is_enabled' => true, 'stage_name_en' => 'Document Selection', 'stage_name_gu' => 'Document Selection', 'sequence_order' => 2, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Select required documents for the loan', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor"]', 'assigned_role' => 'task_owner', 'sub_actions' => null],
+            ['id' => 3, 'stage_key' => 'document_collection', 'is_enabled' => true, 'stage_name_en' => 'Document Collection', 'stage_name_gu' => 'Document Collection', 'sequence_order' => 3, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Collect and verify all required documents', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor"]', 'assigned_role' => 'task_owner', 'sub_actions' => null],
+            ['id' => 4, 'stage_key' => 'parallel_processing', 'is_enabled' => true, 'stage_name_en' => 'Parallel Processing', 'stage_name_gu' => 'Parallel Processing', 'sequence_order' => 4, 'is_parallel' => true, 'parent_stage_key' => null, 'stage_type' => 'parallel', 'description_en' => 'Four parallel tracks processed simultaneously', 'description_gu' => null, 'default_role' => null, 'assigned_role' => 'task_owner', 'sub_actions' => null],
+            ['id' => 5, 'stage_key' => 'app_number', 'is_enabled' => true, 'stage_name_en' => 'Application Number', 'stage_name_gu' => 'Application Number', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Enter bank application number', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor"]', 'assigned_role' => 'task_owner', 'sub_actions' => null],
+            ['id' => 6, 'stage_key' => 'bsm_osv', 'is_enabled' => true, 'stage_name_en' => 'BSM/OSV Approval', 'stage_name_gu' => 'BSM/OSV Approval', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Bank site and office verification', 'description_gu' => null, 'default_role' => '["bank_employee"]', 'assigned_role' => 'bank_employee', 'sub_actions' => null],
+            ['id' => 7, 'stage_key' => 'sanction_decision', 'is_enabled' => true, 'stage_name_en' => 'Loan Sanction Decision', 'stage_name_gu' => "\u{0ab2}\u{0acb}\u{0aa8} \u{0aae}\u{0a82}\u{0a9c}\u{0ac2}\u{0ab0}\u{0ac0} \u{0aa8}\u{0abf}\u{0ab0}\u{0acd}\u{0aa3}\u{0aaf}", 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Loan sanction approval with escalation ladder', 'description_gu' => null, 'default_role' => '["office_employee","branch_manager","bdh"]', 'assigned_role' => 'office_employee', 'sub_actions' => null],
+            ['id' => 8, 'stage_key' => 'legal_verification', 'is_enabled' => true, 'stage_name_en' => 'Legal Verification', 'stage_name_gu' => 'Legal Verification', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Legal document verification', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","bank_employee"]', 'assigned_role' => 'task_owner', 'sub_actions' => json_encode([
+                ['key' => 'send_to_bank', 'name' => 'Send to Bank', 'sequence' => 1, 'role' => 'task_owner', 'roles' => ['branch_manager', 'loan_advisor'], 'type' => 'action_button', 'action' => 'send_to_bank', 'is_enabled' => true],
+                ['key' => 'initiate_legal', 'name' => 'Initiate Legal', 'sequence' => 2, 'role' => 'bank_employee', 'roles' => ['bank_employee'], 'type' => 'action_button', 'action' => 'initiate_legal', 'is_enabled' => true],
+                ['key' => 'review_complete', 'name' => 'Review & Complete', 'sequence' => 3, 'role' => 'task_owner', 'roles' => ['branch_manager', 'loan_advisor'], 'type' => 'action_button', 'action' => 'review_complete', 'is_enabled' => true],
+            ])],
+            ['id' => 9, 'stage_key' => 'property_valuation', 'is_enabled' => true, 'stage_name_en' => 'Property Valuation', 'stage_name_gu' => 'Property Valuation', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Dedicated property valuation for LAP', 'description_gu' => null, 'default_role' => '["branch_manager","office_employee"]', 'assigned_role' => 'office_employee', 'sub_actions' => null],
+            ['id' => 10, 'stage_key' => 'technical_valuation', 'is_enabled' => true, 'stage_name_en' => 'Technical Valuation', 'stage_name_gu' => 'Technical Valuation', 'sequence_order' => 4, 'is_parallel' => false, 'parent_stage_key' => 'parallel_processing', 'stage_type' => 'sequential', 'description_en' => 'Property/asset technical valuation', 'description_gu' => null, 'default_role' => '["branch_manager","office_employee"]', 'assigned_role' => 'task_owner', 'sub_actions' => json_encode([
+                ['key' => 'send_to_office', 'name' => 'Send for Valuation', 'sequence' => 1, 'role' => 'task_owner', 'roles' => ['branch_manager', 'loan_advisor'], 'type' => 'action_button', 'action' => 'send_to_office', 'is_enabled' => true],
+                ['key' => 'fill_valuation', 'name' => 'Fill Valuation Form', 'sequence' => 2, 'role' => 'office_employee', 'roles' => ['office_employee'], 'type' => 'form', 'is_enabled' => true],
+            ])],
+            ['id' => 11, 'stage_key' => 'rate_pf', 'is_enabled' => true, 'stage_name_en' => 'Rate & PF Request', 'stage_name_gu' => 'Rate & PF Request', 'sequence_order' => 5, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Request interest rate and processing fee from bank', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","bank_employee"]', 'assigned_role' => 'task_owner', 'sub_actions' => json_encode([
+                ['key' => 'bank_rate_details', 'name' => 'Bank Rate Details', 'sequence' => 1, 'role' => 'bank_employee', 'roles' => ['bank_employee'], 'type' => 'form', 'is_enabled' => true],
+                ['key' => 'processing_charges', 'name' => 'Processing & Charges', 'sequence' => 2, 'role' => 'task_owner', 'roles' => ['branch_manager', 'loan_advisor', 'office_employee'], 'type' => 'form', 'is_enabled' => true],
+            ])],
+            ['id' => 12, 'stage_key' => 'sanction', 'is_enabled' => true, 'stage_name_en' => 'Sanction Letter', 'stage_name_gu' => 'Sanction Letter', 'sequence_order' => 6, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Bank issues sanction letter', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","bank_employee"]', 'assigned_role' => 'task_owner', 'sub_actions' => json_encode([
+                ['key' => 'send_for_sanction', 'name' => 'Send for Sanction Letter', 'sequence' => 1, 'role' => 'task_owner', 'roles' => ['branch_manager', 'loan_advisor'], 'type' => 'action_button', 'action' => 'send_for_sanction', 'is_enabled' => true],
+                ['key' => 'sanction_generated', 'name' => 'Sanction Letter Generated', 'sequence' => 2, 'role' => 'bank_employee', 'roles' => ['bank_employee'], 'type' => 'action_button', 'action' => 'sanction_generated', 'is_enabled' => true],
+                ['key' => 'sanction_details', 'name' => 'Sanction Details', 'sequence' => 3, 'role' => 'task_owner', 'roles' => ['branch_manager', 'loan_advisor'], 'type' => 'form', 'is_enabled' => true],
+            ])],
+            ['id' => 13, 'stage_key' => 'docket', 'is_enabled' => true, 'stage_name_en' => 'Docket Login', 'stage_name_gu' => 'Docket Login', 'sequence_order' => 7, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Physical document processing and docket creation', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","office_employee"]', 'assigned_role' => 'task_owner', 'sub_actions' => json_encode([
+                ['key' => 'submit_docket', 'name' => 'Submit Docket', 'sequence' => 1, 'role' => 'task_owner', 'roles' => ['branch_manager', 'loan_advisor'], 'type' => 'form', 'is_enabled' => true],
+                ['key' => 'review_generate_kfs', 'name' => 'Review & Generate KFS', 'sequence' => 2, 'role' => 'office_employee', 'roles' => ['office_employee'], 'type' => 'action_button', 'action' => 'generate_kfs', 'is_enabled' => true],
+            ])],
+            ['id' => 14, 'stage_key' => 'kfs', 'is_enabled' => true, 'stage_name_en' => 'KFS Generation', 'stage_name_gu' => 'KFS Generation', 'sequence_order' => 8, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Key Fact Statement generation', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","office_employee"]', 'assigned_role' => 'task_owner', 'sub_actions' => null],
+            ['id' => 15, 'stage_key' => 'esign', 'is_enabled' => true, 'stage_name_en' => 'E-Sign & eNACH', 'stage_name_gu' => 'E-Sign & eNACH', 'sequence_order' => 9, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Digital signature and eNACH mandate', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","bank_employee"]', 'assigned_role' => 'task_owner', 'sub_actions' => json_encode([
+                ['key' => 'send_for_esign', 'name' => 'Send for E-Sign', 'sequence' => 1, 'role' => 'task_owner', 'roles' => ['branch_manager', 'loan_advisor'], 'type' => 'action_button', 'action' => 'send_for_esign', 'is_enabled' => true],
+                ['key' => 'generate_esign', 'name' => 'Generate E-Sign Docs', 'sequence' => 2, 'role' => 'bank_employee', 'roles' => ['bank_employee'], 'type' => 'action_button', 'action' => 'esign_generated', 'is_enabled' => true],
+                ['key' => 'customer_signing', 'name' => 'Customer Signing', 'sequence' => 3, 'role' => 'task_owner', 'roles' => ['branch_manager', 'loan_advisor'], 'type' => 'action_button', 'action' => 'esign_customer_done', 'is_enabled' => true],
+                ['key' => 'confirm_complete', 'name' => 'Confirm & Complete', 'sequence' => 4, 'role' => 'bank_employee', 'roles' => ['bank_employee'], 'type' => 'action_button', 'action' => 'esign_complete', 'is_enabled' => true],
+            ])],
+            ['id' => 16, 'stage_key' => 'disbursement', 'is_enabled' => true, 'stage_name_en' => 'Disbursement', 'stage_name_gu' => 'Disbursement', 'sequence_order' => 10, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'decision', 'description_en' => 'Fund disbursement - transfer or cheque with OTC handling', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","office_employee"]', 'assigned_role' => 'office_employee', 'sub_actions' => null],
+            ['id' => 17, 'stage_key' => 'otc_clearance', 'is_enabled' => true, 'stage_name_en' => 'OTC Clearance', 'stage_name_gu' => 'OTC Clearance', 'sequence_order' => 11, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Cheque handover and OTC clearance', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","office_employee"]', 'assigned_role' => 'task_owner', 'sub_actions' => null],
         ];
 
         foreach ($stages as $stage) {
@@ -256,6 +282,41 @@ class DefaultDataSeeder extends Seeder
                 ['stage_key' => $stage['stage_key']],
                 array_merge($stage, ['created_at' => now(), 'updated_at' => now()])
             );
+        }
+    }
+
+    private function seedBankStageConfigs(): void
+    {
+        // Clear existing configs (re-seed from scratch)
+        DB::table('bank_stage_configs')->delete();
+        DB::table('product_stage_users')->delete();
+
+        // For Axis, HDFC, Kotak: rate_pf phase 0 = office_employee (not bank_employee)
+        // For Axis, HDFC, Kotak: sanction phase 1 = office_employee (not bank_employee)
+        // ICICI keeps master defaults (bank_employee for both)
+
+        $ratePfStageId = DB::table('stages')->where('stage_key', 'rate_pf')->value('id');
+        $sanctionStageId = DB::table('stages')->where('stage_key', 'sanction')->value('id');
+
+        // Bank IDs: 1=HDFC, 3=Axis, 4=Kotak
+        $overrideBankIds = [1, 3, 4];
+
+        foreach ($overrideBankIds as $bankId) {
+            // Rate & PF: phase 0 (Bank Rate Details) → office_employee instead of bank_employee
+            if ($ratePfStageId) {
+                DB::table('bank_stage_configs')->updateOrInsert(
+                    ['bank_id' => $bankId, 'stage_id' => $ratePfStageId],
+                    ['assigned_role' => null, 'phase_roles' => json_encode(['0' => 'office_employee']), 'created_at' => now(), 'updated_at' => now()]
+                );
+            }
+
+            // Sanction: phase 1 (Sanction Letter Generated) → office_employee instead of bank_employee
+            if ($sanctionStageId) {
+                DB::table('bank_stage_configs')->updateOrInsert(
+                    ['bank_id' => $bankId, 'stage_id' => $sanctionStageId],
+                    ['assigned_role' => null, 'phase_roles' => json_encode(['1' => 'office_employee']), 'created_at' => now(), 'updated_at' => now()]
+                );
+            }
         }
     }
 
@@ -646,6 +707,11 @@ class DefaultDataSeeder extends Seeder
             4 => 26,  // Kotak → HARSHIT
         ];
 
+        // Pre-load bank stage configs for resolving phase roles
+        $bankStageConfigs = DB::table('bank_stage_configs')->get()->groupBy(function ($c) {
+            return $c->bank_id.'_'.$c->stage_id;
+        })->map->first();
+
         $products = DB::table('products')->where('is_active', true)->get();
         $stages = DB::table('stages')->where('is_enabled', true)->orderBy('sequence_order')->get();
 
@@ -654,14 +720,28 @@ class DefaultDataSeeder extends Seeder
             $bankEmployeeId = $bankMap[$product->name] ?? $bankMap['_default'] ?? null;
             $officeEmployeeId = $officeEmployeeMap[$product->bank_id] ?? null;
 
+            $bankLocationIds = DB::table('bank_location')
+                ->where('bank_id', $product->bank_id)
+                ->pluck('location_id')
+                ->toArray();
+
             $order = 0;
             foreach ($stages as $stage) {
-                $productStageId = DB::table('product_stages')->updateOrInsert(
+                $assignedRole = $stage->assigned_role ?? 'task_owner';
+
+                // Resolve stage-level default user
+                $defaultUserId = null;
+                if ($assignedRole === 'bank_employee') {
+                    $defaultUserId = $bankEmployeeId;
+                } elseif ($assignedRole === 'office_employee') {
+                    $defaultUserId = $officeEmployeeId;
+                }
+
+                DB::table('product_stages')->updateOrInsert(
                     ['product_id' => $product->id, 'stage_id' => $stage->id],
-                    ['is_enabled' => true, 'allow_skip' => false, 'auto_skip' => false, 'sort_order' => $order++, 'created_at' => now(), 'updated_at' => now()]
+                    ['is_enabled' => true, 'allow_skip' => false, 'auto_skip' => false, 'sort_order' => $order++, 'default_user_id' => $defaultUserId, 'created_at' => now(), 'updated_at' => now()]
                 );
 
-                // Get the product_stage ID for user assignment
                 $ps = DB::table('product_stages')
                     ->where('product_id', $product->id)
                     ->where('stage_id', $stage->id)
@@ -671,46 +751,34 @@ class DefaultDataSeeder extends Seeder
                     continue;
                 }
 
-                // Build sub_actions_override with location-based user assignments
+                // Phase-level user assignments via product_stage_users (with phase_index)
                 $subActions = json_decode($stage->sub_actions ?? '[]', true);
 
-                // Get bank's locations for location-level assignments
-                $bankLocationIds = DB::table('bank_location')
-                    ->where('bank_id', $product->bank_id)
-                    ->pluck('location_id')
-                    ->toArray();
-
                 if (! empty($subActions) && ! empty($bankLocationIds)) {
-                    $subActionsOverride = [];
+                    // Check bank override for this stage
+                    $bsc = $bankStageConfigs[$product->bank_id.'_'.$stage->id] ?? null;
+                    $bankPhaseRoles = $bsc ? json_decode($bsc->phase_roles ?? '{}', true) : [];
+
                     foreach ($subActions as $saIdx => $sa) {
-                        $saRoles = $sa['roles'] ?? [];
-                        $locationOverrides = [];
-                        foreach ($bankLocationIds as $locId) {
-                            $users = [];
-                            $default = null;
-                            if (in_array('bank_employee', $saRoles) && $bankEmployeeId) {
-                                $users[] = $bankEmployeeId;
-                                $default = $bankEmployeeId;
-                            }
-                            if (in_array('office_employee', $saRoles)) {
-                                $users[] = $officeEmployeeId;
-                                $default = $default ?? $officeEmployeeId;
-                            }
-                            if (! empty($users)) {
-                                $locationOverrides[] = ['location_id' => $locId, 'users' => $users, 'default' => $default];
-                            }
+                        // Resolve: bank override → master default
+                        $phaseRole = $bankPhaseRoles[(string) $saIdx] ?? $sa['role'] ?? 'task_owner';
+
+                        if ($phaseRole === 'task_owner') {
+                            continue; // No user assignment for task_owner phases
                         }
-                        $subActionsOverride[$saIdx] = [
-                            'is_enabled' => true,
-                            'roles' => [],
-                            'users' => [],
-                            'default_user' => null,
-                            'location_overrides' => $locationOverrides,
-                        ];
+
+                        $userId = ($phaseRole === 'bank_employee') ? $bankEmployeeId : $officeEmployeeId;
+                        if (! $userId) {
+                            continue;
+                        }
+
+                        foreach ($bankLocationIds as $locId) {
+                            DB::table('product_stage_users')->updateOrInsert(
+                                ['product_stage_id' => $ps->id, 'user_id' => $userId, 'location_id' => $locId, 'branch_id' => null, 'phase_index' => $saIdx],
+                                ['is_default' => true, 'created_at' => now(), 'updated_at' => now()]
+                            );
+                        }
                     }
-                    DB::table('product_stages')->where('id', $ps->id)->update([
-                        'sub_actions_override' => json_encode($subActionsOverride),
-                    ]);
                 }
             }
         }
@@ -757,23 +825,18 @@ class DefaultDataSeeder extends Seeder
                     continue;
                 }
 
-                $defaultRole = json_decode($stage->default_role ?? '[]', true);
+                $assignedRole = $stage->assigned_role ?? 'task_owner';
 
-                foreach ($bankLocationIds as $locId) {
-                    // Assign bank Employee 1 for stages with bank_employee role
-                    if (in_array('bank_employee', $defaultRole) && $bankEmployeeId) {
-                        DB::table('product_stage_users')->updateOrInsert(
-                            ['product_stage_id' => $ps->id, 'user_id' => $bankEmployeeId, 'location_id' => $locId, 'branch_id' => null],
-                            ['is_default' => true, 'created_at' => now(), 'updated_at' => now()]
-                        );
-                    }
-
-                    // Assign Office Employee 1 for stages with office_employee role
-                    if (in_array('office_employee', $defaultRole)) {
-                        DB::table('product_stage_users')->updateOrInsert(
-                            ['product_stage_id' => $ps->id, 'user_id' => $officeEmployeeId, 'location_id' => $locId, 'branch_id' => null],
-                            ['is_default' => true, 'created_at' => now(), 'updated_at' => now()]
-                        );
+                // Stage-level user assignment (phase_index = null) for single-phase BE/OE stages
+                if ($assignedRole !== 'task_owner') {
+                    $userId = ($assignedRole === 'bank_employee') ? $bankEmployeeId : $officeEmployeeId;
+                    if ($userId) {
+                        foreach ($bankLocationIds as $locId) {
+                            DB::table('product_stage_users')->updateOrInsert(
+                                ['product_stage_id' => $ps->id, 'user_id' => $userId, 'location_id' => $locId, 'branch_id' => null, 'phase_index' => null],
+                                ['is_default' => true, 'created_at' => now(), 'updated_at' => now()]
+                            );
+                        }
                     }
                 }
             }
@@ -1152,7 +1215,6 @@ class DefaultDataSeeder extends Seeder
 
     private function seedSampleQuotationAndLoan(): void
     {
-        // Authenticate as super admin for service calls
         $admin = \App\Models\User::find(1);
         if (! $admin) {
             return;
@@ -1160,83 +1222,236 @@ class DefaultDataSeeder extends Seeder
         auth()->login($admin);
 
         $config = app(\App\Services\ConfigService::class)->load();
-        $loanAmount = 5000000; // 50 Lakh
-
-        // ICICI bank charges
-        $charges = \App\Models\BankCharge::where('bank_name', 'ICICI Bank')->first();
-        $pf = $charges ? round($loanAmount * $charges->pf / 100) : 30000;
-        $totalCharges = ($pf) + ($charges->admin ?? 5000) + ($charges->stamp_notary ?? 1500)
-            + ($charges->registration_fee ?? 5900) + ($charges->advocate ?? 2000) + ($charges->tc ?? 2500);
-
-        // Generate quotation via service
         $quotationService = app(\App\Services\QuotationService::class);
-        $result = $quotationService->generate([
-            'customerName' => 'Vipul Parsana',
-            'customerType' => 'proprietor',
-            'loanAmount' => $loanAmount,
-            'location_id' => 2, // Rajkot
-            'banks' => [
-                [
-                    'name' => 'ICICI Bank',
-                    'roiMin' => 9.00,
-                    'roiMax' => 9.15,
-                    'charges' => [
-                        'pf' => $charges->pf ?? 0.60,
-                        'admin' => $charges->admin ?? 5000,
-                        'stampNotary' => $charges->stamp_notary ?? 1500,
-                        'registrationFee' => $charges->registration_fee ?? 5900,
-                        'advocate' => $charges->advocate ?? 2000,
-                        'iom' => 0,
-                        'tc' => $charges->tc ?? 2500,
-                        'extra1Name' => null, 'extra1Amount' => 0,
-                        'extra2Name' => null, 'extra2Amount' => 0,
-                        'total' => $totalCharges,
+        $conversionService = app(\App\Services\LoanConversionService::class);
+
+        // Advisors who create quotations — BDH first, then BM, then loan advisors
+        // This ensures BDH and BM get early products so we can test all roles
+        $bdhIds = DB::table('role_user')
+            ->join('roles', 'roles.id', '=', 'role_user.role_id')
+            ->join('users', 'users.id', '=', 'role_user.user_id')
+            ->where('roles.slug', 'bdh')->where('users.is_active', true)
+            ->pluck('users.id')->toArray();
+        $bmIds = DB::table('role_user')
+            ->join('roles', 'roles.id', '=', 'role_user.role_id')
+            ->join('users', 'users.id', '=', 'role_user.user_id')
+            ->where('roles.slug', 'branch_manager')->where('users.is_active', true)
+            ->pluck('users.id')->toArray();
+        $laIds = DB::table('role_user')
+            ->join('roles', 'roles.id', '=', 'role_user.role_id')
+            ->join('users', 'users.id', '=', 'role_user.user_id')
+            ->where('roles.slug', 'loan_advisor')->where('users.is_active', true)
+            ->pluck('users.id')->toArray();
+
+        // Order: BDH → BM → Loan Advisors (so first products get BDH/BM creators)
+        $advisorIds = array_values(array_unique(array_merge($bdhIds, $bmIds, $laIds)));
+        if (empty($advisorIds)) {
+            $advisorIds = [$admin->id];
+        }
+
+        // Sample customers — each quotation gets a unique customer
+        $customers = [
+            ['name' => 'Vipul Parsana', 'type' => 'proprietor', 'phone' => '9510717999', 'pan' => 'AODPP1247F', 'dob' => '1990-01-15'],
+            ['name' => 'Rajesh Patel', 'type' => 'proprietor', 'phone' => '9876543210', 'pan' => 'ABCDE1234F', 'dob' => '1985-06-20'],
+            ['name' => 'Amit Shah', 'type' => 'partnership_llp', 'phone' => '9898989898', 'pan' => 'FGHIJ5678K', 'dob' => '1988-03-10'],
+            ['name' => 'Priya Mehta', 'type' => 'salaried', 'phone' => '9123456789', 'pan' => 'KLMNO9012P', 'dob' => '1992-11-05'],
+            ['name' => 'Suresh Kumar', 'type' => 'pvt_ltd', 'phone' => '9234567890', 'pan' => 'QRSTU3456V', 'dob' => '1982-09-15'],
+            ['name' => 'Meera Joshi', 'type' => 'proprietor', 'phone' => '9345678901', 'pan' => 'VWXYZ7890A', 'dob' => '1995-04-22'],
+            ['name' => 'Kiran Desai', 'type' => 'salaried', 'phone' => '9456789012', 'pan' => 'BCDEF1234G', 'dob' => '1991-07-30'],
+            ['name' => 'Nilesh Bhatt', 'type' => 'partnership_llp', 'phone' => '9567890123', 'pan' => 'HIJKL5678M', 'dob' => '1987-12-18'],
+            ['name' => 'Hetal Trivedi', 'type' => 'proprietor', 'phone' => '9678901234', 'pan' => 'NOPQR9012S', 'dob' => '1993-02-14'],
+            ['name' => 'Darshan Raval', 'type' => 'pvt_ltd', 'phone' => '9789012345', 'pan' => 'TUVWX3456Y', 'dob' => '1986-08-08'],
+            ['name' => 'Pooja Vaghela', 'type' => 'salaried', 'phone' => '9890123456', 'pan' => 'ZABCD7890E', 'dob' => '1994-05-25'],
+        ];
+
+        // Loan amounts vary by product type
+        $productAmounts = [
+            'Home Loan' => [5000000, 7500000, 6000000, 3500000],
+            'LAP' => [10000000, 8000000, 12000000],
+            'ASHA' => [2500000, 3000000],
+            'OD' => [5000000],
+            'PRATHAM' => [4000000],
+        ];
+
+        // ROI ranges by bank
+        $bankRoi = [
+            'HDFC Bank' => ['min' => 8.75, 'max' => 9.00],
+            'ICICI Bank' => ['min' => 9.00, 'max' => 9.15],
+            'Axis Bank' => ['min' => 9.25, 'max' => 9.50],
+            'Kotak Mahindra Bank' => ['min' => 8.50, 'max' => 8.75],
+        ];
+
+        // Iterate all active products across all banks
+        $products = DB::table('products')
+            ->join('banks', 'banks.id', '=', 'products.bank_id')
+            ->where('products.is_active', true)
+            ->where('banks.is_active', true)
+            ->select('products.id as product_id', 'products.name as product_name', 'banks.id as bank_id', 'banks.name as bank_name')
+            ->orderBy('banks.name')
+            ->orderBy('products.name')
+            ->get();
+
+        $custIdx = 0;
+
+        foreach ($products as $product) {
+            $cust = $customers[$custIdx % count($customers)];
+            $amounts = $productAmounts[$product->product_name] ?? [5000000];
+            $amount = $amounts[$custIdx % count($amounts)];
+            $roi = $bankRoi[$product->bank_name] ?? ['min' => 9.00, 'max' => 9.25];
+
+            // Cycle through advisors — each quotation created by a different user
+            $creatorId = $advisorIds[$custIdx % count($advisorIds)];
+            $creator = \App\Models\User::find($creatorId);
+            if ($creator) {
+                auth()->login($creator);
+            }
+
+            $custIdx++;
+
+            $charges = \App\Models\BankCharge::where('bank_name', $product->bank_name)->first();
+            $pf = $charges ? round($amount * $charges->pf / 100) : 0;
+            $totalCharges = $pf + ($charges->admin ?? 0) + ($charges->stamp_notary ?? 0)
+                + ($charges->registration_fee ?? 0) + ($charges->advocate ?? 0) + ($charges->tc ?? 0);
+
+            $avgRoi = ($roi['min'] + $roi['max']) / 2;
+
+            $typeDocs = collect($config['documents_en'][$cust['type']] ?? $config['documents_en']['proprietor'] ?? [])
+                ->map(fn ($d, $i) => [
+                    'en' => $d,
+                    'gu' => ($config['documents_gu'][$cust['type']] ?? $config['documents_gu']['proprietor'] ?? [])[$i] ?? $d,
+                ])->toArray();
+
+            $result = $quotationService->generate([
+                'customerName' => $cust['name'],
+                'customerType' => $cust['type'],
+                'loanAmount' => $amount,
+                'location_id' => 2,
+                'banks' => [
+                    [
+                        'name' => $product->bank_name,
+                        'roiMin' => $roi['min'],
+                        'roiMax' => $roi['max'],
+                        'charges' => [
+                            'pf' => $charges->pf ?? 0,
+                            'admin' => $charges->admin ?? 0,
+                            'stampNotary' => $charges->stamp_notary ?? 0,
+                            'registrationFee' => $charges->registration_fee ?? 0,
+                            'advocate' => $charges->advocate ?? 0,
+                            'iom' => 0,
+                            'tc' => $charges->tc ?? 0,
+                            'extra1Name' => null, 'extra1Amount' => 0,
+                            'extra2Name' => null, 'extra2Amount' => 0,
+                            'total' => $totalCharges,
+                        ],
+                        'emiByTenure' => collect($config['tenures'] ?? [5, 10, 15, 20])->mapWithKeys(function ($t) use ($amount, $avgRoi) {
+                            $r = $avgRoi / 12 / 100;
+                            $n = $t * 12;
+                            $emi = ($r > 0) ? (int) ceil($amount * $r * pow(1 + $r, $n) / (pow(1 + $r, $n) - 1)) : (int) ceil($amount / $n);
+
+                            return [$t => ['emi' => $emi, 'totalInterest' => ($emi * $n) - $amount, 'totalPayment' => $emi * $n]];
+                        })->toArray(),
                     ],
-                    'emiByTenure' => collect($config['tenures'] ?? [5, 10, 15, 20])->mapWithKeys(function ($t) use ($loanAmount) {
-                        $r = 9.075 / 12 / 100;
-                        $n = $t * 12;
-                        $emi = ($r > 0) ? (int) ceil($loanAmount * $r * pow(1 + $r, $n) / (pow(1 + $r, $n) - 1)) : (int) ceil($loanAmount / $n);
-
-                        return [$t => ['emi' => $emi, 'totalInterest' => ($emi * $n) - $loanAmount, 'totalPayment' => $emi * $n]];
-                    })->toArray(),
                 ],
-            ],
-            'documents' => collect($config['documents_en']['proprietor'] ?? [])->map(fn ($d, $i) => [
-                'en' => $d,
-                'gu' => ($config['documents_gu']['proprietor'] ?? [])[$i] ?? $d,
-            ])->toArray(),
-            'selectedTenures' => $config['tenures'] ?? [5, 10, 15, 20],
-            'preparedByName' => $admin->name,
-            'preparedByMobile' => $admin->phone ?? '',
-        ], $admin->id);
+                'documents' => $typeDocs,
+                'selectedTenures' => $config['tenures'] ?? [5, 10, 15, 20],
+                'preparedByName' => $creator->name ?? $admin->name,
+                'preparedByMobile' => $creator->phone ?? $admin->phone ?? '',
+            ], $creatorId);
 
-        if (! empty($result['error']) || empty($result['quotation'])) {
-            $this->command?->warn('  ⚠ Sample quotation creation failed: '.($result['error'] ?? 'unknown'));
+            if (! empty($result['error']) || empty($result['quotation'])) {
+                $this->command?->warn("  ⚠ Quotation failed for {$product->bank_name}/{$product->product_name}: ".($result['error'] ?? 'unknown'));
 
+                continue;
+            }
+
+            $quotation = $result['quotation'];
+            $amountLabel = '₹'.number_format($amount / 100000).'L';
+            $creatorName = $creator->name ?? 'Admin';
+            $this->command?->line("  + Quotation #{$quotation->id}: {$cust['name']} / {$product->bank_name} {$product->product_name} / {$amountLabel} (by {$creatorName})");
+
+            // Convert to loan — advisor is the same user who created the quotation
+            $loan = $conversionService->convertFromQuotation($quotation, 0, [
+                'branch_id' => 1,
+                'product_id' => $product->product_id,
+                'customer_phone' => $cust['phone'],
+                'customer_email' => null,
+                'date_of_birth' => $cust['dob'],
+                'pan_number' => $cust['pan'],
+                'assigned_advisor' => $creatorId,
+                'notes' => "Sample loan for {$product->bank_name} {$product->product_name}",
+            ]);
+
+            $this->command?->line("  + Loan #{$loan->id} ({$loan->loan_number}): {$product->bank_name} {$product->product_name}");
+        }
+
+        // Advance some loans through stages to demonstrate auto-assignment
+        $this->advanceSampleLoans();
+
+        auth()->logout();
+    }
+
+    /**
+     * Advance some sample loans through workflow stages to verify auto-assignment.
+     * Uses the workflow config snapshot for role resolution.
+     */
+    private function advanceSampleLoans(): void
+    {
+        $stageService = app(\App\Services\LoanStageService::class);
+        $docService = app(\App\Services\LoanDocumentService::class);
+
+        // Get loans by bank for varied advancement
+        $loans = \App\Models\LoanDetail::with(['stageAssignments', 'bank', 'product'])
+            ->where('status', 'active')
+            ->orderBy('id')
+            ->get();
+
+        if ($loans->isEmpty()) {
             return;
         }
 
-        $quotation = $result['quotation'];
-        $this->command?->line("  + Quotation #{$quotation->id}: Vipul Parsana / ICICI Bank / ₹50L");
+        $this->command?->line('');
+        $this->command?->line('  Advancing sample loans through stages...');
 
-        // Convert to loan
-        $conversionService = app(\App\Services\LoanConversionService::class);
-        $iciciHomeLoanProductId = DB::table('products')->where('bank_id', 2)->where('name', 'Home Loan')->value('id');
-        $advisorId = DB::table('users')->where('email', 'jaydeep@shfworld.com')->value('id') ?? $admin->id;
+        foreach ($loans as $idx => $loan) {
+            $bankName = $loan->bank?->name ?? 'Unknown';
+            $productName = $loan->product?->name ?? '';
 
-        $loan = $conversionService->convertFromQuotation($quotation, 0, [
-            'branch_id' => 1, // Rajkot Main Office
-            'product_id' => $iciciHomeLoanProductId,
-            'customer_phone' => '9510717999',
-            'customer_email' => null,
-            'date_of_birth' => '1990-01-15',
-            'pan_number' => 'AODPP1247F',
-            'assigned_advisor' => $advisorId,
-            'notes' => 'Sample loan created by seeder',
-        ]);
+            // Login as the loan's advisor for proper auth context
+            $advisor = \App\Models\User::find($loan->assigned_advisor ?? $loan->created_by);
+            if ($advisor) {
+                auth()->login($advisor);
+            }
 
-        $this->command?->line("  + Loan #{$loan->id} ({$loan->loan_number}): converted from quotation, ICICI Home Loan");
+            // All loans: complete document_collection → advance to parallel_processing
+            // Mark all docs as received first
+            $loan->documents()->update(['status' => 'received', 'received_date' => now(), 'received_by' => auth()->id()]);
+            $stageService->updateStageStatus($loan, 'document_collection', 'completed', auth()->id());
+            $loan->refresh();
 
-        auth()->logout();
+            // After doc_collection completes, parallel_processing should auto-start
+            // and app_number should be auto-assigned to task_owner
+            $appAssignment = $loan->stageAssignments()->where('stage_key', 'app_number')->first();
+            $appAssignee = $appAssignment?->assigned_to ? \App\Models\User::find($appAssignment->assigned_to)?->name : 'none';
+
+            // Every 2nd loan: advance further through app_number
+            if ($idx % 2 === 0) {
+                // Complete app_number with application number data
+                $appAssignment?->mergeNotesData([
+                    'application_number' => 'APP-'.strtoupper(substr($bankName, 0, 3)).'-'.str_pad($loan->id, 4, '0', STR_PAD_LEFT),
+                    'docket_days_offset' => 21,
+                ]);
+                $loan->update(['application_number' => 'APP-'.strtoupper(substr($bankName, 0, 3)).'-'.str_pad($loan->id, 4, '0', STR_PAD_LEFT)]);
+                $stageService->updateStageStatus($loan, 'app_number', 'completed', auth()->id());
+                $loan->refresh();
+
+                // After app_number completes, bsm_osv should auto-start and auto-assign
+                $bsmAssignment = $loan->stageAssignments()->where('stage_key', 'bsm_osv')->first();
+                $bsmAssignee = $bsmAssignment?->assigned_to ? \App\Models\User::find($bsmAssignment->assigned_to)?->name : 'none';
+
+                $this->command?->line("  → {$loan->loan_number} ({$bankName} {$productName}): doc_collection ✓ → app_number ✓ → bsm_osv assigned to {$bsmAssignee}");
+            } else {
+                $this->command?->line("  → {$loan->loan_number} ({$bankName} {$productName}): doc_collection ✓ → app_number assigned to {$appAssignee}");
+            }
+        }
     }
 }

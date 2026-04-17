@@ -59,6 +59,13 @@ Patterns and corrections captured during development. Review at session start.
 - **2026-03-12**: Settings forms with tag-based UI (banks, tenures, documents) must auto-add pending input values on form submit. Users expect typing a value and clicking "Save" to work — they shouldn't need to click "+ Add" first.
 - **2026-03-12**: Settings documents form: all doc type tabs must render their inputs on page load, not just the active tab. Otherwise, only the active tab's data is included in the form submission and other types get silently lost.
 
+## Workflow Config
+- **2026-04-16**: Stage roles simplified to 3 categories: `task_owner`, `bank_employee`, `office_employee`. BM/BDH/LA are all "task_owner" (resolved from loan's assigned_advisor/created_by at runtime).
+- **2026-04-16**: Workflow config is frozen at loan creation time (`loan_details.workflow_config` JSON). All phase transitions read from snapshot. Config changes only affect new loans.
+- **2026-04-16**: Bank-wise overrides stored in `bank_stage_configs` table. Only rows where bank differs from master default. UI shows all banks always.
+- **2026-04-16**: All multi-phase stages now have `sub_actions` in DB with `role` field per phase: legal_verification (3), technical_valuation (2), rate_pf (2), sanction (3), docket (2), esign (4).
+- **2026-04-16**: `product_stage_users.phase_index` allows per-phase user assignment. null = stage-level, integer = phase-specific.
+
 ## Documentation Sync
 - **2026-04-07**: ALWAYS update reference docs (database-schema.md, routes-reference.md, services-reference.md, models.md, permissions.md) AS PART of each phase implementation — not deferred. Mark "Update reference docs" complete only after actually updating them.
 

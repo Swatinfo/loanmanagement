@@ -21,7 +21,8 @@
                 $locStates = \App\Models\Location::with('children')->states()->active()->orderBy('name')->get();
                 $bankLocIds = $product->bank->locations->pluck('id')->toArray();
                 $locationConfigRoles = ['bank_employee', 'office_employee'];
-                $roleLabels = \App\Models\Role::pluck('name', 'slug')->toArray();
+                $roleLabels = ['task_owner' => 'Task Owner', 'bank_employee' => 'Bank Employee', 'office_employee' => 'Office Employee'];
+                $roleBadgeClass = ['task_owner' => 'shf-badge-blue', 'bank_employee' => 'shf-badge-orange', 'office_employee' => 'shf-badge-purple'];
             @endphp
 
             <form method="POST" action="{{ route('loan-settings.product-stages.save', $product) }}" id="productStagesForm">
@@ -40,11 +41,11 @@
                             @php
                                 $ps = $productStages[$stage->id] ?? null;
                                 $si = $stageIdx;
-                                $eligibleRoles = is_array($stage->default_role) ? $stage->default_role : [];
+                                $stageResolved = $resolvedRoles[$stage->id] ?? ['role' => 'task_owner', 'phases' => []];
+                                $stageRole = $stageResolved['role'];
                                 $hasSubActions = !empty($stage->sub_actions) && is_array($stage->sub_actions);
                                 $isParallelHeader = $stage->is_parallel && !$stage->parent_stage_key;
-                                // Parent stages with sub-actions or parallel header: no toggle, no user assignment
-                                $isHeaderOnly = $hasSubActions || $isParallelHeader;
+                                $isHeaderOnly = $isParallelHeader;
                                 $branchAssignments = $ps ? $ps->branchUsers : collect();
                             @endphp
 
@@ -73,10 +74,8 @@
                                                    >{{ count($stage->sub_actions) }}
                                                     sub-stages</span>
                                             @endif
-                                            @if (!$isHeaderOnly && !empty($eligibleRoles))
-                                                <small class="text-muted d-none d-sm-inline shf-text-xs">
-                                                    ({{ collect($eligibleRoles)->map(fn($r) => $roleLabels[$r] ?? $r)->implode(', ') }})
-                                                </small>
+                                            @if (!$isHeaderOnly && !$hasSubActions)
+                                                <span class="shf-badge {{ $roleBadgeClass[$stageRole] ?? 'shf-badge-gray' }} shf-text-2xs">{{ $roleLabels[$stageRole] ?? $stageRole }}</span>
                                             @endif
                                         </div>
                                         @if (!$isHeaderOnly)
@@ -244,22 +243,16 @@
                                 </div>
 
                                 {{-- Location user assignment (only for non-header stages with location-configurable roles) --}}
-                                @if (!$isHeaderOnly)
+                                @if (!$isHeaderOnly && !$hasSubActions)
                                     @php
-                                        $stageHasLocationRoles = !empty(
-                                            array_intersect($eligibleRoles, $locationConfigRoles)
-                                        );
+                                        $stageHasLocationRoles = in_array($stageRole, $locationConfigRoles);
                                     @endphp
                                     @if ($stageHasLocationRoles)
                                         @php
-                                            $locConfigRolesForStage = array_intersect(
-                                                $eligibleRoles,
-                                                $locationConfigRoles,
-                                            );
                                             $allStageUsers = $allActiveUsers->filter(
-                                                fn($u) => $u->roles->whereIn('slug', $locConfigRolesForStage)->isNotEmpty(),
+                                                fn($u) => $u->roles->where('slug', $stageRole)->isNotEmpty(),
                                             );
-                                            if ($product->bank_id) {
+                                            if (in_array($stageRole, ['bank_employee', 'office_employee']) && $product->bank_id) {
                                                 $allStageUsers = $allStageUsers->filter(
                                                     fn($u) => $u->employerBanks->contains('id', $product->bank_id),
                                                 );
@@ -267,6 +260,7 @@
                                             $savedOverrides = $branchAssignments
                                                 ->whereNull('branch_id')
                                                 ->whereNotNull('location_id')
+                                                ->whereNull('phase_index')
                                                 ->groupBy('location_id');
                                             $overrideIdx = 0;
                                         @endphp
@@ -355,143 +349,95 @@
                                 @endif
                             </div>
 
-                            {{-- Sub-actions (each with its own enable/disable + user assignment) --}}
+                            {{-- Phases (each with resolved role + user assignment for BE/OE) --}}
                             @if ($hasSubActions)
-                                @php $psSubActions = ($ps?->sub_actions_override && is_array($ps->sub_actions_override)) ? $ps->sub_actions_override : []; @endphp
                                 @foreach ($stage->sub_actions as $saIdx => $subAction)
                                     @php
-                                        $saRoles = $subAction['roles'] ?? [];
-                                        $saLocRoles = array_intersect($saRoles, $locationConfigRoles);
-                                        $saAllUsers = $saLocRoles
-                                            ? $allActiveUsers->filter(fn($u) => $u->roles->whereIn('slug', $saLocRoles)->isNotEmpty())
-                                            : collect();
-                                        if ($product->bank_id && $saAllUsers->isNotEmpty()) {
-                                            $saAllUsers = $saAllUsers->filter(
-                                                fn($u) => $u->employerBanks->contains('id', $product->bank_id),
-                                            );
+                                        $phaseRole = $stageResolved['phases'][$saIdx] ?? $subAction['role'] ?? 'task_owner';
+                                        $phaseNeedsUsers = in_array($phaseRole, $locationConfigRoles);
+                                        $saAllUsers = collect();
+                                        if ($phaseNeedsUsers) {
+                                            $saAllUsers = $allActiveUsers->filter(fn($u) => $u->roles->where('slug', $phaseRole)->isNotEmpty());
+                                            if (in_array($phaseRole, ['bank_employee', 'office_employee']) && $product->bank_id) {
+                                                $saAllUsers = $saAllUsers->filter(fn($u) => $u->employerBanks->contains('id', $product->bank_id));
+                                            }
                                         }
-                                        $saIsEnabled = $psSubActions[$saIdx]['is_enabled'] ?? true;
+                                        // Saved phase-level user assignments
+                                        $phaseSavedUsers = $branchAssignments->where('phase_index', $saIdx);
+                                        // Also check stage-level assignments as fallback
+                                        $stageLevelUsers = $branchAssignments->whereNull('phase_index');
                                     @endphp
                                     <div class="shf-substage-block py-1 ps-5 border-bottom"
-                                        data-stage-idx="{{ $si }}" data-sa-idx="{{ $saIdx }}"
                                         style="background:#f5f0eb;font-size:0.78rem;">
-                                        <div class="d-flex align-items-center">
-                                            {{-- Sub-action name --}}
-                                            <div style="flex:1 1 0;min-width:0;">
-                                                <div class="d-flex align-items-center gap-2">
-                                                    <span class="text-muted shf-text-2xs">⤷</span>
-                                                    <span>{{ $subAction['name'] ?? $subAction['key'] }}</span>
-                                                    <span
-                                                        class="shf-badge shf-badge-{{ ($subAction['type'] ?? '') === 'action_button' ? 'orange' : 'blue' }} shf-text-2xs"
-                                                       >
-                                                        {{ ($subAction['type'] ?? '') === 'action_button' ? 'Action' : 'Form' }}
-                                                    </span>
-                                                    <small class="text-muted ms-1 shf-text-xs">
-                                                        ({{ collect($saRoles)->map(fn($r) => $roleLabels[$r] ?? $r)->implode(', ') }})
-                                                    </small>
-                                                </div>
-                                            </div>
-
-                                            {{-- Enable/disable toggle (right side, aligned with stage toggles) --}}
-                                            <div class="text-center" style="width:70px;flex-shrink:0;">
-                                                <input type="hidden"
-                                                    name="stages[{{ $si }}][sub_actions_override][{{ $saIdx }}][is_enabled]"
-                                                    value="0">
-                                                <input type="checkbox"
-                                                    name="stages[{{ $si }}][sub_actions_override][{{ $saIdx }}][is_enabled]"
-                                                    value="1" class="shf-toggle shf-substage-toggle"
-                                                    {{ $saIsEnabled ? 'checked' : '' }}>
-                                            </div>
+                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                            <span class="shf-phase-num shf-role-bg-task-owner" style="width:20px;height:20px;font-size:0.6rem;">{{ $saIdx + 1 }}</span>
+                                            <span>{{ $subAction['name'] ?? $subAction['key'] }}</span>
+                                            <span class="shf-badge {{ $roleBadgeClass[$phaseRole] ?? 'shf-badge-gray' }} shf-text-2xs">{{ $roleLabels[$phaseRole] ?? $phaseRole }}</span>
                                         </div>
 
-                                        {{-- Location user assignment for sub-action --}}
-                                        @if (!empty($saLocRoles))
-                                            @php
-                                                $saLocOverrides = $psSubActions[$saIdx]['location_overrides'] ?? [];
-                                                $saOverrideIdx = 0;
-                                            @endphp
+                                        @if ($phaseNeedsUsers)
+                                            @php $saOverrideIdx = 0; @endphp
                                             <div class="ps-4 mt-1 pb-1">
                                                 @foreach ($locStates as $saLocState)
                                                     @php
                                                         $saStateInBank = in_array($saLocState->id, $bankLocIds);
-                                                        $saBankCities = $saLocState->children
-                                                            ->where('is_active', true)
-                                                            ->filter(fn($c) => in_array($c->id, $bankLocIds));
+                                                        $saBankCities = $saLocState->children->where('is_active', true)->filter(fn($c) => in_array($c->id, $bankLocIds));
                                                         $saAllBankLocs = collect();
-                                                        if ($saStateInBank) {
-                                                            $saAllBankLocs->push($saLocState);
-                                                        }
+                                                        if ($saStateInBank) { $saAllBankLocs->push($saLocState); }
                                                         $saAllBankLocs = $saAllBankLocs->merge($saBankCities);
                                                     @endphp
                                                     @foreach ($saAllBankLocs as $saBankLoc)
                                                         @php
                                                             $sblId = $saBankLoc->id;
-                                                            $saSavedOverride = collect($saLocOverrides)->firstWhere(
-                                                                'location_id',
-                                                                $sblId,
-                                                            );
-                                                            $saSavedUserIds = $saSavedOverride['users'] ?? [];
-                                                            $saSavedDefault = $saSavedOverride['default'] ?? null;
-                                                            $saLocUsers = $saAllUsers->filter(function ($u) use (
-                                                                $sblId,
-                                                                $saBankLoc,
-                                                            ) {
-                                                                if ($u->locations->contains('id', $sblId)) {
-                                                                    return true;
-                                                                }
-                                                                if (
-                                                                    $saBankLoc->parent_id &&
-                                                                    $u->locations->contains('id', $saBankLoc->parent_id)
-                                                                ) {
-                                                                    return true;
-                                                                }
-                                                                return false;
+                                                            // Check phase-level saved users, then stage-level
+                                                            $savedForLoc = $phaseSavedUsers->where('location_id', $sblId);
+                                                            if ($savedForLoc->isEmpty()) {
+                                                                $savedForLoc = $stageLevelUsers->where('location_id', $sblId);
+                                                            }
+                                                            $saSavedUserIds = $savedForLoc->pluck('user_id')->toArray();
+                                                            $saSavedDefault = $savedForLoc->where('is_default', true)->first()?->user_id;
+                                                            $saLocUsers = $saAllUsers->filter(function ($u) use ($sblId, $saBankLoc) {
+                                                                return $u->locations->contains('id', $sblId) || ($saBankLoc->parent_id && $u->locations->contains('id', $saBankLoc->parent_id));
                                                             });
                                                         @endphp
                                                         <div class="d-flex align-items-center gap-2 mb-1 p-2 border rounded shf-loc-row"
                                                             style="background:{{ $saLocUsers->isEmpty() ? '#fff5f5' : '#f0f9ff' }};font-size:0.72rem;">
                                                             <input type="hidden"
-                                                                name="stages[{{ $si }}][sub_actions_override][{{ $saIdx }}][location_overrides][{{ $saOverrideIdx }}][location_id]"
+                                                                name="stages[{{ $si }}][phase_location_overrides][{{ $saIdx }}][{{ $saOverrideIdx }}][location_id]"
                                                                 value="{{ $sblId }}">
                                                             <div style="min-width:120px;flex-shrink:0;">
-                                                                <small
-                                                                    class="fw-semibold">{{ $saBankLoc->parent?->name ? $saBankLoc->parent->name . '/' : '' }}{{ $saBankLoc->name }}</small>
-                                                                <span
-                                                                    class="shf-badge shf-badge-{{ $saBankLoc->isState() ? 'blue' : 'green' }} shf-text-2xs"
-                                                                   >{{ $saBankLoc->type }}</span>
+                                                                <small class="fw-semibold">{{ $saBankLoc->parent?->name ? $saBankLoc->parent->name . '/' : '' }}{{ $saBankLoc->name }}</small>
+                                                                <span class="shf-badge shf-badge-{{ $saBankLoc->isState() ? 'blue' : 'green' }} shf-text-2xs">{{ $saBankLoc->type }}</span>
                                                             </div>
                                                             <div class="d-flex flex-wrap gap-1 flex-grow-1">
                                                                 @if ($saLocUsers->isNotEmpty())
                                                                     @foreach ($saLocUsers as $sau)
                                                                         @php $isChecked = in_array($sau->id, $saSavedUserIds); @endphp
-                                                                        <label
-                                                                            class="d-inline-flex align-items-center gap-1 border rounded px-1 py-1 {{ $isChecked ? 'border-primary' : '' }} shf-text-xs"
+                                                                        <label class="d-inline-flex align-items-center gap-1 border rounded px-1 py-1 {{ $isChecked ? 'border-primary' : '' }} shf-text-xs"
                                                                             style="cursor:pointer;background:{{ $isChecked ? '#eef2ff' : '#fff' }};">
                                                                             <input type="checkbox"
-                                                                                name="stages[{{ $si }}][sub_actions_override][{{ $saIdx }}][location_overrides][{{ $saOverrideIdx }}][users][]"
-                                                                                value="{{ $sau->id }}"
-                                                                                class="shf-checkbox shf-icon-xs"
-                                                                               
+                                                                                name="stages[{{ $si }}][phase_location_overrides][{{ $saIdx }}][{{ $saOverrideIdx }}][users][]"
+                                                                                value="{{ $sau->id }}" class="shf-checkbox shf-icon-xs"
                                                                                 {{ $isChecked ? 'checked' : '' }}>
-                                                                            {{ $sau->name }} <small
-                                                                                class="text-muted">({{ $roleLabels[$sau->workflow_role_label] ?? $sau->workflow_role_label }})</small>
+                                                                            {{ $sau->name }}
                                                                             <input type="radio"
-                                                                                name="stages[{{ $si }}][sub_actions_override][{{ $saIdx }}][location_overrides][{{ $saOverrideIdx }}][default]"
-                                                                                value="{{ $sau->id }}"
-                                                                                style="width:10px;height:10px;accent-color:#f15a29;"
+                                                                                name="stages[{{ $si }}][phase_location_overrides][{{ $saIdx }}][{{ $saOverrideIdx }}][default]"
+                                                                                value="{{ $sau->id }}" style="width:10px;height:10px;accent-color:#f15a29;"
                                                                                 {{ $saSavedDefault == $sau->id ? 'checked' : '' }}>
                                                                         </label>
                                                                     @endforeach
                                                                 @else
-                                                                    <small class="text-danger">No eligible employees for
-                                                                        this location. Assign users in User
-                                                                        Management.</small>
+                                                                    <small class="text-danger">No eligible employees for this location.</small>
                                                                 @endif
                                                             </div>
                                                         </div>
                                                         @php $saOverrideIdx++; @endphp
                                                     @endforeach
                                                 @endforeach
+                                            </div>
+                                        @else
+                                            <div class="ps-4 pb-1">
+                                                <small class="text-muted shf-text-xs">(Auto-assigned to task owner)</small>
                                             </div>
                                         @endif
                                     </div>
@@ -501,7 +447,7 @@
                     </div>
                 </div>
 
-                <div class="d-flex justify-content-end gap-3 mt-3 mb-4">
+                <div class="shf-form-actions d-flex justify-content-end gap-3 mt-3 mb-4">
                     <a href="{{ route('loan-settings.index') }}#products" class="btn-accent-outline"><svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg> Cancel</a>
                     <button type="submit" class="btn-accent">
                         <svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">

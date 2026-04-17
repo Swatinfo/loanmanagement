@@ -6,7 +6,40 @@ Current and completed tasks. Updated as work progresses.
 
 ## In Progress
 
-### Turnaround Time Report + Loan Duration (2026-04-15)
+### Bank-Wise Dynamic Stage Role Configuration (2026-04-16)
+
+**Context:** Stage roles (task_owner/bank_employee/office_employee) need to be configurable per bank. E.g., ICICI docket phase 2 = bank_employee, Axis = office_employee. Config snapshot frozen at loan creation so changes don't affect existing loans.
+
+**Phase 1: Database**
+- [x] **1.1** Migration: `assigned_role` on stages + populate sub_actions for all multi-phase stages
+- [x] **1.2** Migration: Create `bank_stage_configs` table
+- [x] **1.3** Migration: `workflow_config` on loan_details + `phase_index` on product_stage_users + backfill
+
+**Phase 2: Models**
+- [x] **2.1** BankStageConfig model + update Stage, LoanDetail, ProductStageUser, Bank
+
+**Phase 3: Service Layer**
+- [x] **3.1** LoanStageService: resolveStageRole, resolvePhaseRole, buildWorkflowSnapshot, getLoanStageRole, getLoanPhaseRole, findUserForRole, update findBestAssignee
+- [x] **3.2** LoanConversionService: snapshot on loan creation
+
+**Phase 4: Controllers**
+- [x] **4.1** LoanStageController: phase action methods use snapshot + findUserForRole
+- [x] **4.2** LoanSettingsController: saveMasterStages with bank configs + propagation
+- [x] **4.3** WorkflowConfigController: bank config loading + phase-level saves
+
+**Phase 5: Views**
+- [x] **5.1** Stage Master tab: dropdowns + all banks shown with config
+- [x] **5.2** Product stages page: read-only roles, phase-level user assignment
+- [x] **5.3** Loan stages page: workflow plan display with user names from snapshot
+
+**Phase 6: User + Testing**
+- [x] **6.1** UserController: replaceProductStageUsers + eligibleUsers phase-aware
+- [x] **6.2** Test: existing loans + new loans + config change isolation
+- [x] **6.3** Update reference docs
+
+---
+
+### Turnaround Time Report + Loan Duration (2026-04-15) ✓
 
 - [x] **1. Loan listing** — `total_loan_time` already exists and shows on listing page
 - [x] **2. Report controller** — `ReportController@turnaround` + `turnaroundData` with filters
@@ -14,19 +47,9 @@ Current and completed tasks. Updated as work progresses.
 - [x] **4. Route + permission** — `GET /reports/turnaround`, `view_reports` permission seeded
 - [x] **5. Update docs** — routes, permissions, views, loans
 
-### SHF Operational Manual v3 → v4 Update (2026-04-15)
+### SHF Operational Manual v3 → v4 Update (2026-04-15) ✓
 
-**Context:** DVR and quotation-to-loan-sanction are now in CRM. SHF expanding to new cities.
-
-- [x] **1. DVR Updates** — Manual DVR template → CRM DVR module reference with fields
-- [x] **2. Loan Journey Updates** — Added Quotation to inquiry stage, CRM flow description in Gujarati
-- [x] **3. Branch Expansion** — "Rajkot / Jamnagar" → dynamic "[Branch Name]" throughout
-- [x] **4. CRM Portal Guide** — Updated DVR, Quotation, Loans, Tasks module descriptions
-- [x] **5. Gujarati Grammar** — 42 fixes: English→Gujarati replacements, grammar corrections, typo fixes
-- [x] **6. Table Page-Breaks** — cantSplit + keepLines + keepNext on all 190 tables
-- [x] **7. New Sections** — Section 22: Branch Onboarding (14-item checklist), Section 23: Multi-City Expansion
-- [x] **8. Quick Reference Card** — Dynamic branch contacts, CRM DVR references
-- [x] **9. Version Control** — Updated to v4.0 with changelog
+- [x] All 9 tasks completed
 
 ---
 

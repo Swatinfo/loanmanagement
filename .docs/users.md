@@ -1,113 +1,112 @@
 # Users
 
-## Overview
+User management, role assignment, branch/bank/location scoping, impersonation.
 
-User management with role assignments, branch associations, bank employee assignments, and impersonation.
+## Surfaces
 
-## Model: `User`
+- `/users` — list (DataTable, AJAX)
+- `/users/create`, `/users/{id}/edit` — create/edit with permissions panel
+- `/users/check-email` — AJAX uniqueness check
+- `/users/product-stage-holders` — AJAX: current default users per product+stage (for reassignment UI)
+- `/users/{id}/toggle-active` — POST flip `is_active`
+- `/impersonate/take/{id}`, `/impersonate/leave`, `/api/impersonate/users` — impersonation
 
-### Key Fields
-- name, email, password, phone, employee_id
-- is_active (boolean, default true)
-- default_branch_id (FK branches)
-- task_bank_id (FK banks — for bank employees)
-- created_by (FK users — who created this user)
+Routes + permissions: `.claude/routes-reference.md`. Model: `.claude/database-schema.md`.
 
-### Relationships
-- `roles` — BelongsToMany(Role) via role_user
-- `branches` — BelongsToMany(Branch) via user_branches (with is_default_office_employee pivot)
-- `employerBanks` — BelongsToMany(Bank) via bank_employees (with is_default, location_id pivots)
-- `locations` — BelongsToMany(Location) via location_user
-- `userPermissions` — HasMany(UserPermission)
+## Create / edit flow (`UserController@store|update`)
 
-## CRUD
+Validation (inline):
 
-### Controller: `UserController`
+- `name` — required
+- `email` — required, email, unique (ignore self on update)
+- `password` — required on create, confirmed, min:8; optional on update
+- `phone` — nullable
+- `is_active` — boolean
+- `roles[]` — required array, min:1 (by slug)
+- `default_branch_id` — nullable exists
+- `assigned_banks[]` — nullable exists
 
-**Create/Store:**
-- Validates: name, email (unique), password (min 8, confirmed), phone, roles (required), branch
-- Syncs: roles, branches (with OE defaults), bank assignments, product stages, locations
-- Handles permission overrides
-- Logs activity, clears permission cache
+Operations (on save):
 
-**Edit/Update:**
-- Same validation (password optional on update)
-- Prevents editing super_admin unless user is super_admin
-- Syncs all associations
+1. Create/update `User` record (password cast auto-hashes).
+2. `roles()->sync()` via slug → ID mapping.
+3. `syncUserBranches()` — multi-branch assignment + per-branch OE default flags (clears prior OE defaults).
+4. `syncBankAssignments()` — `bank_employees` pivot for `bank_employee` / `office_employee` roles, with city-level defaults.
+5. `replaceProductStageUsers()` — bulk-swaps old user with new in `product_stage_users` (per product).
+6. Syncs `location_user` pivot.
+7. `syncUserPermissions()` — writes `user_permissions` grant/deny rows.
+8. Logs activity.
+9. Clears `PermissionService` user cache.
 
-**Destroy:**
-- Prevents self-deletion
-- Prevents deleting super_admin unless user is super_admin
-- Prevents deleting users with loans
+## Delete
 
-**Toggle Active:**
-- Prevents self-deactivation
-- Prevents changing super_admin unless user is super_admin
-- Logged to activity log
+`UserController@destroy`:
+- Cannot self-delete
+- Cannot delete `super_admin` unless you are `super_admin`
+- Cannot delete a user that has loans (blocked, returns error JSON)
+- Soft-deletes the user (only if `SoftDeletes` trait is present — `User` does **not** currently use soft deletes; check before relying)
 
-### DataTable
-`UserController@userData` — server-side with filters: role, status, search.
+## Toggle active
 
-## Bank Employee Assignments
+`UserController@toggleActive`:
+- Cannot toggle self
+- Cannot toggle `super_admin` (unless you are)
+- Flips `is_active`, logs activity (`user_activated` / `user_deactivated`)
+- Because `EnsureUserIsActive` is globally active, deactivated users lose access on their next request.
 
-Bank employees and office employees can be assigned to banks:
-- Via `bank_employees` pivot table
-- `is_default` flag marks default employee for a bank
-- `location_id` associates employee with specific city
-- `Bank::getDefaultEmployeeForCity(cityId)` — finds default by city, falls back to global default
+## User visibility of users
 
-## Branch Associations
+There's no hard scope filter on the users list — anyone with `view_users` sees all users. Per-row **action visibility** depends on permissions:
 
-- Users assigned to branches via `user_branches` pivot
-- `is_default_office_employee` — marks user as default OE for that branch
-- BDH/BM see data from users in their branches
-- `default_branch_id` — user's primary branch
+- Edit link → `edit_users`
+- Toggle active → `edit_users` (+ not self, + not super_admin if not super_admin)
+- Delete → `delete_users` (+ not self, + not super_admin if not super_admin)
 
-## Product Stage Assignments
+## Data tables & filters
 
-Users can be assigned to specific product stages:
-- Via `product_stage_users` table
-- Linked to specific branch and/or location
-- `is_default` flag for default assignment
-- Managed in user create/edit forms and loan settings
+`GET /users/data` (DataTables server-side):
+
+- Filters: `role` (slug), `status` (active/inactive)
+- Search: name, email, phone
+- Ordering: default `created_at desc`
+- Eager loads: roles, branches, employerBanks, locations, product assignments (grouped by bank)
 
 ## Impersonation
 
-Uses `lab404/laravel-impersonate` package.
+### Authorization
 
-### Controller: `ImpersonateController`
-- `users()` — search users for impersonation (active, non-super_admin)
-- `take(id)` — start impersonating, stores referrer path
-- `leave()` — stop impersonating, returns to referrer
+- `User::canImpersonate()` → super_admin OR `app.allow_impersonate_all=true` (env: `ALLOW_IMPERSONATE_ALL`)
+- `User::canBeImpersonated()` → not super_admin
 
-### Access Control
-- `canImpersonate()` — super_admin OR env `app.allow_impersonate_all` users
-- `canBeImpersonated()` — non-super_admin users only
+### Endpoints
 
-### Activity Logging
-- `TakeImpersonation` event → logs "impersonate_start"
-- `LeaveImpersonation` event → logs "impersonate_end"
+- `GET /api/impersonate/users?search=...` — user picker dropdown. Returns active, non-super_admin users. Excludes current user.
+- `GET /impersonate/take/{id}` — sets impersonation session. Smart redirect: tries referrer, falls back to dashboard if impersonated user lacks access via `canAccessPath()`.
+- `GET /impersonate/leave` — restores original user, redirects smartly.
 
 ### UI
-- Desktop/mobile search dropdown with 300ms debounce
-- SweetAlert confirmation before impersonating
-- Yellow impersonation banner when active
-- Smart redirect: returns to referrer if impersonated/original user has access
 
-## Permissions
+- Layout (`layouts/app.blade.php`) renders an **impersonation banner** (`.shf-impersonation-banner`) when impersonation is active, with a "Leave impersonation" link.
+- Navbar/header has a search modal gated by `canImpersonate()` (uses SweetAlert2 confirmation).
 
-| Slug | Description |
-|------|-------------|
-| view_users | View users list |
-| create_users | Create users |
-| edit_users | Edit users |
-| delete_users | Delete users |
-| assign_roles | Assign roles |
+## User–branch / bank / location relationships
 
-## Views
+`User` model relationships:
 
-| View | Purpose |
-|------|---------|
-| users/index.blade.php | DataTable list with role/status filters |
-| users/create.blade.php | Create form with role multi-select, branches, banks |
-| users/edit.blade.php | Edit form + password change section |
+| Relationship | Purpose |
+|---|---|
+| `branches()` | `user_branches` pivot — multi-branch assignment. `is_default_office_employee` per branch |
+| `defaultBranch()` | `default_branch_id` on user row — default for task/loan creation scope |
+| `taskBank()` | `task_bank_id` — default bank for "new task" on dashboard |
+| `employerBanks()` | `bank_employees` pivot — for bank_employee / office_employee role users, with `is_default` + `location_id` |
+| `locations()` | `location_user` pivot — serviceable cities |
+
+These all power the **auto-assignment** resolution in `LoanStageService::findBestAssignee()`. See `user-assignment.md`.
+
+## Activity & audit
+
+`HasAuditColumns` trait (used on many models) automatically sets `updated_by` / `deleted_by` from `auth()->id()`. `User` itself uses `created_by` set in the controller.
+
+## Testing caveats
+
+The default Breeze profile tests (`ProfileTest.php`) fail because `EnsureUserIsActive` middleware doesn't play well with the test's fake user fixtures, and the Breeze registration tests fail because registration routes are disabled. Known, pre-existing — do not debug during unrelated work.

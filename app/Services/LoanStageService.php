@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ActivityLog;
 use App\Models\Bank;
+use App\Models\BankStageConfig;
 use App\Models\Branch;
 use App\Models\LoanDetail;
 use App\Models\LoanProgress;
@@ -35,6 +36,291 @@ class LoanStageService
         return Stage::whereNotNull('default_role')
             ->pluck('default_role', 'stage_key')
             ->toArray();
+    }
+
+    // ── Bank-Wise Role Resolution ──
+
+    /**
+     * Resolve the assigned role for a stage (single-phase stages).
+     * Priority: bank_stage_configs → stages.assigned_role
+     */
+    public function resolveStageRole(string $stageKey, ?int $bankId): string
+    {
+        if ($bankId) {
+            $stage = Stage::where('stage_key', $stageKey)->first();
+            if ($stage) {
+                $bankConfig = BankStageConfig::where('bank_id', $bankId)
+                    ->where('stage_id', $stage->id)
+                    ->first();
+                if ($bankConfig && $bankConfig->assigned_role) {
+                    return $bankConfig->assigned_role;
+                }
+            }
+        }
+
+        $stage = $stage ?? Stage::where('stage_key', $stageKey)->first();
+
+        return $stage?->assigned_role ?? 'task_owner';
+    }
+
+    /**
+     * Resolve the role for a specific phase of a multi-phase stage.
+     * Priority: bank_stage_configs.phase_roles → stages.sub_actions[].role
+     */
+    public function resolvePhaseRole(string $stageKey, int $phaseIndex, ?int $bankId): string
+    {
+        $stage = Stage::where('stage_key', $stageKey)->first();
+        if (! $stage) {
+            return 'task_owner';
+        }
+
+        // Check bank override
+        if ($bankId) {
+            $bankConfig = BankStageConfig::where('bank_id', $bankId)
+                ->where('stage_id', $stage->id)
+                ->first();
+            if ($bankConfig && is_array($bankConfig->phase_roles) && isset($bankConfig->phase_roles[(string) $phaseIndex])) {
+                return $bankConfig->phase_roles[(string) $phaseIndex];
+            }
+        }
+
+        // Fall back to master sub_actions
+        $subActions = $stage->sub_actions;
+        if (is_array($subActions) && isset($subActions[$phaseIndex]['role'])) {
+            return $subActions[$phaseIndex]['role'];
+        }
+
+        return 'task_owner';
+    }
+
+    /**
+     * Build a complete workflow config snapshot for a loan.
+     * Captures role + default_user_id for every stage and phase.
+     */
+    public function buildWorkflowSnapshot(?int $bankId, ?int $productId = null, ?int $branchId = null, ?int $locationId = null): array
+    {
+        $stages = Stage::where('is_enabled', true)->get();
+        $config = [];
+
+        // Pre-load bank configs for this bank
+        $bankConfigs = [];
+        if ($bankId) {
+            $bankConfigs = BankStageConfig::where('bank_id', $bankId)
+                ->get()
+                ->keyBy('stage_id')
+                ->toArray();
+        }
+
+        // Pre-load product stages for user resolution
+        $productStages = [];
+        if ($productId) {
+            $productStages = ProductStage::where('product_id', $productId)
+                ->with('branchUsers')
+                ->get()
+                ->keyBy('stage_id');
+        }
+
+        // Resolve branch location info
+        $branch = $branchId ? Branch::with('location.parent')->find($branchId) : null;
+        $cityId = $locationId ?? $branch?->location_id;
+        $stateId = $branch?->location?->parent_id;
+
+        foreach ($stages as $stage) {
+            $bankConfig = $bankConfigs[$stage->id] ?? null;
+            $ps = $productStages[$stage->id] ?? null;
+
+            // Resolve stage-level role
+            $stageRole = $bankConfig['assigned_role'] ?? $stage->assigned_role ?? 'task_owner';
+
+            // Resolve stage-level default user
+            $stageDefaultUser = $this->resolveDefaultUserFromProductStage($ps, $stageRole, $branchId, $cityId, $stateId);
+
+            $stageConfig = [
+                'role' => $stageRole,
+                'default_user_id' => $stageDefaultUser,
+            ];
+
+            // Resolve phases for multi-phase stages
+            $subActions = $stage->sub_actions;
+            if (is_array($subActions) && count($subActions) > 0) {
+                $phases = [];
+                $bankPhaseRoles = is_array($bankConfig['phase_roles'] ?? null) ? $bankConfig['phase_roles'] : [];
+
+                foreach ($subActions as $idx => $sa) {
+                    $phaseRole = $bankPhaseRoles[(string) $idx] ?? $sa['role'] ?? 'task_owner';
+                    $phaseDefaultUser = $this->resolveDefaultUserFromProductStage($ps, $phaseRole, $branchId, $cityId, $stateId, $idx);
+
+                    $phases[(string) $idx] = [
+                        'role' => $phaseRole,
+                        'default_user_id' => $phaseDefaultUser,
+                    ];
+                }
+                $stageConfig['phases'] = $phases;
+            }
+
+            $config[$stage->stage_key] = $stageConfig;
+        }
+
+        return $config;
+    }
+
+    /**
+     * Get the role for a stage from a loan's frozen snapshot.
+     * Falls back to live resolution for loans without snapshots.
+     */
+    public function getLoanStageRole(LoanDetail $loan, string $stageKey): string
+    {
+        $config = $loan->workflow_config;
+        if ($config && isset($config[$stageKey]['role'])) {
+            return $config[$stageKey]['role'];
+        }
+
+        return $this->resolveStageRole($stageKey, $loan->bank_id);
+    }
+
+    /**
+     * Get the role for a specific phase from a loan's frozen snapshot.
+     * Falls back to live resolution for loans without snapshots.
+     */
+    public function getLoanPhaseRole(LoanDetail $loan, string $stageKey, int $phaseIndex): string
+    {
+        $config = $loan->workflow_config;
+        if ($config && isset($config[$stageKey]['phases'][(string) $phaseIndex]['role'])) {
+            return $config[$stageKey]['phases'][(string) $phaseIndex]['role'];
+        }
+
+        return $this->resolvePhaseRole($stageKey, $phaseIndex, $loan->bank_id);
+    }
+
+    /**
+     * Find the best user for a resolved role on a loan.
+     * Priority: snapshot default_user → product stage user → bank/branch defaults → fallback.
+     */
+    public function findUserForRole(string $role, LoanDetail $loan, string $stageKey, ?int $phaseIndex = null): ?int
+    {
+        // 1. Check snapshot for frozen default user
+        $config = $loan->workflow_config;
+        if ($config && isset($config[$stageKey])) {
+            $snapshotUserId = null;
+            if ($phaseIndex !== null && isset($config[$stageKey]['phases'][(string) $phaseIndex])) {
+                $snapshotUserId = $config[$stageKey]['phases'][(string) $phaseIndex]['default_user_id'] ?? null;
+            } else {
+                $snapshotUserId = $config[$stageKey]['default_user_id'] ?? null;
+            }
+
+            // If no stage-level user but has phases, find the first phase matching the requested role
+            if (! $snapshotUserId && $phaseIndex === null && isset($config[$stageKey]['phases'])) {
+                foreach ($config[$stageKey]['phases'] as $pIdx => $phaseData) {
+                    if (($phaseData['role'] ?? '') === $role && ! empty($phaseData['default_user_id'])) {
+                        $snapshotUserId = $phaseData['default_user_id'];
+                        break;
+                    }
+                }
+            }
+
+            if ($snapshotUserId) {
+                $user = User::where('id', $snapshotUserId)->where('is_active', true)->first();
+                if ($user) {
+                    return $user->id;
+                }
+            }
+        }
+
+        // 2. Resolve by role type
+        if ($role === 'task_owner') {
+            return $loan->assigned_advisor ?? $loan->created_by;
+        }
+
+        if ($role === 'bank_employee') {
+            return $this->findBankEmployeeForLoan($loan, $stageKey, $phaseIndex);
+        }
+
+        if ($role === 'office_employee') {
+            return $this->findOfficeEmployeeForLoan($loan, $stageKey);
+        }
+
+        return null;
+    }
+
+    /**
+     * Find best bank employee for a loan.
+     * Priority: product stage user → bank default for city → any BE for bank.
+     */
+    private function findBankEmployeeForLoan(LoanDetail $loan, string $stageKey, ?int $phaseIndex = null): ?int
+    {
+        // Product stage user (phase-aware)
+        if ($loan->product_id) {
+            $stage = $this->getStageByKey($stageKey);
+            if ($stage) {
+                $productStage = ProductStage::where('product_id', $loan->product_id)
+                    ->where('stage_id', $stage->id)->first();
+                if ($productStage) {
+                    $branch = $loan->branch_id ? Branch::with('location.parent')->find($loan->branch_id) : null;
+                    $cityId = $branch?->location_id;
+                    $stateId = $branch?->location?->parent_id;
+                    $userId = $productStage->getUserForLocation($loan->branch_id, $cityId, $stateId, $phaseIndex);
+                    if ($userId && User::where('id', $userId)->where('is_active', true)->exists()) {
+                        return $userId;
+                    }
+                }
+            }
+        }
+
+        // Bank default employee for city
+        if ($loan->bank_id) {
+            $cityId = $loan->branch_id ? Branch::find($loan->branch_id)?->location_id : null;
+            $bank = Bank::find($loan->bank_id);
+            if ($bank) {
+                $defaultBEId = $bank->getDefaultEmployeeForCity($cityId);
+                if ($defaultBEId && User::where('id', $defaultBEId)->where('is_active', true)->exists()) {
+                    return $defaultBEId;
+                }
+            }
+        }
+
+        // Any active bank employee for this bank
+        if ($loan->bank_id) {
+            $user = User::where('is_active', true)
+                ->whereHas('employerBanks', fn ($q) => $q->where('banks.id', $loan->bank_id))
+                ->first();
+            if ($user) {
+                return $user->id;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve default user from product stage config for snapshot building.
+     * Returns null for task_owner roles (resolved at runtime from loan).
+     */
+    private function resolveDefaultUserFromProductStage(?object $productStage, string $role, ?int $branchId, ?int $cityId, ?int $stateId, ?int $phaseIndex = null): ?int
+    {
+        if ($role === 'task_owner') {
+            return null; // Always resolved from loan's advisor/creator at runtime
+        }
+
+        if (! $productStage) {
+            return null;
+        }
+
+        // Check for phase-specific user assignment
+        if ($phaseIndex !== null && $productStage->branchUsers) {
+            $phaseUser = $productStage->branchUsers
+                ->where('phase_index', $phaseIndex)
+                ->where('is_default', true)
+                ->when($branchId, fn ($c) => $c->where(fn ($u) => $u->branch_id === $branchId || $u->branch_id === null))
+                ->first();
+            if ($phaseUser) {
+                return $phaseUser->user_id;
+            }
+        }
+
+        // Fall back to stage-level user (phase_index = null)
+        $userId = $productStage->getUserForLocation($branchId, $cityId, $stateId);
+
+        return $userId;
     }
 
     // ── Query Methods (from Stage A) ──
@@ -549,6 +835,7 @@ class LoanStageService
 
     /**
      * Start remaining parallel sub-stages after bsm_osv completes (4c, 4d, 4e).
+     * Uses workflow config snapshot to determine roles and assignment.
      */
     private function startRemainingParallelSubStages(LoanDetail $loan): void
     {
@@ -558,38 +845,26 @@ class LoanStageService
             ->get();
 
         foreach ($pendingSubs as $assignment) {
-            // Multi-phase stages: assign to task owner first (phase 1)
-            // Technical valuation: task owner sends to office employee in phase 2
-            // Legal verification: task owner suggests legal advisor, sends to bank employee in phase 2
-            if (in_array($assignment->stage_key, ['technical_valuation', 'legal_verification'])) {
-                $taskOwnerId = $loan->assigned_advisor ?? $loan->created_by;
-                $updateData = ['status' => 'in_progress', 'started_at' => now()];
-                if ($taskOwnerId) {
-                    $updateData['assigned_to'] = $taskOwnerId;
-                }
-                $assignment->update($updateData);
+            $role = $this->getLoanStageRole($loan, $assignment->stage_key);
+            $userId = $this->findUserForRole($role, $loan, $assignment->stage_key);
 
-                if ($taskOwnerId) {
-                    StageTransfer::create([
-                        'stage_assignment_id' => $assignment->id,
-                        'loan_id' => $loan->id,
-                        'stage_key' => $assignment->stage_key,
-                        'transferred_from' => auth()->id() ?? $loan->created_by,
-                        'transferred_to' => $taskOwnerId,
-                        'reason' => 'Auto-assigned to task owner for ' . str_replace('_', ' ', $assignment->stage_key),
-                        'transfer_type' => 'auto',
-                    ]);
-                }
-
-                continue;
-            }
-
-            $userId = $this->findBestAssignee($assignment->stage_key, $loan->branch_id, $loan->bank_id, $loan->product_id, $loan->created_by, $loan->assigned_advisor);
             $updateData = ['status' => 'in_progress', 'started_at' => now()];
             if ($userId) {
                 $updateData['assigned_to'] = $userId;
             }
             $assignment->update($updateData);
+
+            if ($userId) {
+                StageTransfer::create([
+                    'stage_assignment_id' => $assignment->id,
+                    'loan_id' => $loan->id,
+                    'stage_key' => $assignment->stage_key,
+                    'transferred_from' => auth()->id() ?? $loan->created_by,
+                    'transferred_to' => $userId,
+                    'reason' => 'Auto-assigned to '.str_replace('_', ' ', $role),
+                    'transfer_type' => 'auto',
+                ]);
+            }
         }
     }
 
@@ -851,48 +1126,31 @@ class LoanStageService
     // ── Parallel Processing ──
 
     /**
-     * Assign the next stage to the correct user based on stage type.
-     * Task-owner stages → loan advisor/creator. Disbursement → office employee. Others → auto-assign.
+     * Assign the next stage to the correct user based on workflow config snapshot.
+     * Uses getLoanStageRole() to determine role, then findUserForRole() to find the user.
      */
     protected function assignNextStage(LoanDetail $loan, string $nextKey): void
     {
-        // Multi-phase stages begin with the task owner (loan advisor or creator)
-        if (in_array($nextKey, ['rate_pf', 'sanction', 'docket', 'otc_clearance', 'kfs', 'esign'])) {
-            $taskOwnerId = $loan->assigned_advisor ?? $loan->created_by;
-            $nextAssignment = $loan->stageAssignments()->where('stage_key', $nextKey)->first();
-            if ($nextAssignment && ! $nextAssignment->assigned_to && $taskOwnerId) {
-                $nextAssignment->update(['assigned_to' => $taskOwnerId]);
+        $nextAssignment = $loan->stageAssignments()->where('stage_key', $nextKey)->first();
+        if (! $nextAssignment || $nextAssignment->assigned_to) {
+            return;
+        }
 
-                StageTransfer::create([
-                    'stage_assignment_id' => $nextAssignment->id,
-                    'loan_id' => $loan->id,
-                    'stage_key' => $nextKey,
-                    'transferred_from' => auth()->id() ?? $loan->created_by,
-                    'transferred_to' => $taskOwnerId,
-                    'reason' => 'Auto-assigned to task owner',
-                    'transfer_type' => 'auto',
-                ]);
-            }
-        } elseif ($nextKey === 'disbursement') {
-            $officeEmployeeId = $this->findOfficeEmployeeForLoan($loan);
-            $nextAssignment = $loan->stageAssignments()->where('stage_key', $nextKey)->first();
-            if ($nextAssignment && ! $nextAssignment->assigned_to && $officeEmployeeId) {
-                $nextAssignment->update(['assigned_to' => $officeEmployeeId]);
+        $role = $this->getLoanStageRole($loan, $nextKey);
+        $userId = $this->findUserForRole($role, $loan, $nextKey);
 
-                StageTransfer::create([
-                    'stage_assignment_id' => $nextAssignment->id,
-                    'loan_id' => $loan->id,
-                    'stage_key' => $nextKey,
-                    'transferred_from' => auth()->id() ?? $loan->created_by,
-                    'transferred_to' => $officeEmployeeId,
-                    'reason' => 'Auto-assigned to office employee',
-                    'transfer_type' => 'auto',
-                ]);
-            } else {
-                $this->autoAssignStage($loan, $nextKey);
-            }
-        } else {
-            $this->autoAssignStage($loan, $nextKey);
+        if ($userId) {
+            $nextAssignment->update(['assigned_to' => $userId]);
+
+            StageTransfer::create([
+                'stage_assignment_id' => $nextAssignment->id,
+                'loan_id' => $loan->id,
+                'stage_key' => $nextKey,
+                'transferred_from' => auth()->id() ?? $loan->created_by,
+                'transferred_to' => $userId,
+                'reason' => 'Auto-assigned to '.str_replace('_', ' ', $role),
+                'transfer_type' => 'auto',
+            ]);
         }
     }
 

@@ -1,124 +1,159 @@
-# API Endpoints
+# API
 
-## Public API (no auth required)
+A small set of HTTP endpoints. Most are **AJAX endpoints inside the web app** (session auth), not a general-purpose external API. Public endpoints exist only for the PWA offline shell.
 
-### GET /api/config/public
-**Controller:** ConfigApiController@public
+Complete route list: `.claude/routes-reference.md`.
 
-Returns public configuration for PWA offline mode:
-- Company info (name, address, phone, email)
-- Banks list
-- Tenures
-- Documents (EN/GU by customer type)
-- IOM charges
-- GST percentage
-- Services description
-- Bank charges
+## Authentication model
 
-### GET /api/notes
-**Controller:** NotesApiController@get
+- **Web AJAX**: session-based. `<meta name="csrf-token">` in `layouts/app.blade.php`. Send `X-CSRF-TOKEN` header or include `_token` in form data.
+- **Public JSON**: `GET /api/config/public` and `GET /api/notes` — no auth. Meant for the PWA to bootstrap offline.
+- **No Sanctum / no token-based auth** — there is no external API consumer yet.
 
-Returns saved additional notes from app_settings table.
+## Public endpoints (no auth)
 
-Response: `{ success: true, notes: "..." }`
+### `GET /api/config/public`
 
----
+Controller: `Api\ConfigApiController@public`.
 
-## Authenticated API
+Returns the full `ConfigService::load()` result plus all `BankCharge` rows. Used by the PWA to cache configuration for offline quotation generation.
 
-### POST /api/sync
-**Controller:** SyncApiController@sync
+Response shape (abridged):
 
-Batch sync offline quotations. Processes array of quotation payloads.
-
-Request body:
 ```json
 {
-    "quotations": [
-        {
-            "customerName": "...",
-            "customerType": "...",
-            "loanAmount": 1000000,
-            "banks": [...],
-            "documents": [...]
-        }
-    ]
+  "companyName": "Shreenathji Home Finance",
+  "companyAddress": "...",
+  "companyPhone": "+91 99747 89089",
+  "companyEmail": "info@shf.com",
+  "banks": ["HDFC Bank", "ICICI Bank", ...],
+  "tenures": [5, 10, 15, 20],
+  "iomCharges": { "thresholdAmount": 10000000, "fixedCharge": 5500, "percentageAbove": 0.35 },
+  "gstPercent": 18,
+  "ourServices": "...",
+  "documents_en": { "proprietor": [...], "partnership_llp": [...], ... },
+  "documents_gu": { ... },
+  "dvrContactTypes": [...],
+  "dvrPurposes": [...],
+  "bankCharges": [
+    { "bank_name": "HDFC Bank", "pf": 0.50, "admin": 5000, "stamp_notary": 0, ... }
+  ]
 }
 ```
 
-Response:
-```json
-{
-    "success": true,
-    "results": [
-        { "index": 0, "success": true, "filename": "..." },
-        { "index": 1, "success": false, "error": "..." }
-    ]
-}
-```
+### `GET /api/notes`
 
-### POST /api/notes
-**Controller:** NotesApiController@save
+Controller: `Api\NotesApiController@get`. Reads free-form notes from `app_settings` (key `additional_notes`). Returns `{ success, notes }`. Gracefully returns empty if DB is unavailable.
 
-Save additional notes to app_settings table.
+## Session-auth API (in `routes/web.php`)
 
-### GET /api/notifications/count
-**Controller:** NotificationController@unreadCount
+### Quotations
 
-Returns unread notification count. Polled every 60 seconds from navbar.
+### `POST /api/sync`
 
-Response: `{ count: 5 }`
+Route name `api.sync`. Controller: `Api\SyncApiController@sync`. PWA offline sync: batch-creates quotations that were queued client-side while offline.
 
-### POST /notifications/{notification}/read
-**Controller:** NotificationController@markRead
+Body: `{ quotations: [ {customerName, customerType, loanAmount, banks: [...], ...}, ... ] }`.
 
-Mark single notification as read.
+Per-item flow:
+1. Auto-fill `preparedByName`, `preparedByMobile` from auth user if blank.
+2. Call `QuotationService::generate()`.
+3. Log `ActivityLog` with source `offline_sync` if saved.
 
-### POST /notifications/read-all
-**Controller:** NotificationController@markAllRead
+Response: `{ success: bool, results: [{ index, success, filename, error }, ...] }`.
 
-Mark all user's notifications as read.
+### `POST /api/notes`
 
-### GET /api/impersonate/users
-**Controller:** ImpersonateController@users
+Save free-form app-level notes. Validation: `notes` trimmed. Upserts into `app_settings`. Returns `{ success }`.
 
-Search active users for impersonation. Query param: `q` (search term).
+## Quotation PDF endpoints
 
-### GET /api/reverse-geocode
-**Controller:** LoanValuationController@reverseGeocode
+See `pdf-generation.md` for details.
 
-Get address from coordinates using OpenStreetMap Nominatim.
+- `POST /quotations/generate` — create + render + save PDF (returns JSON)
+- `GET /quotations/{id}/download?branded=0|1` — download PDF (plain = always regenerated, branded = cached)
+- `GET /quotations/{id}/preview-html?branded=0|1` — HTML preview (super_admin only)
+- `GET /download-pdf?file=...` — legacy download by filename
 
-Query params: `lat`, `lng`
+## Loan stage AJAX endpoints
 
-### GET /api/search-location
-**Controller:** LoanValuationController@searchLocation
+Return JSON. Called from the loan stages page (`/loans/{id}/stages`). See `workflow-developer.md`.
 
-Search locations using OpenStreetMap Nominatim.
+- `POST /loans/{loan}/stages/{stageKey}/status` — transition stage
+- `POST /loans/{loan}/stages/{stageKey}/assign` — assign user
+- `POST /loans/{loan}/stages/{stageKey}/transfer` — transfer to another user
+- `POST /loans/{loan}/stages/{stageKey}/reject` — reject loan at stage
+- `POST /loans/{loan}/stages/{stageKey}/skip` — skip stage
+- `POST /loans/{loan}/stages/{stageKey}/notes` — save stage form data
+- `POST /loans/{loan}/stages/{stageKey}/query` — raise a query
+- `POST /loans/queries/{query}/respond` — reply
+- `POST /loans/queries/{query}/resolve` — close
+- `GET  /loans/{loan}/stages/{stageKey}/eligible-users` — picker for assignment
+- Multi-phase actions: `sanction-action`, `legal-action`, `docket-action`, `technical-valuation-action`, `rate-pf-action`, `esign-action`, `sanction-decision-action`
 
-Query param: `q` (search term)
+All require `auth` + stage-management permission. Responses generally: `{ success, current_stage, progress, ... }` or `{ error }`.
 
----
+## Loan documents AJAX
 
-## AJAX Endpoints (return JSON, used by frontend)
+- `POST /loans/{loan}/documents` — add custom doc
+- `POST /loans/{loan}/documents/{document}/status` — update status (pending/received/rejected/waived)
+- `POST /loans/{loan}/documents/{document}/upload` — multipart file upload (max 10 MB, mimes pdf/jpg/jpeg/png/webp/doc/docx/xls/xlsx)
+- `DELETE /loans/{loan}/documents/{document}` — remove doc entirely
+- `DELETE /loans/{loan}/documents/{document}/file` — remove uploaded file, keep doc record
+- `GET  /loans/{loan}/documents/{document}/download` — streamed file
 
-These are web routes that return JSON responses:
+## Loan valuation AJAX
 
-| Route | Purpose |
-|-------|---------|
-| /dashboard/quotation-data | DataTable data for quotations |
-| /dashboard/loan-data | DataTable data for loans |
-| /dashboard/task-data | DataTable data for loan tasks |
-| /dashboard/dvr-data | DataTable data for DVR |
-| /users/data | DataTable data for users |
-| /users/check-email | Email uniqueness check |
-| /users/product-stage-holders | Product stage user assignments |
-| /loans/data | DataTable data for loans |
-| /general-tasks/data | DataTable data for tasks |
-| /general-tasks/search-loans | Search loans for task linking |
-| /dvr/data | DataTable data for DVR |
-| /dvr/search-loans | Search loans for DVR linking |
-| /dvr/search-quotations | Search quotations for DVR linking |
-| /dvr/search-contacts | Search existing contacts |
-| /roles/check-name | Role name uniqueness check |
-| /activity-log/data | DataTable data for activity log |
+- `POST /loans/{loan}/valuation` — upsert valuation
+- `GET /api/reverse-geocode?lat=&lng=` — OSM Nominatim reverse geocode
+- `GET /api/search-location?q=...` — OSM Nominatim forward geocode (auto-adds "India" on first-try miss)
+
+## DataTables AJAX
+
+All list pages use DataTables server-side mode. Endpoints return the standard DataTables response shape `{ draw, recordsTotal, recordsFiltered, data }`:
+
+- `GET /loans/data`
+- `GET /users/data`
+- `GET /dvr/data`
+- `GET /general-tasks/data`
+- `GET /activity-log/data`
+- `GET /reports/turnaround/data`
+- `GET /dashboard/quotation-data`, `/dashboard/task-data`, `/dashboard/loan-data`, `/dashboard/dvr-data`
+
+Controllers apply scope filters, permissions gates, and build row HTML on the server.
+
+## Search autocomplete endpoints
+
+Min query length 2 chars. Return up to ~20 results.
+
+- `GET /dvr/search-loans?q=` — by loan_number, application_number, customer_name
+- `GET /dvr/search-quotations?q=` — by customer_name (respects view_all_quotations)
+- `GET /dvr/search-contacts?q=` — from DVRs + customers + loans; deduplicated by (name, phone)
+- `GET /general-tasks/search-loans?q=` — loan picker for task link
+
+## Notifications
+
+- `GET /api/notifications/count` — polled every 60s; returns `{ count }`
+- `POST /notifications/{id}/read`
+- `POST /notifications/read-all`
+
+## Impersonation
+
+- `GET /api/impersonate/users?search=` — JSON of impersonate-eligible users
+
+## CSRF
+
+All non-GET web routes (including `/api/sync`, `/api/notes`) require a CSRF token. Endpoints in `routes/api.php` (the two public ones) are outside the CSRF middleware group.
+
+## Response conventions
+
+- Success: HTTP 200 with JSON `{ success: true, ... }`
+- Validation failure: HTTP 422 with Laravel's default `{ message, errors: {field: [msgs]} }`
+- Permission failure: HTTP 403
+- Server error: HTTP 500; error message in JSON when debug or explicit try/catch, otherwise generic
+
+## See also
+
+- `.claude/routes-reference.md` — complete route table
+- `offline-pwa.md` — PWA offline behavior
+- `quotations.md`, `pdf-generation.md` — quotation PDF flow

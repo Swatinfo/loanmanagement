@@ -53,7 +53,7 @@ class LoanDetail extends Model
         'total_charges', 'application_number', 'assigned_bank_employee',
         'due_date', 'expected_docket_date', 'rejected_at', 'rejected_by', 'rejected_stage', 'rejection_reason',
         'status_reason', 'status_changed_at', 'status_changed_by',
-        'created_by', 'assigned_advisor', 'notes',
+        'created_by', 'assigned_advisor', 'notes', 'workflow_config',
     ];
 
     protected function casts(): array
@@ -68,6 +68,7 @@ class LoanDetail extends Model
             'expected_docket_date' => 'date',
             'rejected_at' => 'datetime',
             'status_changed_at' => 'datetime',
+            'workflow_config' => 'array',
         ];
     }
 

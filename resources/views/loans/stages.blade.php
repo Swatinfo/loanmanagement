@@ -461,58 +461,44 @@
                                         {{ $assignment->completed_at->format('d M Y H:i') }}</small>
                                 @endif
 
-                                {{-- Phase progress indicator for multi-phase stages --}}
+                                {{-- Phase progress indicator — reads from workflow_config snapshot --}}
                                 @php
-                                    $phaseConfig = match ($assignment->stage_key) {
-                                        'rate_pf' => [
-                                            'current' => $assignment->getNotesData()['rate_pf_phase'] ?? '1',
-                                            'phases' => [
-                                                ['key' => '1', 'label' => 'Fill Details', 'role' => 'Loan Advisor'],
-                                                ['key' => '2', 'label' => 'Bank Review', 'role' => 'Bank Employee'],
-                                                ['key' => '3', 'label' => 'Final Review', 'role' => 'Loan Advisor'],
-                                            ],
-                                        ],
-                                        'sanction' => [
-                                            'current' => $assignment->getNotesData()['sanction_phase'] ?? '1',
-                                            'phases' => [
-                                                ['key' => '1', 'label' => 'Send to Bank', 'role' => 'Task Owner'],
-                                                ['key' => '2', 'label' => 'Generate Letter', 'role' => 'Bank Employee'],
-                                                ['key' => '3', 'label' => 'Fill Details', 'role' => 'Task Owner'],
-                                            ],
-                                        ],
-                                        'legal_verification' => [
-                                            'current' => $assignment->getNotesData()['legal_phase'] ?? '1',
-                                            'phases' => [
-                                                ['key' => '1', 'label' => 'Send to Bank', 'role' => 'Task Owner'],
-                                                ['key' => '2', 'label' => 'Initiate Legal', 'role' => 'Bank Employee'],
-                                                ['key' => '3', 'label' => 'Review', 'role' => 'Task Owner'],
-                                            ],
-                                        ],
-                                        'docket' => [
-                                            'current' => $assignment->getNotesData()['docket_phase'] ?? '1',
-                                            'phases' => [
-                                                ['key' => '1', 'label' => 'Login Date', 'role' => 'Task Owner'],
-                                                ['key' => '2', 'label' => 'Generate KFS', 'role' => 'Office Employee'],
-                                            ],
-                                        ],
-                                        'technical_valuation' => [
-                                            'current' => $assignment->getNotesData()['tv_phase'] ?? '1',
-                                            'phases' => [
-                                                ['key' => '1', 'label' => 'Send', 'role' => 'Task Owner'],
-                                                ['key' => '2', 'label' => 'Valuation', 'role' => 'Office Employee'],
-                                            ],
-                                        ],
-                                        'esign' => [
-                                            'current' => $assignment->getNotesData()['esign_phase'] ?? '1',
-                                            'phases' => [
-                                                ['key' => '1', 'label' => 'Send to Bank', 'role' => 'Task Owner'],
-                                                ['key' => '2', 'label' => 'Generate', 'role' => 'Bank Employee'],
-                                                ['key' => '3', 'label' => 'Customer Sign', 'role' => 'Task Owner'],
-                                                ['key' => '4', 'label' => 'Confirm', 'role' => 'Bank Employee'],
-                                            ],
-                                        ],
-                                        default => null,
-                                    };
+                                    $wfConfig = $loan->workflow_config ?? [];
+                                    $stageWf = $wfConfig[$assignment->stage_key] ?? null;
+                                    // Helper: get resolved role for a phase from snapshot
+                                    $getPhaseRole = fn(int $phaseIdx) => $stageWf['phases'][(string)$phaseIdx]['role'] ?? 'task_owner';
+                                    $stageSubActions = \App\Models\Stage::where('stage_key', $assignment->stage_key)->value('sub_actions');
+                                    $stageSubActions = is_string($stageSubActions) ? json_decode($stageSubActions, true) : $stageSubActions;
+                                    $phaseConfig = null;
+
+                                    if (is_array($stageSubActions) && count($stageSubActions) > 1) {
+                                        $roleLabelsMap = ['task_owner' => 'Task Owner', 'bank_employee' => 'Bank Employee', 'office_employee' => 'Office Employee'];
+                                        $currentPhaseKey = match ($assignment->stage_key) {
+                                            'rate_pf' => $assignment->getNotesData()['rate_pf_phase'] ?? '1',
+                                            'sanction' => $assignment->getNotesData()['sanction_phase'] ?? '1',
+                                            'legal_verification' => $assignment->getNotesData()['legal_phase'] ?? '1',
+                                            'docket' => $assignment->getNotesData()['docket_phase'] ?? '1',
+                                            'technical_valuation' => $assignment->getNotesData()['tv_phase'] ?? '1',
+                                            'esign' => $assignment->getNotesData()['esign_phase'] ?? '1',
+                                            default => '1',
+                                        };
+                                        $phases = [];
+                                        foreach ($stageSubActions as $idx => $sa) {
+                                            $phaseRole = $stageWf['phases'][(string)$idx]['role'] ?? $sa['role'] ?? 'task_owner';
+                                            $phaseUserId = $stageWf['phases'][(string)$idx]['default_user_id'] ?? null;
+                                            $phaseUserName = $phaseUserId ? (\App\Models\User::find($phaseUserId)?->name ?? '') : '';
+                                            if (!$phaseUserName && $phaseRole === 'task_owner') {
+                                                $phaseUserName = $loan->advisor?->name ?? $loan->creator?->name ?? '';
+                                            }
+                                            $phases[] = [
+                                                'key' => (string)($idx + 1),
+                                                'label' => $sa['name'] ?? $sa['key'] ?? 'Phase '.($idx + 1),
+                                                'role' => $roleLabelsMap[$phaseRole] ?? ucwords(str_replace('_', ' ', $phaseRole)),
+                                                'user' => $phaseUserName,
+                                            ];
+                                        }
+                                        $phaseConfig = ['current' => $currentPhaseKey, 'phases' => $phases];
+                                    }
                                 @endphp
                                 @php
                                     $roleBgCss = function ($role) {
@@ -554,12 +540,13 @@
                                         default => null,
                                     };
                                 @endphp
-                                @if ($phaseConfig && $assignment->status === 'in_progress')
+                                @if ($phaseConfig && in_array($assignment->status, ['in_progress', 'completed']))
                                     <div class="d-flex align-items-center gap-2 mt-2 mb-1 flex-wrap">
                                         @foreach ($phaseConfig['phases'] as $pi => $phase)
                                             @php
-                                                $isCurrent = $phaseConfig['current'] === $phase['key'];
-                                                $isDone = (int) $phaseConfig['current'] > (int) $phase['key'];
+                                                $isCurrent = $assignment->status === 'in_progress' && $phaseConfig['current'] === $phase['key'];
+                                                $isDone = $assignment->status === 'completed' || (int) $phaseConfig['current'] > (int) $phase['key'];
+                                                $phaseUserLabel = !empty($phase['user']) ? $phase['user'] : $phase['role'];
                                             @endphp
                                             <div class="d-flex align-items-center gap-2">
                                                 @if ($isDone)
@@ -570,7 +557,7 @@
                                                                 stroke-width="3" d="M5 13l4 4L19 7" />
                                                         </svg>
                                                         {{ $phase['label'] }}
-                                                        <span class="shf-pill-role">({{ $phase['role'] }})</span>
+                                                        <span class="shf-pill-role">({{ $phaseUserLabel }})</span>
                                                     </span>
                                                 @elseif($isCurrent)
                                                     <span
@@ -579,12 +566,12 @@
                                                             <circle cx="12" cy="12" r="5" />
                                                         </svg>
                                                         {{ $phase['label'] }}
-                                                        <span class="shf-pill-role">({{ $phase['role'] }})</span>
+                                                        <span class="shf-pill-role">({{ $phaseUserLabel }})</span>
                                                     </span>
                                                 @else
                                                     <span class="shf-phase-pill shf-phase-pill--pending">
                                                         {{ $phase['label'] }}
-                                                        <span class="shf-pill-role">({{ $phase['role'] }})</span>
+                                                        <span class="shf-pill-role">({{ $phaseUserLabel }})</span>
                                                     </span>
                                                 @endif
                                                 @if (!$loop->last)
@@ -917,7 +904,7 @@
                                                                                     'label' =>
                                                                                         'Custom Docket Date',
                                                                                     'type' => 'date',
-                                                                                    'allow_future' => true,
+                                                                                    'min_date' => empty($assignment->getNotesData()['custom_docket_date']) ? now()->addDays(3)->format('d/m/Y') : $assignment->created_at->format('d/m/Y'),
                                                                                 ],
                                                                                 [
                                                                                     'name' => 'stageRemarks',
@@ -956,11 +943,11 @@
                                                                     @endphp
 
                                                                     @if ($legalPhase === '1')
-                                                                        {{-- Phase 1: Task owner sends to bank --}}
+                                                                        {{-- Phase 1: Task owner sends for legal --}}
+                                                                        @php $legalP2Role = ($wfConfig['legal_verification']['phases']['1']['role'] ?? 'bank_employee'); @endphp
                                                                         <div class="mt-2 border-top pt-2">
                                                                             <small class="text-muted d-block mb-2">Enter suggested
-                                                                                legal advisor name and send to bank
-                                                                                employee.</small>
+                                                                                legal advisor name and send to {{ str_replace('_', ' ', $legalP2Role) }}.</small>
                                                                             <input type="text"
                                                                                 class="shf-input shf-input-sm mb-2"
                                                                                 id="legalAdvisorName"
@@ -970,16 +957,16 @@
                                                                                 <select
                                                                                     class="shf-input shf-input-sm shf-transfer-user"
                                                                                     data-stage="legal_verification"
-                                                                                    data-role="bank_employee"
+                                                                                    data-role="{{ $legalP2Role }}"
                                                                                     data-loan-id="{{ $loan->id }}"
                                                                                     style="max-width:220px">
-                                                                                    <option value="">Select Bank Employee...
+                                                                                    <option value="">Select {{ ucwords(str_replace('_', ' ', $legalP2Role)) }}...
                                                                                     </option>
                                                                                 </select>
                                                                                 <button class="btn-accent-sm shf-legal-action"
                                                                                     data-loan-id="{{ $loan->id }}"
                                                                                     data-action="send_to_bank">
-                                                                                    Send to Bank
+                                                                                    Send to {{ ucwords(str_replace('_', ' ', $legalP2Role)) }}
                                                                                 </button>
                                                                             </div>
                                                                         </div>
@@ -1039,19 +1026,18 @@
                                                                             ->first();
                                                                     @endphp
                                                                     @if ($tvPhase === '1')
-                                                                        {{-- Phase 1: Task owner sends to office employee --}}
+                                                                        {{-- Phase 1: Task owner sends for valuation --}}
+                                                                        @php $tvP2Role = ($wfConfig['technical_valuation']['phases']['1']['role'] ?? 'office_employee'); @endphp
                                                                         <div class="mt-2 border-top pt-2">
-                                                                            <small class="text-muted d-block mb-2">Send to office
-                                                                                employee for technical valuation.</small>
+                                                                            <small class="text-muted d-block mb-2">Send for technical valuation.</small>
                                                                             <div class="d-flex align-items-center gap-2 flex-wrap">
                                                                                 <select
                                                                                     class="shf-input shf-input-sm shf-transfer-user"
                                                                                     data-stage="technical_valuation"
-                                                                                    data-role="office_employee"
+                                                                                    data-role="{{ $tvP2Role }}"
                                                                                     data-loan-id="{{ $loan->id }}"
                                                                                     style="max-width:220px">
-                                                                                    <option value="">Select Office
-                                                                                        Employee...</option>
+                                                                                    <option value="">Select {{ ucwords(str_replace('_', ' ', $tvP2Role)) }}...</option>
                                                                                 </select>
                                                                                 <button class="btn-accent-sm shf-tv-action"
                                                                                     data-loan-id="{{ $loan->id }}"
@@ -1655,7 +1641,7 @@
                                                                 'name' => 'rate_valid_until',
                                                                 'label' => 'Valid Until',
                                                                 'type' => 'date',
-                                                                'allow_future' => true,
+                                                                'min_date' => empty($assignment->getNotesData()['rate_valid_until']) ? now()->format('d/m/Y') : $assignment->created_at->format('d/m/Y'),
                                                             ],
                                                             [
                                                                 'name' => 'bank_reference',
@@ -1917,14 +1903,15 @@
                                                         ],
                                                     ])
                                                     <div class="d-flex align-items-center gap-2 flex-wrap mt-1">
+                                                        @php $ratePfP1Role = $getPhaseRole(0); @endphp
                                                         <select class="shf-input shf-input-sm shf-transfer-user"
-                                                            data-stage="rate_pf" data-role="bank_employee"
+                                                            data-stage="rate_pf" data-role="{{ $ratePfP1Role }}"
                                                             data-loan-id="{{ $loan->id }}" style="max-width:220px">
-                                                            <option value="">Select Bank Employee...</option>
+                                                            <option value="">Select {{ ucwords(str_replace('_', ' ', $ratePfP1Role)) }}...</option>
                                                         </select>
                                                         <button class="btn-accent-sm shf-rate-pf-action"
                                                             data-loan-id="{{ $loan->id }}" data-action="send_to_bank">
-                                                            Send to Bank
+                                                            Send to {{ ucwords(str_replace('_', ' ', $ratePfP1Role)) }}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -2403,12 +2390,13 @@
                                             @elseif($sanctionPhase === '1')
                                                 <div class="mt-2 border-top pt-2">
                                                     <small class="text-muted d-block mb-2">Send this loan for sanction letter
-                                                        generation by the bank employee.</small>
+                                                        generation.</small>
+                                                    @php $sanctionP2Role = $getPhaseRole(1); @endphp
                                                     <div class="d-flex align-items-center gap-2 flex-wrap">
                                                         <select class="shf-input shf-input-sm shf-transfer-user"
-                                                            data-stage="sanction" data-role="bank_employee"
+                                                            data-stage="sanction" data-role="{{ $sanctionP2Role }}"
                                                             data-loan-id="{{ $loan->id }}" style="max-width:220px">
-                                                            <option value="">Select Bank Employee...</option>
+                                                            <option value="">Select {{ ucwords(str_replace('_', ' ', $sanctionP2Role)) }}...</option>
                                                         </select>
                                                         <button class="btn-accent-sm shf-sanction-action"
                                                             data-loan-id="{{ $loan->id }}" data-action="send_for_sanction">
@@ -2587,15 +2575,16 @@
                                                         ],
                                                     ],
                                                 ])
+                                                @php $docketP2Role = $getPhaseRole(1); @endphp
                                                 <div class="d-flex align-items-center gap-2 flex-wrap mt-2">
                                                     <select class="shf-input shf-input-sm shf-transfer-user" data-stage="docket"
-                                                        data-role="office_employee" data-loan-id="{{ $loan->id }}"
+                                                        data-role="{{ $docketP2Role }}" data-loan-id="{{ $loan->id }}"
                                                         style="max-width:220px">
-                                                        <option value="">Select Office Employee...</option>
+                                                        <option value="">Select {{ ucwords(str_replace('_', ' ', $docketP2Role)) }}...</option>
                                                     </select>
                                                     <button class="btn-accent-sm shf-docket-action"
                                                         data-loan-id="{{ $loan->id }}" data-action="send_to_office">
-                                                        Send to Office Employee
+                                                        Send to {{ ucwords(str_replace('_', ' ', $docketP2Role)) }}
                                                     </button>
                                                 </div>
 
@@ -2671,19 +2660,20 @@
                                             @php $esignPhase = ($assignment->getNotesData()['esign_phase'] ?? '1'); @endphp
 
                                             @if ($esignPhase === '1')
-                                                {{-- Phase 1: Advisor sends to bank for E-Sign --}}
+                                                {{-- Phase 1: Advisor sends for E-Sign --}}
+                                                @php $esignP2Role = $getPhaseRole(1); @endphp
                                                 <div class="mt-2 border-top pt-2">
-                                                    <small class="text-muted d-block mb-2">Send to bank employee for E-Sign & eNACH
+                                                    <small class="text-muted d-block mb-2">Send for E-Sign & eNACH
                                                         generation.</small>
                                                     <div class="d-flex align-items-center gap-2 flex-wrap">
                                                         <select class="shf-input shf-input-sm shf-transfer-user"
-                                                            data-stage="esign" data-role="bank_employee"
+                                                            data-stage="esign" data-role="{{ $esignP2Role }}"
                                                             data-loan-id="{{ $loan->id }}" style="max-width:220px">
-                                                            <option value="">Select Bank Employee...</option>
+                                                            <option value="">Select {{ ucwords(str_replace('_', ' ', $esignP2Role)) }}...</option>
                                                         </select>
                                                         <button class="btn-accent-sm shf-esign-action"
                                                             data-loan-id="{{ $loan->id }}" data-action="send_for_esign">
-                                                            Send for E-Sign & eNACH
+                                                            Send to {{ ucwords(str_replace('_', ' ', $esignP2Role)) }}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -3141,6 +3131,15 @@
                 todayHighlight: true,
                 endDate: '+0d'
             });
+            // Custom datepicker with data-min-date / data-max-date attributes
+            $('.shf-datepicker-custom').each(function() {
+                var opts = { format: 'dd/mm/yyyy', autoclose: true, todayHighlight: true };
+                var minDate = $(this).data('min-date');
+                var maxDate = $(this).data('max-date');
+                if (minDate) opts.startDate = minDate;
+                if (maxDate) opts.endDate = maxDate;
+                $(this).datepicker(opts);
+            });
 
             // Reusable: validate required fields in a stage notes form, returns true if valid
             // Show inline field errors below form controls
@@ -3397,9 +3396,12 @@
                 var userName = $select.find('option:selected').text();
 
                 if (!userId) {
-                    Swal.fire('Error', 'Please select a user to transfer to', 'error');
+                    $select.addClass('is-invalid');
+                    $select.next('.shf-field-error').remove();
+                    $select.after('<div class="shf-field-error text-danger shf-text-xs mt-1">Please select a user to transfer to</div>');
                     return;
                 }
+                $select.removeClass('is-invalid').next('.shf-field-error').remove();
 
                 Swal.fire({
                     title: 'Transfer to ' + userName.trim() + '?',
@@ -3539,7 +3541,7 @@
                     if (!validateStageForm($form)) return;
                     Swal.fire({
                         title: 'Confirm',
-                        text: 'Send docket to office for processing?',
+                        text: 'Send docket for processing?',
                         icon: 'question',
                         showCancelButton: true,
                         confirmButtonText: 'Yes, Send'
@@ -3604,9 +3606,9 @@
                 var action = $btn.data('action');
                 var ratePfTransferTo = $btn.closest('.card-body').find(
                     '.shf-transfer-user[data-stage="rate_pf"]').val() || '';
-                var confirmMsg = action === 'send_to_bank' ? 'Send rate & PF details to bank?' :
+                var confirmMsg = action === 'send_to_bank' ? 'Send rate & PF details for review?' :
                     action === 'complete' ? 'Complete Rate & PF stage?' :
-                    'Return this stage to the loan owner?';
+                    'Return this stage to the task owner?';
 
                 var $form = $btn.closest('.card-body').find('.shf-stage-notes-form');
                 if ($form.length && !validateStageForm($form)) return;
@@ -3685,8 +3687,12 @@
                 var advisorName = $('#legalAdvisorName').val();
 
                 if (!advisorName || !advisorName.trim()) {
-                    $('#legalAdvisorName').addClass('is-invalid');
-                    Swal.fire('Error', 'Legal Advisor name is required', 'error');
+                    var $input = $('#legalAdvisorName');
+                    $input.addClass('is-invalid');
+                    $input.next('.shf-field-error').remove();
+                    $input.after('<div class="shf-field-error text-danger shf-text-xs mt-1">Legal Advisor name is required</div>');
+                    $input[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    $input.focus();
                     return;
                 }
 
@@ -3698,7 +3704,7 @@
                     suggested_legal_advisor: advisorName.trim(),
                     transfer_to: legalTransferTo || null
                 };
-                var confirmMsg = action === 'send_to_bank' ? 'Send legal verification to bank?' :
+                var confirmMsg = action === 'send_to_bank' ? 'Send for legal verification?' :
                     'Initiate legal verification?';
 
                 Swal.fire({
@@ -3971,6 +3977,14 @@
                         todayHighlight: true,
                         endDate: '+0d'
                     });
+                    $(target).find('.shf-datepicker-custom').each(function() {
+                        var opts = { format: 'dd/mm/yyyy', autoclose: true, todayHighlight: true };
+                        var minDate = $(this).data('min-date');
+                        var maxDate = $(this).data('max-date');
+                        if (minDate) opts.startDate = minDate;
+                        if (maxDate) opts.endDate = maxDate;
+                        $(this).datepicker(opts);
+                    });
                     // Re-initialize currency formatting
                     if (typeof SHF !== 'undefined' && SHF.initAmountFields) {
                         SHF.initAmountFields();
@@ -3993,9 +4007,14 @@
             $('#submitQueryBtn').on('click', function() {
                 var queryText = $('#queryText').val();
                 if (!queryText || !queryText.trim()) {
-                    Swal.fire('Error', 'Query text is required.', 'error');
+                    var $qt = $('#queryText');
+                    $qt.addClass('is-invalid');
+                    $qt.next('.shf-field-error').remove();
+                    $qt.after('<div class="shf-field-error text-danger shf-text-xs mt-1">Query text is required</div>');
+                    $qt.focus();
                     return;
                 }
+                $('#queryText').removeClass('is-invalid').next('.shf-field-error').remove();
                 var loanId = $('#queryLoanId').val();
                 var stageKey = $('#queryStageKey').val();
                 var $btn = $(this);
@@ -4021,11 +4040,15 @@
                 var $form = $(this),
                     url = $form.data('url');
                 var responseText = $form.find('[name="response_text"]').val();
+                var $rt = $form.find('[name="response_text"]');
                 if (!responseText || !responseText.trim()) {
-                    $form.find('[name="response_text"]').addClass('is-invalid');
-                    Swal.fire('Error', 'Response text is required.', 'error');
+                    $rt.addClass('is-invalid');
+                    $rt.next('.shf-field-error').remove();
+                    $rt.after('<div class="shf-field-error text-danger shf-text-xs mt-1">Response text is required</div>');
+                    $rt.focus();
                     return;
                 }
+                $rt.removeClass('is-invalid').next('.shf-field-error').remove();
                 var $btn = $form.find('button[type="submit"]');
                 $btn.prop('disabled', true);
                 $.post(url, {
@@ -4084,9 +4107,15 @@
                     });
             });
 
-            // Clear inline errors on sanction decision remarks input
+            // Clear inline errors on input/change
             $(document).on('input', '.shf-sd-remarks', function() {
                 $(this).removeClass('is-invalid').next('.shf-client-error').remove();
+            });
+            $(document).on('input', '#legalAdvisorName, #queryText, [name="response_text"]', function() {
+                $(this).removeClass('is-invalid').next('.shf-field-error').remove();
+            });
+            $(document).on('change', '.shf-transfer-user, .shf-stage-transfer-select', function() {
+                $(this).removeClass('is-invalid').next('.shf-field-error').remove();
             });
 
             // Sanction Decision actions
@@ -4227,10 +4256,14 @@
                 var loanId = $btn.data('loan-id');
                 var userId = $btn.closest('.card-body').find(
                     '.shf-transfer-user[data-stage="otc_clearance"]').val();
+                var $otcSelect = $btn.closest('.card-body').find('.shf-transfer-user[data-stage="otc_clearance"]');
                 if (!userId) {
-                    Swal.fire('Error', 'Please select an Office Employee', 'error');
+                    $otcSelect.addClass('is-invalid');
+                    $otcSelect.next('.shf-field-error').remove();
+                    $otcSelect.after('<div class="shf-field-error text-danger shf-text-xs mt-1">Please select an employee</div>');
                     return;
                 }
+                $otcSelect.removeClass('is-invalid').next('.shf-field-error').remove();
                 $btn.prop('disabled', true);
                 $.post('/loans/' + loanId + '/stages/otc_clearance/transfer', {
                         _token: csrfToken,

@@ -39,23 +39,14 @@ class LoanDisbursementController extends Controller
 
         $validated['disbursement_date'] = \Carbon\Carbon::createFromFormat('d/m/Y', $validated['disbursement_date'])->toDateString();
 
-        // Validate disbursement amount doesn't exceed sanctioned amount
-        $sanctionAssignment = $loan->stageAssignments()->where('stage_key', 'sanction')->first();
-        $sanctionedAmount = $sanctionAssignment ? ($sanctionAssignment->getNotesData()['sanctioned_amount'] ?? null) : null;
-        if ($sanctionedAmount && $validated['amount_disbursed'] > (float) $sanctionedAmount) {
-            return redirect()->back()->withInput()->with('error', 'Disbursement amount (₹ '.number_format($validated['amount_disbursed']).') exceeds sanctioned amount (₹ '.number_format($sanctionedAmount).').');
-        }
-
-        // Validate cheque total doesn't exceed amount
+        // Validate cheque total doesn't exceed disbursement amount (data integrity)
         if ($validated['disbursement_type'] === 'cheque' && ! empty($validated['cheques'])) {
             $chequeTotal = array_sum(array_column($validated['cheques'], 'cheque_amount'));
             if ($chequeTotal > $validated['amount_disbursed']) {
                 return redirect()->back()->withInput()->with('error', 'Total cheque amount (₹ '.number_format($chequeTotal).') exceeds disbursement amount (₹ '.number_format($validated['amount_disbursed']).').');
             }
-            if ($sanctionedAmount && $chequeTotal > (float) $sanctionedAmount) {
-                return redirect()->back()->withInput()->with('error', 'Total cheque amount (₹ '.number_format($chequeTotal).') exceeds sanctioned amount (₹ '.number_format($sanctionedAmount).').');
-            }
         }
+        // Disbursement amount > sanctioned amount is allowed (warning shown on client side)
 
         $disbursement = app(DisbursementService::class)->processDisbursement($loan, $validated);
 

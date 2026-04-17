@@ -1,94 +1,127 @@
-# Loan Workflow Guide (User-Facing)
+# Workflow Guide (User-facing)
 
-## Stage Overview
+How loans move through the 12-stage workflow. Written for users (BDH, BM, advisors, bank/office employees). For dev internals see `workflow-developer.md`.
 
-Every loan progresses through up to 16 stages (including parallel sub-stages):
+## Stages at a glance
 
-### Sequential Stages
-1. **Inquiry** — Initial loan inquiry recorded
-2. **Document Selection** — Required documents identified
-3. **Document Collection** — Documents gathered from customer
+| # | Stage | English label | Gujarati label | Who |
+|---|---|---|---|---|
+| 1 | inquiry | Inquiry | પૂછપરછ | advisor |
+| 2 | document_selection | Document Selection | દસ્તાવેજ પસંદગી | advisor |
+| 3 | document_collection | Document Collection | દસ્તાવેજ સંગ્રહ | advisor |
+| 4 | parallel_processing | Parallel Processing | સમાંતર પ્રક્રિયા | (parent) |
+| 4a | app_number | Application Number | અરજી નંબર | bank employee |
+| 4b | bsm_osv | BSM / OSV | BSM / OSV | bank employee |
+| 4c | legal_verification | Legal Verification | કાયદેસર ચકાસણી | advisor ↔ bank ↔ office |
+| 4d | technical_valuation | Technical Valuation | ટેકનિકલ મૂલ્યાંકન | advisor ↔ office |
+| 4e | sanction_decision | Sanction Decision | મંજૂરી નિર્ણય | BM / BDH |
+| 5 | rate_pf | Rate & PF | વ્યાજ દર & PF | owner ↔ bank ↔ owner |
+| 6 | sanction | Sanction Letter | મંજૂરી પત્ર | office → bank → owner |
+| 7 | docket | Docket Login | ડોકેટ લોગિન | owner → bank → office |
+| 8 | kfs | KFS | KFS | bank |
+| 9 | esign | E-Sign & eNACH | ઈ-સાઈન & eNACH | bank → customer → office → owner |
+| 10 | disbursement | Disbursement | વિતરણ | owner |
+| 11 | otc_clearance | OTC Clearance | OTC ક્લિયરન્સ | office (cheque only) |
 
-### Parallel Processing (stages run concurrently)
-4. **Application Number** — Bank assigns application number
-5. **BSM/OSV** — Bank site manager / on-site verification
-6. **Legal Verification** (3-phase) — Legal checks on property
-7. **Technical Valuation** — Property/asset valuation
+## Typical path
 
-### Decision & Post-Approval
-8. **Sanction Decision** — Bank approves, escalates, or rejects
-9. **Rate & PF** (3-phase) — Final rate and processing fee negotiation
-10. **Sanction Letter** (3-phase) — Formal sanction letter issuance
-11. **Docket Login** (3-phase) — Loan docket submitted to bank
-12. **KFS** — Key Fact Statement generation
-13. **E-Sign & eNACH** (4-phase) — Digital signing and mandate
-14. **Disbursement** — Funds released
-15. **OTC Clearance** — Over-the-counter cheque clearance (cheque disbursement only)
+1. **Loan created** — either from a quotation (conversion) or directly. Inquiry + Document Selection auto-complete for quotation-converted loans.
+2. **Document Collection** — advisor ticks off each required document. The system tracks received / pending / rejected / waived per document. Stage auto-completes when all required documents are resolved (received or waived).
+3. **Parallel Processing** — the parent stage kicks in. Sub-stages run in two sequential waves:
+   - **Wave A (sequential)**: Application Number → BSM/OSV
+   - **Wave B (parallel)**: once BSM/OSV completes, Legal Verification, Technical Valuation, and Sanction Decision all open up simultaneously.
+4. **Sanction Decision** — BM / BDH picks one:
+   - **Approve** → loan is sanctioned, parallel processing completes, flow moves to Rate & PF.
+   - **Escalate to BM / BDH** → decision bubbles up to the next level.
+   - **Reject** → loan is rejected from this stage; all pending stages close.
+5. **Rate & PF, Sanction Letter, Docket Login** — each is a three-phase stage. The owning advisor kicks off, the bank reviews / generates the document, then it bounces back for final details and completion.
+6. **KFS** — bank issues the Key Facts Statement. Single-phase.
+7. **E-Sign & eNACH** — four phases coordinating bank → customer → office → owner.
+8. **Disbursement** — funds released.
+   - If **fund transfer (NEFT/RTGS)**: loan is marked completed immediately; OTC is skipped.
+   - If **cheque**: OTC Clearance opens for tracking cheque handover.
+9. **OTC Clearance** — office staff logs the cheque handover; loan completes.
 
-## Stage Statuses
+## What you see on the loan page
 
-| Status | Meaning |
-|--------|---------|
-| Pending | Not yet started |
-| In Progress | Currently being worked on |
-| Completed | Successfully finished |
-| Rejected | Loan rejected at this stage |
-| Skipped | Stage skipped (allowed stages only) |
+- **Stage pipeline** at the top — visual dots for each main stage: completed (green), current (orange), pending (gray), rejected (red), skipped (muted).
+- **Current stage card** — who's assigned, what's pending, form fields if applicable.
+- **Sub-stage cards** (only when in Parallel Processing).
+- **Action buttons** — context-specific: "Complete", "Transfer to…", "Raise Query", "Reject", etc.
+- **Notes** — per-stage form data (sanctioned amount, EMI, application number, etc.).
+- **Queries panel** — anyone working a stage can raise a query to another stakeholder. Active queries **block stage completion** until resolved.
 
-## Multi-Phase Stages
+## Who owns what
 
-Some stages involve handoffs between roles:
+Assignments follow this pattern:
 
-### Legal Verification (3 phases)
-1. Loan Advisor → initiates legal check
-2. Bank Employee → processes legal verification
-3. Office Employee → completes legal documentation
+- **Advisor roles** (loan_advisor, branch_manager, BDH) — own advisor-facing stages: document collection, documents, remarks.
+- **Bank employee** — owns bank-side work: application number, BSM/OSV, KFS, bank-side phases of multi-phase stages.
+- **Office employee** — owns internal review: technical valuation capture, docket review, post-sanction paperwork, OTC.
+- **BM / BDH** — gatekeeper for Sanction Decision.
 
-### Rate & PF, Sanction Letter, Docket Login (3 phases each)
-1. Loan Advisor → prepares and submits
-2. Bank Employee → reviews and processes
-3. Loan Advisor → confirms completion
+Default assignees are configured per product and per bank, with fallback logic based on city and branch. See `user-assignment.md`.
 
-### E-Sign & eNACH (4 phases)
-1. Loan Advisor → prepares documents
-2. Bank Employee → generates e-sign links
-3. Loan Advisor → gets customer signatures
-4. Bank Employee → confirms eNACH mandate
+## Transfers
 
-## Parallel Processing Flow
+If the wrong person has a stage, or work needs to move (e.g., absence, workload), click "Transfer to…" on the stage card:
 
-After Document Collection completes:
-1. Application Number starts first
-2. When Application Number completes → BSM/OSV starts
-3. When BSM/OSV completes → Legal Verification + Technical Valuation start simultaneously
-4. When ALL parallel stages complete → proceeds to Sanction Decision
+- Pick the new user
+- Optionally add a reason
+- The stage's active queries automatically move with it
+- A transfer ledger record is written so the history is preserved (`/loans/{id}/transfers`)
 
-## Queries
+Transferring the `sanction` multi-phase stage during ping-pong between phases is what the phase actions (Send to Bank, Return to Owner, etc.) do under the hood.
 
-Any stage participant can raise a query (question) on a stage. Queries block stage completion until resolved. The query flow:
-1. User raises query → assignee notified
-2. Assignee responds → raiser notified
-3. Raiser resolves query → stage can proceed
+## Queries (blocking)
 
-## Stage Transfer
+When a stage owner needs something from another stakeholder, they raise a query instead of completing the stage:
 
-A stage can be transferred to another eligible user with a reason. Transfer history is tracked.
+1. Click **Raise Query** on the stage
+2. Write the question (max 5000 chars)
+3. Recipient gets a notification and sees the query on the stage
+4. Recipient responds — status becomes "Responded"
+5. Original raiser reviews and **Resolves** the query
+6. Stage can now be completed
 
-## Loan Rejection
+Unresolved queries block completion.
 
-Branch Managers, BDH, and Admins can reject a loan at any stage with a reason. Rejection sets the loan status to 'rejected'.
+## Status changes
 
-## Disbursement Types
+Loan owners (BM/BDH level for some) can:
 
-| Type | Flow |
-|------|------|
-| Fund Transfer | Disbursement → Loan Completed (OTC skipped) |
-| Cheque | Disbursement → OTC Clearance → Loan Completed |
+- **Put On Hold** — pause the loan. Stages remain in place but become read-only. Reason is required.
+- **Cancel** — terminal. Reason required. Permission: super_admin, admin, branch_manager, BDH.
+- **Reactivate** — from on_hold, cancelled, or rejected back to active. If rejecting from `rejected`, the rejected stages are restored to `in_progress`.
+
+All status changes are logged and require a reason (except reactivation).
+
+## Completion outcomes
+
+- **Completed** — loan reached final stage (OTC Clearance for cheque; Disbursement for fund transfer).
+- **Rejected** — rejected from any stage with a reason. Rejected at Sanction Decision is most common.
+- **Cancelled** — admin-cancelled for non-rejection reasons (customer withdrew, etc.).
+- **On Hold** — temporarily paused; can resume.
 
 ## Notifications
 
-Users receive in-app notifications for:
-- Stage assignments
-- Stage completions
-- Query raised/responded
-- Loan completion
+The bell icon in the navbar shows unread count (polled every 60s). Events that notify:
+
+- Stage assigned to you
+- Stage you own got a query
+- Query you raised got a response or was resolved
+- Loan you created / advised was completed
+- Loan status changed
+
+## Tips
+
+- If a stage seems stuck, check the **Queries panel** first — an unresolved query may be blocking.
+- Multi-phase stages have a specific action button per phase (e.g., "Send for Sanction" for Phase 1, "Sanction Generated" for Phase 2). Don't try to use "Complete" until the final phase.
+- Documents can be edited back to pending even after the document_collection stage completed — the system will soft-revert the stage.
+- When a loan is on_hold or cancelled, valuation and disbursement forms become read-only; reactivate first.
+
+## See also
+
+- `loans.md` — loan CRUD, visibility, documents, valuation, disbursement, remarks
+- `workflow-developer.md` — the engine under the hood
+- `dashboard.md` — where these stages show up in the dashboard tabs

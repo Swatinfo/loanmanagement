@@ -1,37 +1,48 @@
-# Documentation Index
+# SHF Docs Index
 
-All documentation for the SHF (Shreenathji Home Finance) loan management platform.
+Developer documentation for **Shreenathji Home Finance (SHF)** — a bilingual (English/Gujarati) loan management platform on Laravel 12 + SQLite.
 
-## Core Reference (`.claude/`)
+## Reading order
 
-| File | Description |
-|------|-------------|
-| [database-schema.md](../.claude/database-schema.md) | Complete table schemas, columns, constraints, indexes |
-| [routes-reference.md](../.claude/routes-reference.md) | All routes with HTTP methods, controllers, permissions |
-| [services-reference.md](../.claude/services-reference.md) | All 13 services with methods, validation, business logic |
+1. **Start here** if you're new: `authentication.md` → `permissions.md` → `roles.md` → `users.md`
+2. **Before touching code**: re-read the pre-read gate in `CLAUDE.md` for the specific area
+3. **Reference files** (under `.claude/`): always source of truth for schema, routes, services
 
-## Feature Documentation (`.docs/`)
+## Guides by area
 
-| File | Description |
-|------|-------------|
-| [quotations.md](quotations.md) | Quotation creation, bank comparison, PDF generation flow |
-| [pdf-generation.md](pdf-generation.md) | PDF rendering: Chrome headless, microservice, HTML template |
-| [loans.md](loans.md) | Loan CRUD, statuses, visibility, conversion from quotation |
-| [workflow-guide.md](workflow-guide.md) | Loan workflow stages (user-facing explanation) |
-| [workflow-developer.md](workflow-developer.md) | Workflow internals: stage transitions, parallel processing, auto-assignment |
-| [settings.md](settings.md) | ConfigService, settings tabs, app_config table |
-| [permissions.md](permissions.md) | 3-tier permission system, 47 slugs, 8 groups |
-| [roles.md](roles.md) | 7 unified roles, can_be_advisor, system roles |
-| [users.md](users.md) | User CRUD, branches, bank assignments, impersonation |
-| [user-assignment.md](user-assignment.md) | Auto-assignment logic, ProductStageUser, findBestAssignee |
-| [models.md](models.md) | All 33 Eloquent models with relationships, scopes, methods |
-| [database.md](database.md) | Database overview, migration strategy, audit columns |
-| [frontend.md](frontend.md) | CSS design system, JS namespaces, responsive patterns |
-| [views.md](views.md) | Blade view architecture, layouts, partials, stacks |
-| [dashboard.md](dashboard.md) | Dashboard tabs, stat cards, default tab selection |
-| [api.md](api.md) | Public and authenticated API endpoints |
-| [authentication.md](authentication.md) | Login, password reset, active user enforcement |
-| [general-tasks.md](general-tasks.md) | Personal/delegated task system |
-| [dvr.md](dvr.md) | Daily Visit Reports, follow-up tracking, visit chains |
-| [activity-log.md](activity-log.md) | Activity logging system |
-| [offline-pwa.md](offline-pwa.md) | IndexedDB, service worker, offline sync |
+| Area | Guide |
+|---|---|
+| Auth & session | `authentication.md` |
+| Access control | `permissions.md`, `roles.md`, `user-assignment.md` |
+| User management | `users.md` |
+| Quotations & PDF | `quotations.md`, `pdf-generation.md` |
+| Loan CRUD | `loans.md` |
+| Loan workflow (user-facing) | `workflow-guide.md` |
+| Loan workflow (dev) | `workflow-developer.md` |
+| Dashboard | `dashboard.md` |
+| General tasks | `general-tasks.md` |
+| DVR (Daily Visit Reports) | `dvr.md` |
+| Settings & config | `settings.md` |
+| Activity log | `activity-log.md` |
+| Models | `models.md` |
+| Database | `database.md` |
+| API endpoints | `api.md` |
+| Frontend (CSS/JS) | `frontend.md` |
+| Blade views | `views.md` |
+| Offline / PWA | `offline-pwa.md` |
+
+## Deep references
+
+Under `.claude/`:
+
+- `database-schema.md` — every table, column, FK
+- `routes-reference.md` — every route with controller + permission
+- `services-reference.md` — every service method signature
+
+## Source-of-truth files (edit these, not docs)
+
+- `public/css/shf.css` — every `shf-*` class
+- `public/js/shf-app.js` — `SHF.*` helpers
+- `public/js/shf-loans.js` — `SHFLoans.*` helpers
+- `config/app-defaults.php` — default config values
+- `config/permissions.php` — permission catalogue

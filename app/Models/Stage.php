@@ -3,15 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Stage extends Model
 {
     protected $fillable = [
         'stage_key', 'is_enabled', 'stage_name_en', 'stage_name_gu', 'sequence_order',
         'is_parallel', 'parent_stage_key', 'stage_type',
-        'description_en', 'description_gu', 'default_role', 'sub_actions',
+        'description_en', 'description_gu', 'default_role', 'assigned_role', 'sub_actions',
     ];
 
     protected function casts(): array
@@ -52,6 +52,11 @@ class Stage extends Model
     public function isDecision(): bool
     {
         return $this->stage_type === 'decision';
+    }
+
+    public function bankConfigs(): HasMany
+    {
+        return $this->hasMany(BankStageConfig::class);
     }
 
     // Scopes

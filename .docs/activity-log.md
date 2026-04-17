@@ -1,78 +1,86 @@
 # Activity Log
 
-## Overview
+Audit trail of user-facing actions. Powered by `ActivityLog` model + `ActivityLog::log()` helper.
 
-System-wide activity logging for audit trail and user action tracking.
+## Model
 
-## Model: `ActivityLog`
+Table: `activity_logs` — see `.claude/database-schema.md`.
 
-### Fields
-- user_id — who performed the action
-- action — action identifier string
-- subject_type, subject_id — polymorphic subject reference
-- properties — JSON additional data
-- ip_address — client IP
-- user_agent — client user agent
-- created_at — timestamp
+| Column | Purpose |
+|---|---|
+| `user_id` | Who did it (nullable — null for system/seeder actions) |
+| `action` | Slug-ish code (e.g., `loan_created`, `stage_completed`, `user_activated`) |
+| `subject_type` | Fully-qualified model class, e.g., `App\Models\LoanDetail` |
+| `subject_id` | PK of the subject |
+| `properties` | JSON — free-form event details |
+| `ip_address` | IPv4/IPv6, max 45 chars |
+| `user_agent` | Browser UA string |
+| `created_at`, `updated_at` | Timestamps |
 
-### Static Method
+Index on `user_id`, composite `(subject_type, subject_id)`, and `created_at`.
+
+## Writing
+
+Use the static helper:
+
 ```php
-ActivityLog::log($action, $subject = null, $properties = [])
+ActivityLog::log('loan_created', $loan, [
+    'loan_number' => $loan->loan_number,
+    'amount' => $loan->loan_amount,
+    'bank' => $loan->bank_name,
+]);
 ```
 
-Auto-fills: user_id, ip_address, user_agent from request.
+Automatically captures `user_id` (from `auth()->id()`), `ip_address`, `user_agent`. Pass null subject for non-entity events. Properties is arbitrary — keep it flat + JSON-safe.
 
-## Logged Actions
+## Conventions for the `action` slug
 
-| Action | When | Properties |
-|--------|------|------------|
-| login | User logs in | — |
-| logout | User logs out | — |
-| impersonate_start | Admin starts impersonating | impersonator, impersonated |
-| impersonate_end | Admin stops impersonating | impersonator, impersonated |
-| quotation_created | Quotation generated | customer_name, loan_amount, bank_count |
-| quotation_deleted | Quotation deleted | customer_name |
-| loan_created | Loan created | loan_number |
-| loan_converted | Quotation → loan | loan_number, quotation_id |
-| loan_deleted | Loan deleted | loan_number |
-| loan_status_changed | Status updated | loan_number, old_status, new_status |
-| stage_updated | Stage status changed | loan_number, stage, status |
-| stage_transferred | Stage transferred | loan_number, stage, from, to |
-| stage_rejected | Loan rejected | loan_number, stage, reason |
-| remark_added | Remark added | loan_number |
-| disbursement_processed | Disbursement done | loan_number, type, amount |
-| document_status | Doc status changed | loan_number, document |
-| task_created | General task created | title |
-| task_status_changed | Task status updated | title, status |
-| user_created | User created | name, email |
-| user_updated | User updated | name |
-| user_deleted | User deleted | name |
-| user_toggled | User active toggled | name, is_active |
-| role_created | Role created | name |
-| role_updated | Role updated | name |
-| permissions_updated | Permission matrix saved | — |
-| settings_updated | Settings section saved | section |
-| settings_reset | Settings reset to defaults | — |
-| master_stages_updated | Stage config saved | — |
-| bank_created/updated | Bank created/updated | name |
-| branch_created/updated | Branch created/updated | name |
-| product_created/updated | Product created/updated | name |
-| product_stages_updated | Product stage config saved | product |
-| location_created/updated | Location saved | name, type |
+| Prefix | Usage |
+|---|---|
+| `{entity}_created` | new row: `loan_created`, `quotation_created`, `user_created` |
+| `{entity}_updated` | edit: `loan_updated`, `user_updated` |
+| `{entity}_deleted` | soft/hard delete |
+| `stage_*` | workflow actions: `stage_assigned`, `stage_completed`, `stage_rejected`, `stage_skipped`, `stage_transferred`, `stage_reverted`, `stage_notes_saved` |
+| `doc_*` | document operations: `doc_status_changed`, `doc_uploaded`, `doc_deleted`, `doc_file_deleted` |
+| `query_*` | `query_raised`, `query_responded`, `query_resolved` |
+| `loan_status_changed` | on_hold / cancelled / reactivated |
+| `user_activated`, `user_deactivated` | toggle active |
 
-## Activity Log Page
+There's no enum enforcement — controllers and services just pass strings. Stay consistent.
 
-### Controller: `DashboardController`
-- `activityLog()` — renders activity log view
-- `activityLogData()` — server-side DataTable endpoint
+## Reading
 
-### Permission
-`view_activity_log` required.
+### UI
 
-### DataTable
-- Columns: date, user, action, subject, details
-- Filterable by user, action type, date range
-- Searchable
+- `GET /activity-log` (permission: `view_activity_log`) — list with filters + DataTable
+- `GET /activity-log/data` — AJAX data endpoint
 
-### View
-`activity-log.blade.php` — single page with DataTable.
+Filters include user, action, date range, subject type. Results show action, user, subject (with link if entity still exists), properties (formatted), timestamp.
+
+### Per-entity log
+
+The loan timeline (`LoanTimelineService::getTimeline()`) pulls `ActivityLog` rows indirectly — it reads from the same `stage_assignments`, `stage_queries`, etc. directly rather than re-querying activity_logs. Activity log is for ad-hoc admin review.
+
+## When to log
+
+**Log:**
+- Creation, update, delete of first-class entities
+- Permission / role / config changes
+- Workflow actions (stage transitions, transfers, query flow)
+- Security-relevant actions (impersonate, user toggle)
+- Document operations (received, rejected, uploaded, deleted)
+
+**Don't log:**
+- Read-only page views (too noisy — use Laravel request log for that)
+- AJAX polling (notifications count, DataTable loads)
+- Every keystroke in a form — log once on submit
+
+## Retention
+
+No built-in rotation. If the table grows large (~hundreds of thousands of rows), add an admin archive/export script or a scheduled prune.
+
+## See also
+
+- `.claude/database-schema.md` — `activity_logs` table
+- `.claude/services-reference.md` — services that log (virtually all write operations)
+- `dashboard.md` — Activity Log page is a dashboard-linked admin tool

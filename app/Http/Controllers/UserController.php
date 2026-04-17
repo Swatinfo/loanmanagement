@@ -497,9 +497,24 @@ class UserController extends Controller
 
         $locationIds = array_map('intval', $request->input('assigned_locations', []));
 
-        // Get stage IDs where default_role contains the new user's role
+        // Get stage IDs where assigned_role or any phase role matches the new user's role
         $roleMatchingStageIds = \App\Models\Stage::where('is_enabled', true)->get()
-            ->filter(fn ($s) => is_array($s->default_role) && in_array($newUserRole, $s->default_role))
+            ->filter(function ($s) use ($newUserRole) {
+                // Check stage-level assigned_role
+                if ($s->assigned_role === $newUserRole) {
+                    return true;
+                }
+                // Check phase-level roles in sub_actions
+                if (is_array($s->sub_actions)) {
+                    foreach ($s->sub_actions as $sa) {
+                        if (($sa['role'] ?? null) === $newUserRole) {
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            })
             ->pluck('id')
             ->toArray();
 
