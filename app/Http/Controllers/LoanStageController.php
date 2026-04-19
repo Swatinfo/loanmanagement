@@ -535,8 +535,8 @@ class LoanStageController extends Controller
 
             $transferTo = $validated['transfer_to'] ?? null;
             if (! $transferTo) {
-                $phase2Role = $this->stageService->getLoanPhaseRole($loan, 'rate_pf', 0);
-                $transferTo = $this->stageService->findUserForRole($phase2Role, $loan, 'rate_pf', 0);
+                $phase2Role = $this->stageService->getLoanPhaseRole($loan, 'rate_pf', 1);
+                $transferTo = $this->stageService->findUserForRole($phase2Role, $loan, 'rate_pf', 1);
             }
 
             if ($transferTo) {
@@ -551,8 +551,8 @@ class LoanStageController extends Controller
 
             $transferTo = $validated['transfer_to'] ?? null;
             if (! $transferTo) {
-                $phase3Role = $this->stageService->getLoanPhaseRole($loan, 'rate_pf', 1);
-                $transferTo = $this->stageService->findUserForRole($phase3Role, $loan, 'rate_pf', 1);
+                $phase3Role = $this->stageService->getLoanPhaseRole($loan, 'rate_pf', 2);
+                $transferTo = $this->stageService->findUserForRole($phase3Role, $loan, 'rate_pf', 2);
             }
 
             if ($transferTo) {

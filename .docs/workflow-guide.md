@@ -31,10 +31,12 @@ How loans move through the 12-stage workflow. Written for users (BDH, BM, adviso
    - **Wave A (sequential)**: Application Number → BSM/OSV
    - **Wave B (parallel)**: once BSM/OSV completes, Legal Verification, Technical Valuation, and Sanction Decision all open up simultaneously.
 4. **Sanction Decision** — BM / BDH picks one:
-   - **Approve** → loan is sanctioned, parallel processing completes, flow moves to Rate & PF.
+   - **Approve** → loan is sanctioned; the Sanction Decision sub-stage completes. In the default (flag-off) flow, this unlocks Rate & PF next. With `OPEN_RATE_PF_PARALLEL=1`, Rate & PF has been in progress since BSM/OSV and Sanction Letter advances once both Rate & PF and the parallel group are complete.
    - **Escalate to BM / BDH** → decision bubbles up to the next level.
    - **Reject** → loan is rejected from this stage; all pending stages close.
 5. **Rate & PF, Sanction Letter, Docket Login** — each is a three-phase stage. The owning advisor kicks off, the bank reviews / generates the document, then it bounces back for final details and completion.
+
+> **Parallel Rate & PF mode** — if the site has `OPEN_RATE_PF_PARALLEL=1`, Rate & PF opens immediately after BSM/OSV alongside Legal / Technical / Sanction Decision instead of waiting for them to finish. Sanction Letter then waits for both the parallel group and Rate & PF to complete (whichever finishes second triggers it).
 6. **KFS** — bank issues the Key Facts Statement. Single-phase.
 7. **E-Sign & eNACH** — four phases coordinating bank → customer → office → owner.
 8. **Disbursement** — funds released.

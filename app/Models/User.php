@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Lab404\Impersonate\Models\Impersonate;
+use NotificationChannels\WebPush\HasPushSubscriptions;
 
 class User extends Authenticatable
 {
-    use HasFactory, Impersonate, Notifiable;
+    use HasFactory, HasPushSubscriptions, Impersonate, Notifiable;
 
     /**
      * Get advisor-eligible role slugs (from cached DB query).

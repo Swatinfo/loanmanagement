@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\NotesApiController;
 use App\Http\Controllers\Api\SyncApiController;
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DailyVisitReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GeneralTaskController;
@@ -97,6 +98,8 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('permission:view_settings')->group(function () {
         Route::post('/settings/dvr-contact-types', [SettingsController::class, 'updateDvrContactTypes'])->name('settings.dvr-contact-types');
         Route::post('/settings/dvr-purposes', [SettingsController::class, 'updateDvrPurposes'])->name('settings.dvr-purposes');
+        Route::post('/settings/quotation-hold-reasons', [SettingsController::class, 'updateQuotationHoldReasons'])->name('settings.quotation-hold-reasons');
+        Route::post('/settings/quotation-cancel-reasons', [SettingsController::class, 'updateQuotationCancelReasons'])->name('settings.quotation-cancel-reasons');
         Route::post('/settings/reset', [SettingsController::class, 'reset'])->name('settings.reset');
     });
 
@@ -212,6 +215,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
 
+    // Web Push subscriptions
+    Route::get('/api/push/public-key', [\App\Http\Controllers\PushSubscriptionController::class, 'publicKey'])->name('push.public-key');
+    Route::post('/api/push/subscribe', [\App\Http\Controllers\PushSubscriptionController::class, 'store'])->name('push.subscribe');
+    Route::post('/api/push/unsubscribe', [\App\Http\Controllers\PushSubscriptionController::class, 'destroy'])->name('push.unsubscribe');
+
     // Document collection
     Route::middleware('permission:view_loans')->group(function () {
         Route::get('/loans/{loan}/documents', [LoanDocumentController::class, 'index'])->name('loans.documents');
@@ -240,6 +248,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Quotations
+    Route::get('/quotations', [QuotationController::class, 'index'])->name('quotations.index');
     Route::middleware('permission:create_quotation')->group(function () {
         Route::get('/quotations/create', [QuotationController::class, 'create'])->name('quotations.create');
     });
@@ -254,6 +263,15 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/quotations/{quotation}', [QuotationController::class, 'show'])->name('quotations.show');
     Route::middleware('permission:delete_quotations')->group(function () {
         Route::delete('/quotations/{quotation}', [QuotationController::class, 'destroy'])->name('quotations.destroy');
+    });
+    Route::middleware('permission:hold_quotation')->group(function () {
+        Route::post('/quotations/{quotation}/hold', [QuotationController::class, 'hold'])->name('quotations.hold');
+    });
+    Route::middleware('permission:cancel_quotation')->group(function () {
+        Route::post('/quotations/{quotation}/cancel', [QuotationController::class, 'cancel'])->name('quotations.cancel');
+    });
+    Route::middleware('permission:resume_quotation')->group(function () {
+        Route::post('/quotations/{quotation}/resume', [QuotationController::class, 'resume'])->name('quotations.resume');
     });
 
     // General Tasks (personal + delegated)
@@ -289,6 +307,19 @@ Route::middleware(['auth'])->group(function () {
         });
         Route::middleware('permission:delete_dvr')->group(function () {
             Route::delete('/{dvr}', [DailyVisitReportController::class, 'destroy'])->name('destroy');
+        });
+    });
+
+    // Customers
+    Route::prefix('customers')->name('customers.')->group(function () {
+        Route::middleware('permission:view_customers')->group(function () {
+            Route::get('/', [CustomerController::class, 'index'])->name('index');
+            Route::get('/data', [CustomerController::class, 'data'])->name('data');
+            Route::get('/{customer}', [CustomerController::class, 'show'])->name('show');
+        });
+        Route::middleware('permission:manage_customers')->group(function () {
+            Route::get('/{customer}/edit', [CustomerController::class, 'edit'])->name('edit');
+            Route::put('/{customer}', [CustomerController::class, 'update'])->name('update');
         });
     });
 

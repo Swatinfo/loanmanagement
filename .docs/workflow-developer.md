@@ -4,16 +4,16 @@ The loan workflow engine: stages, phases, transfers, queries, auto-assignment, a
 
 ## Model primitives
 
-| Model | Role |
-|---|---|
-| `Stage` | master stage definition (name, sequence, parent, sub_actions, default_role) |
-| `BankStageConfig` | per-bank override of `assigned_role` / `phase_roles` |
-| `ProductStage` | per-product config (enabled, default user, per-phase overrides) |
-| `ProductStageUser` | per-product per-branch/location/phase user assignment |
-| `StageAssignment` | **instance** — one per (loan, stage_key) |
-| `StageTransfer` | ledger row — every (re)assignment of an instance |
-| `StageQuery`, `QueryResponse` | two-way blocking queries on a stage |
-| `LoanProgress` | 1:1 with loan — total/completed counts, snapshot |
+| Model                         | Role                                                                        |
+| ----------------------------- | --------------------------------------------------------------------------- |
+| `Stage`                       | master stage definition (name, sequence, parent, sub_actions, default_role) |
+| `BankStageConfig`             | per-bank override of `assigned_role` / `phase_roles`                        |
+| `ProductStage`                | per-product config (enabled, default user, per-phase overrides)             |
+| `ProductStageUser`            | per-product per-branch/location/phase user assignment                       |
+| `StageAssignment`             | **instance** — one per (loan, stage_key)                                    |
+| `StageTransfer`               | ledger row — every (re)assignment of an instance                            |
+| `StageQuery`, `QueryResponse` | two-way blocking queries on a stage                                         |
+| `LoanProgress`                | 1:1 with loan — total/completed counts, snapshot                            |
 
 ## Stage layout
 
@@ -27,8 +27,8 @@ The loan workflow engine: stages, phases, transfers, queries, auto-assignment, a
    ├─ 4c. legal_verification    (3-phase)
    ├─ 4d. technical_valuation   (2-phase)
    └─ 4e. sanction_decision     (decision: approve / escalate / reject)
-5. rate_pf                 (3-phase) — unlocked after parallel_processing completes AND is_sanctioned = true
-6. sanction                (3-phase)
+5. rate_pf                 (3-phase) — gate depends on feature flag (see below)
+6. sanction                (3-phase) — gate depends on feature flag (see below)
 7. docket                  (3-phase)
 8. kfs
 9. esign                   (4-phase)
@@ -38,15 +38,38 @@ The loan workflow engine: stages, phases, transfers, queries, auto-assignment, a
 
 Sub-stages of `parallel_processing` set `parent_stage_key = parallel_processing` and `is_parallel_stage = true` on their `StageAssignment`.
 
+## Feature flag: `app.open_rate_pf_parallel`
+
+Controlled by env `OPEN_RATE_PF_PARALLEL` (default `false`). Read via `config('app.open_rate_pf_parallel')` — never `env()` directly. Helper: `LoanStageService::usesParallelRatePf()`.
+
+| Flag | `rate_pf` opens when | `sanction` opens when |
+|---|---|---|
+| **off** (legacy) | `parallel_processing` completed AND `is_sanctioned = true` (any parallel sub completed gate) | `rate_pf` completed (generic prev-key + parallel-complete rule) |
+| **on** | `bsm_osv` completed (runs alongside legal / technical / sanction_decision) | BOTH `parallel_processing` AND `rate_pf` are completed/skipped |
+
+When on:
+- After `bsm_osv`, `handleStageCompletion` calls `openRatePfInParallel($loan)` in addition to `startRemainingParallelSubStages($loan)`.
+- Completion of either `rate_pf` or the last parallel sub calls `advanceToSanctionIfReady($loan)`, which opens `sanction` only when both gates pass.
+- Loose mode is deliberate — `rate_pf` may proceed before `sanction_decision` is approved. Rejection at `sanction_decision` closes rate_pf via the sibling-reject path in `sanctionDecisionAction`; reactivation restores it via `previous_status`. NO `is_sanctioned` guard in `LoanStageController::ratePfAction()`.
+
+Caveats:
+- Rejection at `sanction_decision` closes all pending/in_progress stages via `sanctionDecisionAction` reject — `rate_pf` is included.
+- In-flight loans past `bsm_osv` at flip-on time will NOT retro-open rate_pf. Backfill is supported: helpers `openRatePfInParallel` and `advanceToSanctionIfReady` are `public` on `LoanStageService`. Use tinker (`app(LoanStageService::class)->openRatePfInParallel($loan)`) or a dedicated seed command if you need a cohort backfill.
+- The workflow snapshot (`loan_details.workflow_config`) is unaffected — the flag only changes flow gates, not roles/users.
+
+### Reactivation (flag-on)
+
+When a loan is rejected at `sanction_decision` with `rate_pf` in progress, the bulk-reject in `LoanStageController::sanctionDecisionAction` closes `rate_pf` and saves `previous_status='in_progress'`. `LoanController::updateStatus` restores all rejected stages from `previous_status` on reactivation and clears `is_sanctioned`, forcing the user to re-decide sanction_decision. `rate_pf` picks up exactly where it left off. No special parallel-mode handling required.
+
 ## Multi-phase stages
 
 A stage with multiple phases uses `Stage.sub_actions` (JSON array) — each entry defines a `name` and `role`:
 
 ```json
 [
-  { "name": "send_for_sanction",   "role": "loan_advisor" },
-  { "name": "sanction_generated",  "role": "bank_employee" },
-  { "name": "sanction_details",    "role": "loan_advisor" }
+    { "name": "send_for_sanction", "role": "loan_advisor" },
+    { "name": "sanction_generated", "role": "bank_employee" },
+    { "name": "sanction_details", "role": "loan_advisor" }
 ]
 ```
 
@@ -89,13 +112,13 @@ The **workflow snapshot** is built at loan creation via `buildWorkflowSnapshot()
 
 Valid transitions:
 
-| From | To |
-|---|---|
-| pending | in_progress, skipped |
-| in_progress | completed, rejected |
-| rejected | in_progress (reactivate flow) |
-| completed | in_progress (soft-revert) |
-| skipped | (no transitions) |
+| From        | To                            |
+| ----------- | ----------------------------- |
+| pending     | in_progress, skipped          |
+| in_progress | completed, rejected           |
+| rejected    | in_progress (reactivate flow) |
+| completed   | in_progress (soft-revert)     |
+| skipped     | (no transitions)              |
 
 Enforced inside `LoanStageService::updateStageStatus()`. Additionally:
 
@@ -114,13 +137,20 @@ This is the heart of the engine. Behaviour per completed stage:
 
 → `startRemainingParallelSubStages()` — marks `legal_verification`, `technical_valuation`, `sanction_decision` as in_progress and auto-assigns each.
 
+If `config('app.open_rate_pf_parallel')` is truthy, also calls `openRatePfInParallel()` to mark `rate_pf` in_progress and auto-assign it alongside the parallel subs.
+
+### `rate_pf` (parallel mode only)
+
+When the flag is on, completion of `rate_pf` is intercepted at the top of `handleStageCompletion` and routed to `advanceToSanctionIfReady()` instead of the default sequential advance. Sanction opens only when both `parallel_processing` and `rate_pf` are complete (in either order).
+
 ### Any parallel sub-stage
 
-→ `checkParallelCompletion()` — if all sub-stages of `parallel_processing` are done (completed/skipped/rejected), mark parent `parallel_processing` completed, then advance to next main stage.
+→ `checkParallelCompletion()` — if all sub-stages of `parallel_processing` are done (completed/skipped/rejected), mark parent `parallel_processing` completed. Flag-off path: advance to next main stage (`rate_pf`). Flag-on path: call `advanceToSanctionIfReady()`, which opens `sanction` only when `rate_pf` is also complete; otherwise waits for rate_pf's completion to trigger the same check.
 
 ### `sanction`
 
 Read `app_number` stage notes for:
+
 - `custom_docket_date` — explicit override
 - `docket_days_offset` — days from sanction date
 
@@ -129,10 +159,10 @@ Write `loan.expected_docket_date` accordingly.
 ### `disbursement`
 
 - If `disbursement_details.disbursement_type === 'fund_transfer'`:
-  - Mark `otc_clearance` as skipped
-  - Mark loan `status = completed`
-  - Notify creator + advisor
-  - **Return early** (skip sequential advance)
+    - Mark `otc_clearance` as skipped
+    - Mark loan `status = completed`
+    - Notify creator + advisor
+    - **Return early** (skip sequential advance)
 - Else (cheque): advance to `otc_clearance` normally.
 
 ### `otc_clearance`
@@ -187,6 +217,7 @@ From the stage context, any assigned user can raise a query (usually back to the
 - **Blocks stage completion** — `updateStageStatus()` checks `hasPendingQueries()` before allowing completion
 
 Flow:
+
 - `POST /loans/{loan}/stages/{stageKey}/query` — raise
 - `POST /loans/queries/{query}/respond` — response (status → responded; notifies raiser)
 - `POST /loans/queries/{query}/resolve` — resolver is the raiser (status → resolved)
@@ -197,15 +228,15 @@ Only `resolved` queries stop blocking. UI shows active queries count on the stag
 
 Defined in `LoanStageController`. Each is an idempotent HTTP POST that advances phase state:
 
-| Endpoint | Actions | Phases |
-|---|---|---|
-| `sanction-action` | send_for_sanction, sanction_generated | 3 phases, plus `saveNotes` handles Phase-3 form completion |
-| `legal-action` | send_to_bank, initiate_legal | 3 phases (optional advisor handoff) |
-| `technical-valuation-action` | send_to_office | 2 phases |
-| `docket-action` | send_to_office | 3 phases |
-| `rate-pf-action` | send_to_bank, return_to_owner, complete | 3 phases |
-| `esign-action` | send_for_esign, esign_generated, esign_customer_done, esign_complete | 4 phases (Phase 4 = completion) |
-| `sanction-decision-action` | approve, escalate_to_bm, escalate_to_bdh, reject | decision gate |
+| Endpoint                     | Actions                                                              | Phases                                                     |
+| ---------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `sanction-action`            | send_for_sanction, sanction_generated                                | 3 phases, plus `saveNotes` handles Phase-3 form completion |
+| `legal-action`               | send_to_bank, initiate_legal                                         | 3 phases (optional advisor handoff)                        |
+| `technical-valuation-action` | send_to_office                                                       | 2 phases                                                   |
+| `docket-action`              | send_to_office                                                       | 3 phases                                                   |
+| `rate-pf-action`             | send_to_bank, return_to_owner, complete                              | 3 phases                                                   |
+| `esign-action`               | send_for_esign, esign_generated, esign_customer_done, esign_complete | 4 phases (Phase 4 = completion)                            |
+| `sanction-decision-action`   | approve, escalate_to_bm, escalate_to_bdh, reject                     | decision gate                                              |
 
 Validation, notes updates, and transfer target calculations are specific to each. Read the controller for specifics; the pattern is the same throughout.
 
@@ -215,14 +246,14 @@ Validation, notes updates, and transfer target calculations are specific to each
 
 1. Validate `notes_data` array present
 2. Per-stage validation of required fields via `getFieldErrors($stageKey, $data)`. Examples:
-   - `app_number`: requires `application_number`, `docket_days_offset` (with optional `custom_docket_date` if offset = 0)
-   - `sanction`: requires `sanction_date`, `sanctioned_amount`, `tenure_months`, `emi_amount` (Phase 3 only)
-   - `docket`: `login_date` (Phase 2 only)
-   - `otc_clearance`: `handover_date`
+    - `app_number`: requires `application_number`, `docket_days_offset` (with optional `custom_docket_date` if offset = 0)
+    - `sanction`: requires `sanction_date`, `sanctioned_amount`, `tenure_months`, `emi_amount` (Phase 3 only)
+    - `docket`: `login_date` (Phase 2 only)
+    - `otc_clearance`: `handover_date`
 3. Domain-specific checks:
-   - Sanction: EMI ≤ sanctioned_amount sanity
-   - Application number: also write to `loan_details.application_number`
-   - Sanction date with offset: recompute `expected_docket_date`
+    - Sanction: EMI ≤ sanctioned_amount sanity
+    - Application number: also write to `loan_details.application_number`
+    - Sanction date with offset: recompute `expected_docket_date`
 4. If stage is pending/in_progress AND data now complete (`isStageDataComplete`), auto-advance to in_progress then completed
 5. If stage is completed AND data no longer complete, soft-revert
 

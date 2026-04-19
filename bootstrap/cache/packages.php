@@ -13,6 +13,13 @@
       0 => 'Lab404\\Impersonate\\ImpersonateServiceProvider',
     ),
   ),
+  'laravel-notification-channels/webpush' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'NotificationChannels\\WebPush\\WebPushServiceProvider',
+    ),
+  ),
   'laravel/boost' => 
   array (
     'providers' => 
@@ -43,6 +50,14 @@
     'providers' => 
     array (
       0 => 'Laravel\\Pail\\PailServiceProvider',
+    ),
+  ),
+  'laravel/reverb' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Laravel\\Reverb\\ApplicationManagerServiceProvider',
+      1 => 'Laravel\\Reverb\\ReverbServiceProvider',
     ),
   ),
   'laravel/roster' => 
@@ -85,6 +100,13 @@
     'providers' => 
     array (
       0 => 'Termwind\\Laravel\\TermwindServiceProvider',
+    ),
+  ),
+  'spatie/laravel-activitylog' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Spatie\\Activitylog\\ActivitylogServiceProvider',
     ),
   ),
 );

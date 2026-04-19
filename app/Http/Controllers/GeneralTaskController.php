@@ -202,10 +202,12 @@ class GeneralTaskController extends Controller
 
         // Notify assignee if different from creator
         if ($task->assigned_to && $task->assigned_to !== $user->id) {
+            $loanSuffix = $task->loan ? " for Loan of ({$task->loan->customer_name}) #{$task->loan->loan_number}" : '';
+
             $this->notificationService->notify(
                 $task->assigned_to,
                 'Task Assigned',
-                "You have been assigned a task: \"{$task->title}\"",
+                "You have been assigned a task: \"{$task->title}\"{$loanSuffix}",
                 'task',
                 null,
                 null,
@@ -284,10 +286,12 @@ class GeneralTaskController extends Controller
 
         // Notify new assignee if changed
         if ($task->assigned_to && $task->assigned_to !== $oldAssignee && $task->assigned_to !== $user->id) {
+            $loanSuffix = $task->loan ? " for Loan of ({$task->loan->customer_name}) #{$task->loan->loan_number}" : '';
+
             $this->notificationService->notify(
                 $task->assigned_to,
                 'Task Assigned',
-                "You have been assigned a task: \"{$task->title}\"",
+                "You have been assigned a task: \"{$task->title}\"{$loanSuffix}",
                 'task',
                 null,
                 null,
@@ -354,10 +358,12 @@ class GeneralTaskController extends Controller
             && $task->assigned_to === $user->id
             && $task->created_by !== $user->id
         ) {
+            $loanSuffix = $task->loan ? " for Loan of ({$task->loan->customer_name}) #{$task->loan->loan_number}" : '';
+
             $this->notificationService->notify(
                 $task->created_by,
                 'Task Completed',
-                "Task \"{$task->title}\" has been completed by {$user->name}",
+                "Task \"{$task->title}\"{$loanSuffix} has been completed by {$user->name}",
                 'task',
                 null,
                 null,
@@ -405,10 +411,12 @@ class GeneralTaskController extends Controller
         }
 
         if ($notifyUserId) {
+            $loanSuffix = $task->loan ? " for Loan of ({$task->loan->customer_name}) #{$task->loan->loan_number}" : '';
+
             $this->notificationService->notify(
                 $notifyUserId,
                 'Task Comment',
-                "{$user->name} commented on task: \"{$task->title}\"",
+                "{$user->name} commented on task: \"{$task->title}\"{$loanSuffix}",
                 'task',
                 null,
                 null,

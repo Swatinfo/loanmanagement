@@ -18,6 +18,17 @@ class Role extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        $invalidate = function (): void {
+            app(\App\Services\PermissionService::class)->clearAllCaches();
+            static::clearAdvisorCache();
+        };
+
+        static::saved($invalidate);
+        static::deleted($invalidate);
+    }
+
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'role_user');

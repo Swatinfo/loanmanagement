@@ -4,6 +4,28 @@ Patterns and corrections captured during development. Review at session start.
 
 ---
 
+## Branch-scoped visibility (2026-04-18)
+- **All branch scopes must read the full `user_branches` list, not `default_branch_id`**: `$user->branches()->pluck('branches.id')` is the canonical pattern across `LoanDetail::scopeVisibleTo`, `Quotation::scopeVisibleTo`, `Customer::scopeVisibleTo`, and `DailyVisitReport::scopeVisibleTo`. This matches the multi-branch UX on the user edit page (`assigned_branches[]`). Do not use `default_branch_id` for scope — it's the create-time fallback only.
+- **`view_all_*` permissions must be removed from branch-scoped roles**: giving `branch_manager`/`bdh` a `view_all_loans` or `view_all_quotations` short-circuits the scope before the branch check runs, making them see everything across branches. Admin keeps both bypasses.
+- **Ensure `branch_id` on create, or scope rows drop**: `QuotationService::generate()` falls back to `User::find($userId)?->default_branch_id` because a null `branch_id` means a branch_manager can never see the record via their branch list (they'd have to be the creator). Same rule for any future branch-scoped module.
+- **Customer scope uses `whereHas('loans')`**: `customers` has no `branch_id` column. Scope joins via `loans.branch_id` (option chosen over backfilling a column). Trade-off: a customer with zero loans is invisible to branch roles — acceptable because `Customer` rows are only created during loan conversion.
+- **Admin DVR is participant, not supervisor**: the seeder grants `admin` `view_dvr + create_dvr + edit_dvr` (no `view_all_dvr`/`delete_dvr`) so admins who create DVRs see only their own. If you need a read-all admin, grant `view_all_dvr` as a user-level override, not by changing role defaults.
+
+---
+
+## Quotation hold/cancel design (2026-04-18)
+- **Follow-up on hold → always DVR, never task**: DVR already has `quotation_id` FK + first-class `follow_up_date`/`follow_up_needed`/`is_follow_up_done` fields and a visit-chain model; tasks are for internal to-dos. Do not add a "create as task" option on quotation hold even though `general_tasks.quotation_id` exists.
+- **Hold vs cancel lifecycle**: `status=cancelled` is terminal (no resume, no convert). `on_hold` → `active` via `/quotations/{id}/resume`. Conversion is blocked on cancelled quotations in `LoanConversionController`.
+- **Reason vocab = config, not enum**: `quotationHoldReasons` / `quotationCancelReasons` stored as `[{key, label_en, label_gu}, …]` in `app_config.main`, editable at `/settings` → Quotation Reasons. Same pattern as `dvrContactTypes` / `dvrPurposes`. Controller validates `reason_key` using `in:` rule against the config's key list at request time.
+- **Dashboard shortcut vs modal UX**: Dashboard Hold/Cancel buttons navigate to `/quotations/{id}?action=hold|cancel`; the show page auto-opens the corresponding modal. Keeps modal UI in one place and avoids duplicating big reason-lists across views. Resume is a simple SweetAlert confirm + POST (no form), OK on dashboard directly.
+- **`.dvr-remove-btn` jQuery handler must check `listId` explicitly**: original DVR code had an `else` fallback. Adding another list (quotation hold reasons) broke it — misrouted deletes to DVR purposes. Always narrow `if/else if` when handlers are reused for new lists.
+- **Reason lists use a `group` field for `<optgroup>` rendering**: `quotationHoldReasons` / `quotationCancelReasons` items each carry `{key, label_en, label_gu, group}`. The settings UI shows a group input per row (with `<datalist>` suggestions from existing groups) and renders the list grouped by `group`. The show-page modal renders options inside `<optgroup>` blocks. Missing/blank `group` → falls back to `Other`. If you add another grouped vocab later, reuse `renderReasonList()` — don't copy `renderDvrList()` which is flat.
+- **Never let notification fan-out fail the primary request**: `ShfNotification::booted()` creates a row, then fans out to Reverb broadcast + Web Push. Both fan-outs are wrapped in `try/catch` + `Log::warning` because: (a) `NotificationBroadcast` uses `ShouldBroadcastNow` (synchronous HTTP to Reverb), and (b) Reverb is a separate process that may be down in dev or during restarts. If the broadcast throws, the DB row is already saved — letting the exception bubble would show a 500 for an operation that actually succeeded. Same rule applies to any future side-effect added to `booted()`.
+- **`ConfigService::load()` self-heals top-level key drift**: the `app_config.main` row is seeded with the full `config/app-defaults.php` tree on first call. When new top-level keys are later added to defaults (e.g. `dvrContactTypes`, `quotationHoldReasons`), `load()` merges them in memory but also persists the merge back to DB via `save($merged)` if `array_diff_key($merged, $loaded)` is non-empty. Prevents silent DB drift where the merged read-path works but the DB row is missing keys. **Caveat**: the check is top-level only — if you add a *nested* assoc key (e.g. `iomCharges.newField`), self-heal won't catch it. For nested additions, add a one-off migration that calls `ConfigService::load()` → `save()`, or extend `load()` to walk nested assoc arrays.
+- **`ConfigService` MUST bypass Laravel's config cache for `app-defaults.php`**: the defaults file is admin-editable reference data, not boot-time config. `ConfigService::defaults()` uses `require base_path('config/app-defaults.php')` instead of `config('app-defaults')`, so `php artisan config:cache` never freezes it. Never replace `$this->defaults()` back with `config('app-defaults')` — that reintroduces the stale-cache bug where a file edit on production wouldn't take effect until `config:clear`.
+
+---
+
 ## Layout & Views
 - **2026-02-27**: Migrated from Blade component slots (`<x-app-layout>`, `{{ $slot }}`) to `@extends`/`@section` pattern. Always use `@extends('layouts.app')` or `@extends('layouts.guest')` — never Blade component wrappers.
 - **2026-02-27**: When updating view architecture, always update CLAUDE.md + MEMORY.md in the same change. Don't forget documentation sync.
@@ -63,11 +85,15 @@ Patterns and corrections captured during development. Review at session start.
 - **2026-04-16**: Stage roles simplified to 3 categories: `task_owner`, `bank_employee`, `office_employee`. BM/BDH/LA are all "task_owner" (resolved from loan's assigned_advisor/created_by at runtime).
 - **2026-04-16**: Workflow config is frozen at loan creation time (`loan_details.workflow_config` JSON). All phase transitions read from snapshot. Config changes only affect new loans.
 - **2026-04-16**: Bank-wise overrides stored in `bank_stage_configs` table. Only rows where bank differs from master default. UI shows all banks always.
-- **2026-04-16**: All multi-phase stages now have `sub_actions` in DB with `role` field per phase: legal_verification (3), technical_valuation (2), rate_pf (2), sanction (3), docket (2), esign (4).
+- **2026-04-16**: All multi-phase stages now have `sub_actions` in DB with `role` field per phase: legal_verification (3), technical_valuation (2), rate_pf (3), sanction (3), docket (2), esign (4).
 - **2026-04-16**: `product_stage_users.phase_index` allows per-phase user assignment. null = stage-level, integer = phase-specific.
+- **2026-04-18**: Normalized `rate_pf.sub_actions` from 2 entries (implicit phase 1) to 3 entries — one per runtime phase. Phase indices shifted: controller calls `getLoanPhaseRole($loan, 'rate_pf', $idx)` now pass `1` for phase 2 (was `0`) and `2` for phase 3 (was `1`). Migration `2026_04_18_100000_normalize_rate_pf_sub_actions` shifts `stages.sub_actions`, `bank_stage_configs.phase_roles`, `product_stage_users.phase_index`, and `loan_details.workflow_config.rate_pf.phases`. All multi-phase stages now share the same convention: one sub_actions entry per runtime phase.
 
 ## Documentation Sync
 - **2026-04-07**: ALWAYS update reference docs (database-schema.md, routes-reference.md, services-reference.md, models.md, permissions.md) AS PART of each phase implementation — not deferred. Mark "Update reference docs" complete only after actually updating them.
 
 ## Testing
 - **2026-02-27**: Auth and Profile tests (Breeze defaults) have pre-existing failures due to `EnsureUserIsActive` middleware and disabled registration. These are NOT caused by view changes — don't waste time debugging them during unrelated work.
+
+## Feature Flags
+- **2026-04-18**: `app.open_rate_pf_parallel` (env `OPEN_RATE_PF_PARALLEL`) controls whether `rate_pf` runs in parallel with the `parallel_processing` sub-stages and whether `sanction` waits for both. Helper: `LoanStageService::usesParallelRatePf()`. Always read via `config('app.*')`, never `env()` directly inside services (Laravel 12 rule). Flag does not invalidate `loan_details.workflow_config` snapshot; flips are safe at runtime after `config:clear`. Helpers `openRatePfInParallel` and `advanceToSanctionIfReady` are public; backfill for in-flight loans can be done via a tinker call like `app(LoanStageService::class)->openRatePfInParallel($loan)` or via a seed command.

@@ -1,0 +1,13 @@
+ Create /etc/logrotate.d/shf-reverb:
+  /home/admin/web/loans.shfworld.com/public_html/storage/logs/reverb/reverb.log {
+      daily
+      rotate 30
+      missingok
+      notifempty
+      copytruncate
+      dateext
+      dateformat -%d-%m-%Y
+      extension .log
+      compress
+      delaycompress
+  }

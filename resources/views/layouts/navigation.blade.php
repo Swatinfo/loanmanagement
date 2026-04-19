@@ -1,5 +1,5 @@
-<nav class="navbar navbar-expand-xl navbar-dark position-relative"
-    style="background: rgba(58, 53, 54, 0.85); backdrop-filter: blur(10px); box-shadow: 0 2px 20px rgba(0,0,0,0.15); border-bottom: 3px solid #f15a29; z-index: 1030;">
+<nav class="navbar navbar-expand-xl navbar-dark sticky-top"
+    style="background: rgba(58, 53, 54, 0.92); backdrop-filter: blur(10px); box-shadow: 0 2px 20px rgba(0,0,0,0.15); border-bottom: 3px solid #f15a29; z-index: 1030; padding-top: calc(0.5rem + env(safe-area-inset-top));">
     <div class="container-fluid px-3 px-lg-4">
         <!-- Logo -->
         <a class="navbar-brand d-flex align-items-center gap-2 py-0" href="{{ route('dashboard') }}">
@@ -7,20 +7,36 @@
         </a>
 
         <!-- Mobile-only icons (beside hamburger) -->
-        <div class="d-flex d-xl-none align-items-center gap-2 ms-auto me-2">
+        <div class="d-flex d-xl-none align-items-center gap-1 ms-auto me-2 flex-nowrap">
+            {{-- Notification Bell (mobile) --}}
+            <a class="nav-link p-1 position-relative shf-text-white-70" href="{{ route('notifications.index') }}"
+                title="Notifications">
+                <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <span
+                    class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none shf-text-2xs js-notif-badge"
+                    style="padding: 2px 5px;"></span>
+            </a>
+
+            {{-- Role badge: shows the currently-auth'd user's role (the impersonated user's
+                 role during impersonation, so admin can see who they're acting as). --}}
             <span class="shf-badge shf-badge-username shf-text-2xs {{ auth()->user()->isSuperAdmin() ? 'shf-badge-orange' : (auth()->user()->isAdmin() ? 'shf-badge-blue' : 'shf-badge-gray') }}">
                 {{ auth()->user()->role_label }}
             </span>
 
             @impersonating
+                {{-- Compact on mobile: show only the icon, drop the "Leave" text. --}}
                 <a href="{{ route('impersonate.leave') }}"
-                    class="btn btn-warning btn-sm d-flex align-items-center gap-1 py-1 px-2"
+                    class="btn btn-warning btn-sm d-flex align-items-center justify-content-center gap-1 py-1 px-2"
+                    title="Leave impersonation"
                     style="font-size: 0.75rem;">
                     <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
-                    Leave
+                    <span class="d-none d-sm-inline">Leave</span>
                 </a>
             @else
                 @canImpersonate
@@ -45,11 +61,9 @@
             @endImpersonating
         </div>
 
-        <!-- Hamburger -->
-        <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse"
-            data-bs-target="#shfNavbar" aria-controls="shfNavbar" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
+        {{-- Hamburger removed: below xl, navigation is served by the fixed bottom nav
+             (partials/bottom-nav.blade.php). The .collapse wrapper stays because
+             Bootstrap's navbar-expand-xl uses it for desktop layout at ≥xl. --}}
 
         <div class="collapse navbar-collapse" id="shfNavbar">
             <!-- Desktop Nav Links -->
@@ -65,15 +79,15 @@
                     </a>
                 </li>
 
-                @if (auth()->user()->hasPermission('create_quotation'))
+                @if (auth()->user()->hasPermission('create_quotation') || auth()->user()->hasPermission('view_own_quotations') || auth()->user()->hasPermission('view_all_quotations'))
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('quotations.*') ? 'shf-nav-active' : 'shf-nav-link' }}"
-                            href="{{ route('quotations.create') }}">
+                            href="{{ route('quotations.index') }}">
                             <svg class="me-1 shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M12 4v16m8-8H4" />
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            New Quotation
+                            Quotations
                         </a>
                     </li>
                 @endif
@@ -125,6 +139,19 @@
                                     d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                             </svg>
                             Users
+                        </a>
+                    </li>
+                @endif
+
+                @if (auth()->user()->hasPermission('view_customers'))
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('customers.*') ? 'shf-nav-active' : 'shf-nav-link' }}"
+                            href="{{ route('customers.index') }}">
+                            <svg class="me-1 shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            Customers
                         </a>
                     </li>
                 @endif
@@ -217,8 +244,8 @@
                             d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                     </svg>
                     <span
-                        class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none shf-text-2xs"
-                        id="notifBadge" style="padding: 2px 5px;"></span>
+                        class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none shf-text-2xs js-notif-badge"
+                        style="padding: 2px 5px;"></span>
                 </a>
 
                 <span
@@ -263,149 +290,31 @@
                 </div>
             </div>
 
-            <!-- Mobile Responsive Links -->
-            <div class="d-xl-none pt-2 pb-3">
-                {{-- Mobile Impersonation Banner --}}
-                @impersonating
-                    <div class="px-2 mb-2">
-                        <a href="{{ route('impersonate.leave') }}"
-                            class="btn btn-warning btn-sm w-100 d-flex align-items-center justify-content-center gap-1">
-                            <svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            Impersonating <strong>{{ Auth::user()->name }}</strong>
-                            <span class="badge bg-dark ms-1">Leave</span>
-                        </a>
-                    </div>
-                @endImpersonating
-
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('dashboard') ? 'active fw-bold' : '' }} shf-text-white-70"
-                            href="{{ route('dashboard') }}">Dashboard</a>
-                    </li>
-
-                    @if (auth()->user()->hasPermission('create_quotation'))
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('quotations.*') ? 'active fw-bold' : '' }} shf-text-white-70"
-                                href="{{ route('quotations.create') }}">New
-                                Quotation</a>
-                        </li>
-                    @endif
-
-                    @if (auth()->user()->hasPermission('view_loans'))
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('loans.*') ? 'active fw-bold' : '' }} shf-text-white-70"
-                                href="{{ route('loans.index') }}">Loans</a>
-                        </li>
-                    @endif
-
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('general-tasks.*') ? 'active fw-bold' : '' }} shf-text-white-70"
-                            href="{{ route('general-tasks.index') }}">Tasks</a>
-                    </li>
-
-                    @if (auth()->user()->hasPermission('view_dvr'))
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('dvr.*') ? 'active fw-bold' : '' }} shf-text-white-70"
-                                href="{{ route('dvr.index') }}">DVR</a>
-                        </li>
-                    @endif
-
-                    @if (auth()->user()->hasPermission('view_users'))
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('users.*') ? 'active fw-bold' : '' }} shf-text-white-70"
-                                href="{{ route('users.index') }}">Users</a>
-                        </li>
-                    @endif
-
-                    @if (auth()->user()->hasPermission('view_settings'))
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('settings.*') || request()->routeIs('permissions.*') ? 'active fw-bold' : '' }} shf-text-white-70"
-                                href="{{ route('settings.index') }}">Quotation Settings</a>
-                        </li>
-                    @endif
-
-                    @if (auth()->user()->hasPermission('manage_workflow_config'))
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('loan-settings.*') ? 'active fw-bold' : '' }} shf-text-white-70"
-                                href="{{ route('loan-settings.index') }}">Loan Settings</a>
-                        </li>
-                    @endif
-
-                    @if (auth()->user()->isSuperAdmin())
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('roles.*') ? 'active fw-bold' : '' }} shf-text-white-70"
-                                href="{{ route('roles.index') }}">Roles</a>
-                        </li>
-                    @endif
-
-                    @if (auth()->user()->hasPermission('view_activity_log'))
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('activity-log') ? 'active fw-bold' : '' }} shf-text-white-70"
-                                href="{{ route('activity-log') }}">Activity Log</a>
-                        </li>
-                    @endif
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('reports.*') ? 'active fw-bold' : '' }} shf-text-white-70"
-                            href="{{ route('reports.turnaround') }}">Reports</a>
-                    </li>
-                </ul>
-
-                <!-- Mobile User Info -->
-                <div class="border-top mt-3 pt-3" style="border-color: rgba(255,255,255,0.1) !important;">
-                    <div class="px-2 d-flex align-items-center gap-3">
-                        <div>
-                            <div class="fw-medium" style="color: #fff;">{{ Auth::user()->name }}</div>
-                            <div class="small" style="color: rgba(255,255,255,0.5);">{{ Auth::user()->email }}</div>
-                        </div>
-                        <span
-                            class="shf-badge ms-auto shf-badge-username {{ auth()->user()->isSuperAdmin() ? 'shf-badge-orange ' : (auth()->user()->isAdmin() ? 'shf-badge-blue' : 'shf-badge-gray') }}">
-                            {{ auth()->user()->role_label }}
-                        </span>
-                    </div>
-                    <ul class="navbar-nav mt-2">
-                        <li class="nav-item">
-                            <a class="nav-link shf-text-white-70" href="{{ route('profile.edit') }}">Profile</a>
-                        </li>
-                        <li class="nav-item">
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <a class="nav-link" style="color: rgba(255,255,255,0.7); cursor: pointer;"
-                                    onclick="event.preventDefault(); this.closest('form').submit();"
-                                    href="{{ route('logout') }}">Log Out</a>
-                            </form>
-                        </li>
-                    </ul>
-                </div>
-            </div>
         </div>
     </div>
 </nav>
 
-{{-- Notification badge polling --}}
+{{-- Notification badge: Echo pushes in real time (see layouts/app.blade.php).
+     5-minute fallback poll covers sockets blocked by corporate firewalls. --}}
 <script>
-    (function() {
-        function updateNotifBadge() {
-            fetch('{{ route('api.notifications.count') }}')
-                .then(function(r) {
-                    return r.json();
-                })
-                .then(function(data) {
-                    var badge = document.getElementById('notifBadge');
-                    if (!badge) return;
+    window.updateNotifBadge = function () {
+        fetch('{{ route('api.notifications.count') }}')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var badges = document.querySelectorAll('.js-notif-badge');
+                if (!badges.length) return;
+                badges.forEach(function (badge) {
                     if (data.count > 0) {
                         badge.textContent = data.count > 99 ? '99+' : data.count;
                         badge.classList.remove('d-none');
                     } else {
                         badge.classList.add('d-none');
                     }
-                }).catch(function() {});
-        }
-        updateNotifBadge();
-        setInterval(updateNotifBadge, 60000);
-    })();
+                });
+            }).catch(function () {});
+    };
+    window.updateNotifBadge();
+    setInterval(window.updateNotifBadge, 300000);
 </script>
 
 @canImpersonate

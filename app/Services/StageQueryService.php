@@ -36,10 +36,13 @@ class StageQueryService
 
         // Notify the stage assignee
         if ($assignment->assigned_to) {
+
+            $message = "A query was raised for Loan of ({$assignment->loan->customer_name}) #{$assignment->loan->loan_number} on ".$assignment->stage_key.': '.Str::limit($queryText, 80);
+
             app(NotificationService::class)->notify(
                 $assignment->assigned_to,
                 'Query Raised',
-                'A query was raised on ' . $assignment->stage_key . ': ' . Str::limit($queryText, 80),
+                $message,
                 'warning',
                 $assignment->loan_id,
                 $assignment->stage_key,
@@ -61,10 +64,12 @@ class StageQueryService
 
         // Notify the user who raised the query that a response was given
         if ($query->raised_by !== $userId) {
+            $message = 'Your query on '.$query->stage_key." for Loan of ({$query->loan->customer_name}) #{$query->loan->loan_number} has been responded to.";
+
             app(NotificationService::class)->notify(
                 $query->raised_by,
                 'Query Responded',
-                'Your query on ' . $query->stage_key . ' has been responded to.',
+                $message,
                 'info',
                 $query->loan_id,
                 $query->stage_key,

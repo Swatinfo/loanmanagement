@@ -26,7 +26,7 @@ class SettingsController extends Controller
     {
         $validated = $request->validate([
             'companyName' => 'required|string|max:255',
-            'companyAddress' => 'required|string|max:500',
+            'companyAddress' => 'required|string|max:5000',
             'companyPhone' => 'required|string|max:50',
             'companyEmail' => 'required|email|max:255',
         ]);
@@ -132,7 +132,7 @@ class SettingsController extends Controller
     public function updateServices(Request $request)
     {
         $validated = $request->validate([
-            'ourServices' => 'required|string|max:1000',
+            'ourServices' => 'required|string|max:10000',
         ]);
 
         $this->configService->updateSection('ourServices', $validated['ourServices']);
@@ -157,9 +157,9 @@ class SettingsController extends Controller
     {
         $validated = $request->validate([
             'dvrContactTypes' => 'required|array|min:1',
-            'dvrContactTypes.*.key' => 'required|string|max:50',
-            'dvrContactTypes.*.label_en' => 'required|string|max:100',
-            'dvrContactTypes.*.label_gu' => 'required|string|max:100',
+            'dvrContactTypes.*.key' => 'required|string|max:500',
+            'dvrContactTypes.*.label_en' => 'required|string|max:10000',
+            'dvrContactTypes.*.label_gu' => 'required|string|max:10000',
         ]);
 
         $this->configService->updateSection('dvrContactTypes', array_values($validated['dvrContactTypes']));
@@ -172,15 +172,61 @@ class SettingsController extends Controller
     {
         $validated = $request->validate([
             'dvrPurposes' => 'required|array|min:1',
-            'dvrPurposes.*.key' => 'required|string|max:50',
-            'dvrPurposes.*.label_en' => 'required|string|max:100',
-            'dvrPurposes.*.label_gu' => 'required|string|max:100',
+            'dvrPurposes.*.key' => 'required|string|max:500',
+            'dvrPurposes.*.label_en' => 'required|string|max:1000',
+            'dvrPurposes.*.label_gu' => 'required|string|max:1000',
         ]);
 
         $this->configService->updateSection('dvrPurposes', array_values($validated['dvrPurposes']));
         ActivityLog::log('settings_updated', null, ['section' => 'dvr_purposes']);
 
         return back()->with('success', 'DVR purposes updated.');
+    }
+
+    public function updateQuotationHoldReasons(Request $request)
+    {
+        $validated = $request->validate([
+            'quotationHoldReasons' => 'required|array|min:1',
+            'quotationHoldReasons.*.key' => 'required|string|max:500',
+            'quotationHoldReasons.*.label_en' => 'required|string|max:1000',
+            'quotationHoldReasons.*.label_gu' => 'required|string|max:1000',
+            'quotationHoldReasons.*.group' => 'nullable|string|max:100',
+        ]);
+
+        $reasons = array_map(fn ($r) => [
+            'key' => $r['key'],
+            'label_en' => $r['label_en'],
+            'label_gu' => $r['label_gu'],
+            'group' => $r['group'] ?? 'Other',
+        ], array_values($validated['quotationHoldReasons']));
+
+        $this->configService->updateSection('quotationHoldReasons', $reasons);
+        ActivityLog::log('settings_updated', null, ['section' => 'quotation_hold_reasons']);
+
+        return back()->with('success', 'Hold reasons updated.');
+    }
+
+    public function updateQuotationCancelReasons(Request $request)
+    {
+        $validated = $request->validate([
+            'quotationCancelReasons' => 'required|array|min:1',
+            'quotationCancelReasons.*.key' => 'required|string|max:500',
+            'quotationCancelReasons.*.label_en' => 'required|string|max:1000',
+            'quotationCancelReasons.*.label_gu' => 'required|string|max:1000',
+            'quotationCancelReasons.*.group' => 'nullable|string|max:100',
+        ]);
+
+        $reasons = array_map(fn ($r) => [
+            'key' => $r['key'],
+            'label_en' => $r['label_en'],
+            'label_gu' => $r['label_gu'],
+            'group' => $r['group'] ?? 'Other',
+        ], array_values($validated['quotationCancelReasons']));
+
+        $this->configService->updateSection('quotationCancelReasons', $reasons);
+        ActivityLog::log('settings_updated', null, ['section' => 'quotation_cancel_reasons']);
+
+        return back()->with('success', 'Cancel reasons updated.');
     }
 
     public function reset()

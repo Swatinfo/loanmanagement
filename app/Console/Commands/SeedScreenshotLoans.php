@@ -4,10 +4,15 @@ namespace App\Console\Commands;
 
 use App\Models\Bank;
 use App\Models\Branch;
+use App\Models\Customer;
+use App\Models\DailyVisitReport;
 use App\Models\DisbursementDetail;
+use App\Models\GeneralTask;
+use App\Models\GeneralTaskComment;
 use App\Models\LoanDetail;
 use App\Models\Product;
 use App\Models\ProductStage;
+use App\Models\Quotation;
 use App\Models\Role;
 use App\Models\Stage;
 use App\Models\User;
@@ -19,9 +24,12 @@ use Illuminate\Support\Facades\Hash;
 
 class SeedScreenshotLoans extends Command
 {
-    protected $signature = 'app:seed-screenshot-loans';
+    protected $signature = 'app:seed-screenshot-loans
+        {--mode=complete : Coverage mode — "main" (minimal dataset for one-shot route screenshots) or "complete" (every stage/phase/variation — default)}';
 
-    protected $description = 'Seed test loans at every stage, sub-stage, phase, and action for the new workflow';
+    protected $description = 'Seed test fixtures (loans, quotations, DVRs, tasks) for the screenshot tool. Two modes: "main" (1-of-each, for per-route captures) or "complete" (every stage/phase/role handoff).';
+
+    private string $mode = 'complete';
 
     private LoanConversionService $conversionService;
 
@@ -39,9 +47,17 @@ class SeedScreenshotLoans extends Command
 
     public function handle(LoanConversionService $conversionService, LoanStageService $stageService): int
     {
-
         $this->conversionService = $conversionService;
         $this->stageService = $stageService;
+
+        $mode = strtolower((string) $this->option('mode'));
+        if (! in_array($mode, ['main', 'complete'], true)) {
+            $this->error("Invalid --mode={$mode}. Use 'main' or 'complete'.");
+
+            return 1;
+        }
+        $this->mode = $mode;
+        $this->info("Mode: {$this->mode}");
 
         if (! $this->verifyPrerequisites()) {
             return 1;
@@ -51,7 +67,17 @@ class SeedScreenshotLoans extends Command
         $this->ensureProductStages();
         $this->printVerification();
         $this->cleanExistingData();
-        $this->createAllLoans();
+
+        if ($this->mode === 'main') {
+            $this->createMinimalLoans();
+        } else {
+            $this->createAllLoans();
+        }
+
+        $this->seedQuotations();
+        $this->seedDvrs();
+        $this->seedTasks();
+        $this->writeFixtures();
 
         return 0;
     }
@@ -188,6 +214,12 @@ class SeedScreenshotLoans extends Command
     {
         $this->info("\n── Cleaning existing data ──");
         $this->call('loans:purge', ['--force' => true]);
+
+        // Purge fixture rows created by this seeder so re-runs stay idempotent.
+        GeneralTaskComment::query()->delete();
+        GeneralTask::query()->delete();
+        DailyVisitReport::query()->delete();
+        Quotation::query()->delete();
     }
 
     private function createAllLoans(): void
@@ -996,5 +1028,301 @@ class SeedScreenshotLoans extends Command
             ['Role', 'User', 'ID'],
             collect($this->roleUsers)->map(fn ($u, $role) => [$role, $u->name, $u->id])->values()->toArray()
         );
+    }
+
+    /**
+     * Minimal seed for "main" mode — one loan mid-workflow, enough to populate every `/loans/{id}/...` route.
+     */
+    private function createMinimalLoans(): void
+    {
+        $this->info("\n── Creating minimal fixture loan (main mode) ──");
+
+        $adminId = $this->roleUsers['super_admin']->id;
+        auth()->loginUsingId($adminId);
+
+        $loans = [
+            ['name' => 'Screenshot Ravi Chauhan', 'amount' => 5800000, 'target' => 'rate_pf_phase2', 'type' => 'salaried', 'days' => 12],
+            ['name' => 'Screenshot Ramesh Jain', 'amount' => 4800000, 'target' => 'completed_fund', 'type' => 'salaried', 'days' => 30],
+        ];
+
+        foreach ($loans as $i => $def) {
+            try {
+                $loan = $this->conversionService->createDirectLoan([
+                    'customer_name' => $def['name'],
+                    'customer_type' => $def['type'],
+                    'loan_amount' => $def['amount'],
+                    'bank_id' => $this->bankId,
+                    'product_id' => $this->productId,
+                    'branch_id' => $this->branchId,
+                    'assigned_advisor' => $this->roleUsers['loan_advisor']->id,
+                    'notes' => "Screenshot loan — target: {$def['target']}",
+                ]);
+                $this->advanceToTarget($loan, $def['target'], $adminId, $i);
+                $this->backdateLoan($loan, $def['days']);
+                $loan->refresh();
+                $this->line(sprintf('  %2d. %-28s → %-24s [%s]', $i + 1, $def['name'], $def['target'], $loan->loan_number));
+            } catch (\Throwable $e) {
+                $this->error("  ✗ #{$i}: {$def['name']} — {$e->getMessage()}");
+            }
+        }
+
+        $activeLoans = LoanDetail::where('status', LoanDetail::STATUS_ACTIVE)->orderBy('id')->get();
+        $map = [];
+        foreach ($activeLoans as $loan) {
+            preg_match('/target: (.+)/', $loan->notes, $m);
+            $map[$loan->id] = $m[1] ?? $loan->current_stage;
+        }
+        $mapDir = base_path('screenshots');
+        if (! is_dir($mapDir)) {
+            mkdir($mapDir, 0755, true);
+        }
+        file_put_contents("{$mapDir}/loan-stage-map.json", json_encode($map, JSON_PRETTY_PRINT));
+    }
+
+    /**
+     * Seed representative quotations. Main mode = 1 active. Complete = active + on_hold + cancelled.
+     */
+    private function seedQuotations(): void
+    {
+        $this->info("\n── Seeding quotations ──");
+
+        $advisor = $this->roleUsers['loan_advisor'];
+        $admin = $this->roleUsers['super_admin'];
+        $branchId = $this->branchId;
+
+        $rows = [
+            [
+                'user_id' => $advisor->id,
+                'customer_name' => 'Screenshot Asha Patel',
+                'customer_type' => 'salaried',
+                'loan_amount' => 3500000,
+                'prepared_by_name' => $advisor->name,
+                'prepared_by_mobile' => '9876543210',
+                'selected_tenures' => [10, 15, 20],
+                'branch_id' => $branchId,
+                'status' => Quotation::STATUS_ACTIVE,
+                'created_at' => now()->subDays(3),
+                'updated_at' => now()->subDays(3),
+            ],
+        ];
+
+        if ($this->mode === 'complete') {
+            $rows[] = [
+                'user_id' => $advisor->id,
+                'customer_name' => 'Screenshot Vijay Mehra',
+                'customer_type' => 'proprietor',
+                'loan_amount' => 6000000,
+                'prepared_by_name' => $advisor->name,
+                'prepared_by_mobile' => '9876543211',
+                'selected_tenures' => [5, 10, 15],
+                'branch_id' => $branchId,
+                'status' => Quotation::STATUS_ON_HOLD,
+                'hold_reason_key' => 'rate_too_high',
+                'hold_note' => 'Customer negotiating better rate at another bank.',
+                'hold_follow_up_date' => now()->addDays(7)->toDateString(),
+                'held_at' => now()->subDays(2),
+                'held_by' => $admin->id,
+                'created_at' => now()->subDays(9),
+                'updated_at' => now()->subDays(2),
+            ];
+            $rows[] = [
+                'user_id' => $advisor->id,
+                'customer_name' => 'Screenshot Nisha Oza',
+                'customer_type' => 'salaried',
+                'loan_amount' => 2800000,
+                'prepared_by_name' => $advisor->name,
+                'prepared_by_mobile' => '9876543212',
+                'selected_tenures' => [15, 20],
+                'branch_id' => $branchId,
+                'status' => Quotation::STATUS_CANCELLED,
+                'cancel_reason_key' => 'customer_withdrew',
+                'cancel_note' => 'Customer opted for another institution.',
+                'cancelled_at' => now()->subDays(4),
+                'cancelled_by' => $admin->id,
+                'created_at' => now()->subDays(12),
+                'updated_at' => now()->subDays(4),
+            ];
+        }
+
+        foreach ($rows as $row) {
+            $q = Quotation::create($row);
+            $this->line("  + Quotation #{$q->id}: {$q->customer_name} [{$q->status}]");
+        }
+    }
+
+    /**
+     * Seed representative DVRs. Main = 1. Complete = regular, pending follow-up, chained follow-up.
+     */
+    private function seedDvrs(): void
+    {
+        $this->info("\n── Seeding DVRs ──");
+
+        $advisor = $this->roleUsers['loan_advisor'];
+        $branchId = $this->branchId;
+
+        $first = DailyVisitReport::create([
+            'user_id' => $advisor->id,
+            'visit_date' => now()->subDays(5)->toDateString(),
+            'contact_name' => 'Screenshot CA Paresh Shah',
+            'contact_phone' => '9876500001',
+            'contact_type' => 'CA',
+            'purpose' => 'relationship',
+            'notes' => 'Introduced new housing-loan product; CA to refer 2-3 salaried clients next week.',
+            'outcome' => 'Positive — will refer leads.',
+            'follow_up_needed' => false,
+            'is_follow_up_done' => false,
+            'branch_id' => $branchId,
+        ]);
+        $this->line("  + DVR #{$first->id} (no follow-up)");
+
+        if ($this->mode === 'complete') {
+            $followUpPending = DailyVisitReport::create([
+                'user_id' => $advisor->id,
+                'visit_date' => now()->subDays(3)->toDateString(),
+                'contact_name' => 'Screenshot Rakesh Builder',
+                'contact_phone' => '9876500002',
+                'contact_type' => 'builder/developer',
+                'purpose' => 'new_lead',
+                'notes' => 'Met at site; shared brochure. Follow-up for site visit.',
+                'outcome' => 'Interested, site visit needed.',
+                'follow_up_needed' => true,
+                'follow_up_date' => now()->addDays(2)->toDateString(),
+                'follow_up_notes' => 'Site visit + valuation estimate',
+                'is_follow_up_done' => false,
+                'branch_id' => $branchId,
+            ]);
+            $this->line("  + DVR #{$followUpPending->id} (follow-up pending)");
+
+            $chainParent = DailyVisitReport::create([
+                'user_id' => $advisor->id,
+                'visit_date' => now()->subDays(10)->toDateString(),
+                'contact_name' => 'Screenshot Hemant Desai',
+                'contact_phone' => '9876500003',
+                'contact_type' => 'new_customer',
+                'purpose' => 'new_lead',
+                'notes' => 'Interested in HL up to 45L.',
+                'outcome' => 'Docs pending.',
+                'follow_up_needed' => true,
+                'follow_up_date' => now()->subDays(7)->toDateString(),
+                'follow_up_notes' => 'Collect salary slips + bank statements.',
+                'is_follow_up_done' => true,
+                'branch_id' => $branchId,
+            ]);
+            $chainChild = DailyVisitReport::create([
+                'user_id' => $advisor->id,
+                'visit_date' => now()->subDays(7)->toDateString(),
+                'contact_name' => 'Screenshot Hemant Desai',
+                'contact_phone' => '9876500003',
+                'contact_type' => 'new_customer',
+                'purpose' => 'document_collection',
+                'notes' => 'Collected docs; quotation generated next day.',
+                'outcome' => 'Quotation generated.',
+                'follow_up_needed' => false,
+                'is_follow_up_done' => false,
+                'parent_visit_id' => $chainParent->id,
+                'branch_id' => $branchId,
+            ]);
+            $chainParent->update(['follow_up_visit_id' => $chainChild->id]);
+            $this->line("  + DVR #{$chainParent->id} → #{$chainChild->id} (visit chain)");
+        }
+    }
+
+    /**
+     * Seed representative general tasks. Main = 1 pending. Complete = pending + in_progress (with comments) + completed.
+     */
+    private function seedTasks(): void
+    {
+        $this->info("\n── Seeding general tasks ──");
+
+        $admin = $this->roleUsers['super_admin'];
+        $advisor = $this->roleUsers['loan_advisor'];
+
+        $pending = GeneralTask::create([
+            'title' => 'Screenshot — Prepare weekly branch report',
+            'description' => 'Compile quotations + loans summary for the week.',
+            'created_by' => $admin->id,
+            'assigned_to' => $advisor->id,
+            'status' => GeneralTask::STATUS_PENDING,
+            'priority' => GeneralTask::PRIORITY_NORMAL,
+            'due_date' => now()->addDays(3)->toDateString(),
+        ]);
+        $this->line("  + Task #{$pending->id} (pending)");
+
+        if ($this->mode === 'complete') {
+            $inProgress = GeneralTask::create([
+                'title' => 'Screenshot — Follow up on pending legal verifications',
+                'description' => 'Three loans stuck at legal phase 2 — chase bank employee.',
+                'created_by' => $admin->id,
+                'assigned_to' => $advisor->id,
+                'status' => GeneralTask::STATUS_IN_PROGRESS,
+                'priority' => GeneralTask::PRIORITY_HIGH,
+                'due_date' => now()->addDays(1)->toDateString(),
+            ]);
+            GeneralTaskComment::create([
+                'general_task_id' => $inProgress->id,
+                'user_id' => $advisor->id,
+                'body' => 'Called advocate; awaiting legal report by EOD.',
+            ]);
+            GeneralTaskComment::create([
+                'general_task_id' => $inProgress->id,
+                'user_id' => $admin->id,
+                'body' => 'Please escalate to BM if report not received by tomorrow.',
+            ]);
+            $this->line("  + Task #{$inProgress->id} (in_progress, 2 comments)");
+
+            $completed = GeneralTask::create([
+                'title' => 'Screenshot — Month-end valuation audit',
+                'description' => 'Reconcile valuation reports for March disbursements.',
+                'created_by' => $admin->id,
+                'assigned_to' => $advisor->id,
+                'status' => GeneralTask::STATUS_COMPLETED,
+                'priority' => GeneralTask::PRIORITY_LOW,
+                'due_date' => now()->subDays(2)->toDateString(),
+                'completed_at' => now()->subDays(1),
+            ]);
+            $this->line("  + Task #{$completed->id} (completed)");
+        }
+    }
+
+    /**
+     * Write a fixtures JSON the screenshot script reads to know which record IDs to visit.
+     */
+    private function writeFixtures(): void
+    {
+        $firstLoan = LoanDetail::orderBy('id')->first();
+        $firstQuotation = Quotation::orderBy('id')->first();
+        $firstDvr = DailyVisitReport::orderBy('id')->first();
+        $firstTask = GeneralTask::orderBy('id')->first();
+        $firstCustomer = Customer::orderBy('id')->first();
+        $firstRole = Role::where('slug', '!=', 'super_admin')->orderBy('id')->first();
+
+        // A user that isn't the super admin (so the /users/{id}/edit page is editable).
+        $firstEditableUser = $this->roleUsers['loan_advisor'] ?? User::orderBy('id')->first();
+
+        $fixtures = [
+            'mode' => $this->mode,
+            'loan_id' => $firstLoan?->id,
+            'quotation_id' => $firstQuotation?->id,
+            'dvr_id' => $firstDvr?->id,
+            'task_id' => $firstTask?->id,
+            'user_id' => $firstEditableUser?->id,
+            'customer_id' => $firstCustomer?->id,
+            'product_id' => $this->productId,
+            'role_id' => $firstRole?->id,
+            'bank_id' => $this->bankId,
+            'branch_id' => $this->branchId,
+            'generated_at' => now()->toIso8601String(),
+        ];
+
+        $mapDir = base_path('screenshots');
+        if (! is_dir($mapDir)) {
+            mkdir($mapDir, 0755, true);
+        }
+        file_put_contents("{$mapDir}/screenshot-fixtures.json", json_encode($fixtures, JSON_PRETTY_PRINT));
+
+        $this->info("\n✓ Wrote screenshots/screenshot-fixtures.json");
+        $this->line('  mode='.$fixtures['mode'].' loan='.$fixtures['loan_id'].' quotation='.$fixtures['quotation_id']
+            .' dvr='.$fixtures['dvr_id'].' task='.$fixtures['task_id'].' user='.$fixtures['user_id']
+            .' customer='.$fixtures['customer_id'].' role='.$fixtures['role_id']);
     }
 }

@@ -361,9 +361,22 @@ class LoanStageService
     public function initializeStages(LoanDetail $loan): void
     {
         $baseStageKeys = [
-            'inquiry', 'document_selection', 'document_collection',
-            'parallel_processing', 'app_number', 'bsm_osv', 'legal_verification', 'technical_valuation', 'sanction_decision',
-            'rate_pf', 'sanction', 'docket', 'kfs', 'esign', 'disbursement', 'otc_clearance',
+            'inquiry',
+            'document_selection',
+            'document_collection',
+            'parallel_processing',
+            'app_number',
+            'bsm_osv',
+            'legal_verification',
+            'technical_valuation',
+            'sanction_decision',
+            'rate_pf',
+            'sanction',
+            'docket',
+            'kfs',
+            'esign',
+            'disbursement',
+            'otc_clearance',
         ];
 
         $stages = Stage::whereIn('stage_key', $baseStageKeys)->where('is_enabled', true)->get();
@@ -463,6 +476,9 @@ class LoanStageService
 
         if (in_array($newStatus, ['completed', 'skipped'])) {
             $this->handleStageCompletion($loan, $stageKey);
+            if ($newStatus === 'completed') {
+                app(NotificationService::class)->notifyStageCompleted($loan, $stageKey);
+            }
         }
 
         $this->recalculateProgress($loan);
@@ -557,9 +573,20 @@ class LoanStageService
             // When bsm_osv completes, start all remaining parallel sub-stages
             if ($completedStageKey === 'bsm_osv') {
                 $this->startRemainingParallelSubStages($loan);
+
+                if ($this->usesParallelRatePf()) {
+                    $this->openRatePfInParallel($loan);
+                }
             }
 
             $this->checkParallelCompletion($loan);
+
+            return;
+        }
+        // Feature-flagged: rate_pf runs in parallel with parallel_processing.
+        // Sanction must wait for BOTH. When flag is off, fall through to default sequential advance.
+        if ($completedStageKey === 'rate_pf' && $this->usesParallelRatePf()) {
+            $this->advanceToSanctionIfReady($loan);
 
             return;
         }
@@ -672,8 +699,18 @@ class LoanStageService
             return true;
         }
 
-        // Rate & PF: requires is_sanctioned = true (from sanction_decision stage)
+        // Rate & PF gating — branch on feature flag.
         if ($stageKey === 'rate_pf') {
+
+            // Parallel mode (flag on): opens right after bsm_osv, alongside other parallel stages.
+            // No is_sanctioned gate here — matches the freedom given to legal/technical/sanction_decision.
+            if ($this->usesParallelRatePf()) {
+                $bsm = $loan->getStageAssignment('bsm_osv');
+
+                return $bsm && in_array($bsm->status, ['completed', 'skipped']);
+            }
+
+            // Legacy sequential mode: requires is_sanctioned + any parallel sub done.
             if (! $loan->is_sanctioned) {
                 return false;
             }
@@ -684,6 +721,17 @@ class LoanStageService
                 ->exists();
 
             return $anySubCompleted;
+        }
+
+        // Feature-flagged: sanction requires BOTH parallel_processing AND rate_pf complete.
+        if ($stageKey === 'sanction' && $this->usesParallelRatePf()) {
+            $parallel = $loan->getStageAssignment('parallel_processing');
+            $ratePf = $loan->getStageAssignment('rate_pf');
+
+            $parallelDone = $parallel && in_array($parallel->status, ['completed', 'skipped']);
+            $ratePfDone = $ratePf && in_array($ratePf->status, ['completed', 'skipped']);
+
+            return $parallelDone && $ratePfDone;
         }
 
         // Find the actual previous stage that exists in this loan's assignments
@@ -729,6 +777,10 @@ class LoanStageService
             'stage_key' => $stageKey,
             'assigned_to_name' => User::find($userId)?->name,
         ]);
+
+        if ($userId !== auth()->id()) {
+            app(NotificationService::class)->notifyStageAssignment($loan, $stageKey, $userId);
+        }
 
         return $assignment->fresh();
     }
@@ -782,6 +834,10 @@ class LoanStageService
             'assigned_to_name' => User::find($userId)?->name,
         ]);
 
+        if ($userId !== auth()->id()) {
+            app(NotificationService::class)->notifyStageAssignment($loan, $stageKey, $userId);
+        }
+
         return $assignment->fresh();
     }
 
@@ -809,6 +865,14 @@ class LoanStageService
             }
             $assignment->update($updateData);
         }
+    }
+
+    /**
+     * Feature flag: open rate_pf in parallel with parallel sub-stages after bsm_osv.
+     */
+    private function usesParallelRatePf(): bool
+    {
+        return (bool) config('app.open_rate_pf_parallel');
     }
 
     /**
@@ -1082,6 +1146,10 @@ class LoanStageService
             'reason' => $reason,
         ]);
 
+        if ($toUserId !== $fromUserId) {
+            app(NotificationService::class)->notifyStageAssignment($loan, $stageKey, $toUserId);
+        }
+
         $loan->touch();
 
         return $assignment->fresh();
@@ -1171,19 +1239,24 @@ class LoanStageService
                     'completed_at' => now(),
                     'completed_by' => auth()->id(),
                 ]);
+                if ($this->usesParallelRatePf()) {
+                    // rate_pf runs in parallel — sanction opens only when BOTH are done.
+                    $this->advanceToSanctionIfReady($loan);
+                } else {
+                    // Legacy sequential advance to next main stage (rate_pf, then sanction later).
+                    $nextKey = $this->getNextStage('parallel_processing');
+                    while ($nextKey && ! $loan->stageAssignments()->where('stage_key', $nextKey)->exists()) {
+                        $nextKey = $this->getNextStage($nextKey);
+                    }
+                    if ($nextKey) {
+                        $loan->update(['current_stage' => $nextKey]);
+                        $this->assignNextStage($loan, $nextKey);
 
-                $nextKey = $this->getNextStage('parallel_processing');
-                while ($nextKey && ! $loan->stageAssignments()->where('stage_key', $nextKey)->exists()) {
-                    $nextKey = $this->getNextStage($nextKey);
-                }
-                if ($nextKey) {
-                    $loan->update(['current_stage' => $nextKey]);
-                    $this->assignNextStage($loan, $nextKey);
-
-                    // Auto-start the next stage
-                    $nextAssignment = $loan->stageAssignments()->where('stage_key', $nextKey)->first();
-                    if ($nextAssignment && $nextAssignment->status === 'pending') {
-                        $nextAssignment->update(['status' => 'in_progress', 'started_at' => now()]);
+                        // Auto-start the next stage
+                        $nextAssignment = $loan->stageAssignments()->where('stage_key', $nextKey)->first();
+                        if ($nextAssignment && $nextAssignment->status === 'pending') {
+                            $nextAssignment->update(['status' => 'in_progress', 'started_at' => now()]);
+                        }
                     }
                 }
             }
@@ -1194,6 +1267,72 @@ class LoanStageService
         }
 
         return false;
+    }
+
+    /**
+     * Open rate_pf alongside the parallel sub-stages (feature-flagged; called after bsm_osv).
+     */
+    public function openRatePfInParallel(LoanDetail $loan): void
+    {
+        $rateAssignment = $loan->stageAssignments()
+            ->where('stage_key', 'rate_pf')
+            ->where('status', 'pending')
+            ->first();
+
+        if (! $rateAssignment) {
+            return;
+        }
+
+        $role = $this->getLoanStageRole($loan, 'rate_pf');
+        $userId = $this->findUserForRole($role, $loan, 'rate_pf');
+
+        $updateData = ['status' => 'in_progress', 'started_at' => now()];
+        if ($userId) {
+            $updateData['assigned_to'] = $userId;
+        }
+        $rateAssignment->update($updateData);
+
+        if ($userId) {
+            StageTransfer::create([
+                'stage_assignment_id' => $rateAssignment->id,
+                'loan_id' => $loan->id,
+                'stage_key' => 'rate_pf',
+                'transferred_from' => auth()->id() ?? $loan->created_by,
+                'transferred_to' => $userId,
+                'reason' => 'Auto-assigned to '.str_replace('_', ' ', $role).' (parallel with sub-stages)',
+                'transfer_type' => 'auto',
+            ]);
+        }
+    }
+
+    /**
+     * Advance to sanction only when BOTH parallel_processing AND rate_pf are complete.
+     * Only used when open_rate_pf_parallel feature flag is on.
+     */
+    public function advanceToSanctionIfReady(LoanDetail $loan): void
+    {
+        $parallel = $loan->getStageAssignment('parallel_processing');
+        $ratePf = $loan->getStageAssignment('rate_pf');
+
+        $parallelDone = $parallel && in_array($parallel->status, ['completed', 'skipped']);
+        $ratePfDone = $ratePf && in_array($ratePf->status, ['completed', 'skipped']);
+
+        if (! $parallelDone || ! $ratePfDone) {
+            return;
+        }
+
+        $sanction = $loan->stageAssignments()->where('stage_key', 'sanction')->first();
+        if (! $sanction || $sanction->status !== 'pending') {
+            return;
+        }
+
+        $loan->update(['current_stage' => 'sanction']);
+        $this->assignNextStage($loan, 'sanction');
+
+        $sanction->refresh();
+        if ($sanction->status === 'pending') {
+            $sanction->update(['status' => 'in_progress', 'started_at' => now()]);
+        }
     }
 
     public function getParallelSubStages(LoanDetail $loan): Collection

@@ -50,15 +50,13 @@ DataTable rows come from:
 
 All are session-auth, apply user-scoped filters (visibility rules from the relevant model scopes), return standard DataTables JSON.
 
-## Quick action buttons (header)
+## Create actions
 
-Right-aligned in the page header, all gated by permissions:
+Primary create CTAs (New Quotation / New Task / New Visit) are **no longer in the dashboard header or tab toolbars**. They live in the mobile FAB (`partials/mobile-fab.blade.php`, visible < xl) and on their respective listing page headers (`/quotations`, `/general-tasks`, `/dvr`).
 
-- **New Quotation** → `/quotations/create` (permission: `create_quotation`)
-- **New Task** → opens `#dashCreateTaskModal` inline modal
-- **New Visit** → opens `#dashCreateDvrModal` inline modal
+The inline modals `#dashCreateTaskModal` and `#dashCreateDvrModal` still exist in the dashboard view for the empty-state CTA inside the Personal Tasks tab. They are not triggered from the main header any more. Modal markup is **not** shared across pages — each host view (dashboard, general-tasks index, dvr index) carries its own instance, kept simple because controllers inject page-specific variables.
 
-Modals are embedded in the dashboard view so creation is a one-click path — **never redirect to another page just to open a modal**.
+The "View All" pill stays on each dashboard tab and links to the matching full listing page.
 
 ## DVR create modal
 

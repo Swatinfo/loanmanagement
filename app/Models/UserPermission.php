@@ -9,6 +9,18 @@ class UserPermission extends Model
 {
     protected $fillable = ['user_id', 'permission_id', 'type'];
 
+    protected static function booted(): void
+    {
+        $invalidate = function (UserPermission $record): void {
+            if ($user = $record->user) {
+                app(\App\Services\PermissionService::class)->clearUserCache($user);
+            }
+        };
+
+        static::saved($invalidate);
+        static::deleted($invalidate);
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

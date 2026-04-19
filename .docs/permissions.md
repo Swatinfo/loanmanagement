@@ -16,7 +16,7 @@ Permission-based access control. 45 permissions across 7 groups, resolved throug
 | Group | Count | Slugs |
 |---|---|---|
 | **Settings** | 8 | view_settings, edit_company_info, edit_banks, edit_documents, edit_tenures, edit_charges, edit_services, edit_gst |
-| **Quotations** | 8 | create_quotation, generate_pdf, view_own_quotations, view_all_quotations, delete_quotations, download_pdf, download_pdf_branded, download_pdf_plain |
+| **Quotations** | 11 | create_quotation, generate_pdf, view_own_quotations, view_all_quotations, delete_quotations, download_pdf, download_pdf_branded, download_pdf_plain, hold_quotation, cancel_quotation, resume_quotation |
 | **Users** | 5 | view_users, create_users, edit_users, delete_users, assign_roles |
 | **Loans** | 14 | convert_to_loan, view_loans, view_all_loans, create_loan, edit_loan, delete_loan, manage_loan_documents, upload_loan_documents, download_loan_documents, delete_loan_files, manage_loan_stages, skip_loan_stages, add_remarks, manage_workflow_config |
 | **Tasks** | 1 | view_all_tasks |
@@ -24,6 +24,19 @@ Permission-based access control. 45 permissions across 7 groups, resolved throug
 | **System** | 4 | change_own_password, manage_permissions, view_activity_log, view_reports |
 
 Additional slugs live in migrations (beyond `config/permissions.php`): `manage_customers`, `view_customers`, `impersonate_users`, `view_dashboard`, `manage_notifications`, `transfer_loan_stages`, `reject_loan`, `change_loan_status`, `view_loan_timeline`, `manage_disbursement`, `manage_valuation`, `raise_query`, `resolve_query`.
+
+## Branch-scoped visibility
+
+Several modules scope reads by the user's `user_branches` assignments rather than binary "view all vs own". These scopes all read the **full** branch list via `$user->branches()->pluck('branches.id')`, so multi-branch users see data from every assigned branch.
+
+| Module | Scope | Bypass permission | Branch-role fallback |
+|---|---|---|---|
+| Loans | `LoanDetail::scopeVisibleTo` | `view_all_loans` | `branch_manager` / `bdh` → loans in user branches |
+| Quotations | `Quotation::scopeVisibleTo` | `view_all_quotations` | `branch_manager` / `bdh` → quotations in user branches |
+| DVR | `DailyVisitReport::scopeVisibleTo` | `view_all_dvr` | `branch_manager` / `bdh` → visits by any user in their branches |
+| Customers | `Customer::scopeVisibleTo` | `view_all_loans` | `branch_manager` / `bdh` → customers with loans in user branches |
+
+In the default seeder (`DefaultDataSeeder`), `branch_manager` and `bdh` **do not** receive `view_all_loans` or `view_all_quotations` so branch scope applies. `admin` keeps both bypasses; `admin`'s DVR defaults were pared down to `view_dvr + create_dvr + edit_dvr` (admin creates their own DVRs, no supervisor bypass). Customer CRUD is gated on `view_customers` / `manage_customers` — these slugs are now live (previously orphaned).
 
 ## Resolution flow
 
@@ -59,6 +72,18 @@ Clear caches after writes:
 - `PermissionService::clearAllCaches()` — after bulk role edits, new permission created, etc.
 
 Controllers that mutate permissions already call the correct clear methods (`PermissionController@update`, `UserController@store/update`, `RoleManagementController@store/update`, `LoanSettingsController@saveTaskRolePermissions`).
+
+Model-level events also invalidate automatically as a safety net:
+
+- `Role::saved|deleted` → `clearAllCaches()` + `Role::clearAdvisorCache()`
+- `Permission::saved|deleted` → `clearAllCaches()` (also busts `all_permission_slugs`)
+- `UserPermission::saved|deleted` → `clearUserCache($record->user)`
+
+## Gate integration
+
+`Gate::before` in `AppServiceProvider` routes every permission-slug ability through `PermissionService::userHasPermission`, preserving the 3-tier order. This makes `@can('slug')`, `$user->can('slug')`, and `can:slug` middleware work natively alongside the existing `permission:slug` middleware.
+
+Super-admin bypass is the first check in `Gate::before`.
 
 ## Usage patterns
 

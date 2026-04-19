@@ -74,6 +74,26 @@ Complete route table for SHF. Session auth (web guard), Eloquent provider. All w
 | POST | `/users/{user}/toggle-active` | `users.toggle-active` | UserController@toggleActive | edit_users |
 | DELETE | `/users/{user}` | `users.destroy` | UserController@destroy | delete_users |
 
+## Quotations — listing
+
+| Method | URI | Name | Controller | Permission |
+|---|---|---|---|---|
+| GET | `/quotations` | `quotations.index` | QuotationController@index | any of: `view_own_quotations`, `view_all_quotations`, `create_quotation` (checked inside controller) |
+
+Data source for the DataTable is the existing `/dashboard/quotation-data` endpoint (`dashboard.quotation-data`, under `auth`). Visibility is scoped via `Quotation::scopeVisibleTo($user)`.
+
+## Customers
+
+| Method | URI | Name | Controller | Permission |
+|---|---|---|---|---|
+| GET | `/customers` | `customers.index` | CustomerController@index | view_customers |
+| GET | `/customers/data` | `customers.data` | CustomerController@data | view_customers |
+| GET | `/customers/{customer}` | `customers.show` | CustomerController@show | view_customers |
+| GET | `/customers/{customer}/edit` | `customers.edit` | CustomerController@edit | manage_customers |
+| PUT | `/customers/{customer}` | `customers.update` | CustomerController@update | manage_customers |
+
+Visibility is scoped via `Customer::scopeVisibleTo($user)` — super-admin/admin with `view_all_loans` see all; branch_manager/bdh see customers whose loans fall in their assigned branches (via `user_branches` pivot); others see customers linked to loans they created, advise on, or hold a stage for.
+
 ## Roles
 
 | Method | URI | Name | Controller | Permission |
@@ -109,6 +129,8 @@ All require `auth`. Specific permissions per action.
 | POST | `/settings/gst` | `settings.gst` | SettingsController@updateGst | edit_gst |
 | POST | `/settings/dvr-contact-types` | `settings.dvr-contact-types` | SettingsController@updateDvrContactTypes | view_settings |
 | POST | `/settings/dvr-purposes` | `settings.dvr-purposes` | SettingsController@updateDvrPurposes | view_settings |
+| POST | `/settings/quotation-hold-reasons` | `settings.quotation-hold-reasons` | SettingsController@updateQuotationHoldReasons | view_settings |
+| POST | `/settings/quotation-cancel-reasons` | `settings.quotation-cancel-reasons` | SettingsController@updateQuotationCancelReasons | view_settings |
 | POST | `/settings/reset` | `settings.reset` | SettingsController@reset | view_settings |
 
 ## Loan Settings (workflow config)
@@ -149,7 +171,7 @@ Prefix `/loan-settings`. Require `auth` + (for writes) `manage_workflow_config`.
 
 ## Loan Stages
 
-All require `auth` + `manage_loan_stages` (some additional perms noted).
+Most routes require `manage_loan_stages` unless annotated otherwise. Exceptions: `loans.stages.index` and `loans.stages.transfers` use `view_loans`; `loans.stages.skip` uses `skip_loan_stages`.
 
 | Method | URI | Name | Controller |
 |---|---|---|---|
@@ -192,8 +214,8 @@ All require `auth` + `manage_loan_stages` (some additional perms noted).
 | GET | `/loans/{loan}/valuation` | `loans.valuation` | LoanValuationController@show | manage_loan_stages |
 | GET | `/loans/{loan}/valuation-map` | `loans.valuation.map` | LoanValuationController@showMap | manage_loan_stages |
 | POST | `/loans/{loan}/valuation` | `loans.valuation.store` | LoanValuationController@store | manage_loan_stages |
-| GET | `/api/reverse-geocode` | `api.reverse-geocode` | LoanValuationController@reverseGeocode | auth |
-| GET | `/api/search-location` | `api.search-location` | LoanValuationController@searchLocation | auth |
+| GET | `/api/reverse-geocode` | `api.reverse-geocode` | LoanValuationController@reverseGeocode | manage_loan_stages |
+| GET | `/api/search-location` | `api.search-location` | LoanValuationController@searchLocation | manage_loan_stages |
 
 ## Loan Disbursement
 
@@ -220,6 +242,9 @@ All require `auth` + `manage_loan_stages` (some additional perms noted).
 | GET | `/quotations/{quotation}/download` | `quotations.download` | QuotationController@download | download_pdf |
 | GET | `/download-pdf` | `quotations.download-file` | QuotationController@downloadByFilename | download_pdf |
 | DELETE | `/quotations/{quotation}` | `quotations.destroy` | QuotationController@destroy | delete_quotations |
+| POST | `/quotations/{quotation}/hold` | `quotations.hold` | QuotationController@hold | hold_quotation |
+| POST | `/quotations/{quotation}/cancel` | `quotations.cancel` | QuotationController@cancel | cancel_quotation |
+| POST | `/quotations/{quotation}/resume` | `quotations.resume` | QuotationController@resume | resume_quotation |
 | GET | `/quotations/{quotation}/convert` | `quotations.convert` | LoanConversionController@showConvertForm | convert_to_loan |
 | POST | `/quotations/{quotation}/convert` | `quotations.convert.store` | LoanConversionController@convert | convert_to_loan |
 
@@ -265,6 +290,16 @@ All `auth` only — no permission gate (permissions handled in controller via mo
 | GET | `/api/notifications/count` | `api.notifications.count` | NotificationController@unreadCount |
 | POST | `/notifications/{notification}/read` | `notifications.read` | NotificationController@markRead |
 | POST | `/notifications/read-all` | `notifications.read-all` | NotificationController@markAllRead |
+
+## Web Push subscriptions
+
+Registered inside the top-level `auth` group in `routes/web.php` (no additional permission gate). Routes use the `web` group + `auth` middleware + globally-appended `EnsureUserIsActive`.
+
+| Method | Path | Name | Controller | Permission/Middleware |
+|---|---|---|---|---|
+| GET | `/api/push/public-key` | `push.public-key` | PushSubscriptionController@publicKey | auth |
+| POST | `/api/push/subscribe` | `push.subscribe` | PushSubscriptionController@store | auth |
+| POST | `/api/push/unsubscribe` | `push.unsubscribe` | PushSubscriptionController@destroy | auth |
 
 ## Impersonation
 
@@ -329,3 +364,11 @@ Implicit binding — Laravel resolves by class name convention:
 ## CSRF
 
 All non-GET web routes require CSRF token via `@csrf` Blade directive or `X-CSRF-TOKEN` header. PWA AJAX reads `<meta name="csrf-token">`.
+
+## Broadcasting channels
+
+Defined in `routes/channels.php`. Used by broadcast events such as `NotificationBroadcast` to deliver real-time notifications to users.
+
+| Channel | Type | Authorization |
+|---|---|---|
+| `users.{userId}` | private | Auth gate returns `true` only when `$user->id === $userId` — a user can subscribe only to their own channel. |

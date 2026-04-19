@@ -14,10 +14,24 @@ class NotificationController extends Controller
 
     public function index()
     {
-        $notifications = ShfNotification::forUser(auth()->id())
+        $userId = auth()->id();
+
+        // All unread first (newest → oldest), then the 5 most recent read.
+        // Older read notifications are intentionally hidden to keep the list focused.
+        $unread = ShfNotification::forUser($userId)
             ->with('loan')
-            ->recent(100)
+            ->unread()
+            ->latest()
             ->get();
+
+        $recentRead = ShfNotification::forUser($userId)
+            ->with('loan')
+            ->where('is_read', true)
+            ->latest()
+            ->limit(5)
+            ->get();
+
+        $notifications = $unread->concat($recentRead);
 
         return view('notifications.index', compact('notifications'));
     }

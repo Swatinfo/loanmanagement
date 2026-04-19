@@ -34,3 +34,6 @@ composer.phar
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Local CSS backups (safety copies, never committed)
+public/css/_backup/

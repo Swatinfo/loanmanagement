@@ -21,6 +21,9 @@ return [
             ['slug' => 'download_pdf', 'name' => 'Download PDF', 'description' => 'Download generated PDFs'],
             ['slug' => 'download_pdf_branded', 'name' => 'Download Branded PDF', 'description' => 'Download PDF with SHF branding'],
             ['slug' => 'download_pdf_plain', 'name' => 'Download Plain PDF', 'description' => 'Download PDF without SHF branding'],
+            ['slug' => 'hold_quotation', 'name' => 'Hold Quotation', 'description' => 'Put a quotation on hold with a reason and follow-up date'],
+            ['slug' => 'cancel_quotation', 'name' => 'Cancel Quotation', 'description' => 'Cancel a quotation with a reason (terminal state)'],
+            ['slug' => 'resume_quotation', 'name' => 'Resume Quotation', 'description' => 'Resume an on-hold quotation back to active'],
         ],
         'Users' => [
             ['slug' => 'view_users', 'name' => 'View Users', 'description' => 'View the users list'],

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Offline — SHF</title>
+    <style>
+        :root {
+            --primary-dark: #3a3536;
+            --accent: #f15a29;
+            --bg: #f8f8f8;
+            --text: #1a1a1a;
+            --text-muted: #6b7280;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .card {
+            max-width: 420px;
+            width: 100%;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            padding: 40px 32px;
+            text-align: center;
+        }
+        .logo {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), #f47929);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 700;
+            font-size: 24px;
+            letter-spacing: 1px;
+        }
+        h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin-bottom: 6px;
+        }
+        .gu {
+            font-size: 16px;
+            color: var(--primary-dark);
+            margin-bottom: 18px;
+            font-weight: 500;
+        }
+        p {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        button {
+            background: linear-gradient(135deg, var(--accent), #f47929);
+            color: #fff;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 999px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        button:hover { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(241, 90, 41, 0.25); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .status {
+            margin-top: 14px;
+            font-size: 12px;
+            color: var(--text-muted);
+            min-height: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card" role="alertdialog" aria-labelledby="title">
+        <div class="logo" aria-hidden="true">SHF</div>
+        <h1 id="title">You are offline</h1>
+        <div class="gu">તમે ઑફલાઇન છો</div>
+        <p>
+            SHF requires an internet connection. Menu, loans, quotations, and settings are unavailable offline.
+            <br><br>
+            <span style="color: var(--primary-dark);">આ એપ માટે ઇન્ટરનેટ કનેક્શન જરૂરી છે.</span>
+        </p>
+        <button id="retry" type="button">Retry connection / ફરી પ્રયાસ કરો</button>
+        <div class="status" id="status"></div>
+    </div>
+
+    <script>
+        (function () {
+            var btn = document.getElementById('retry');
+            var status = document.getElementById('status');
+
+            function tryReload() {
+                btn.disabled = true;
+                status.textContent = 'Checking connection…';
+                if (navigator.onLine) {
+                    location.reload();
+                } else {
+                    setTimeout(function () {
+                        btn.disabled = false;
+                        status.textContent = 'Still offline. Check your connection.';
+                    }, 800);
+                }
+            }
+
+            btn.addEventListener('click', tryReload);
+            window.addEventListener('online', function () { location.reload(); });
+        })();
+    </script>
+</body>
+</html>

@@ -19,9 +19,11 @@ class DefaultDataSeeder extends Seeder
 {
     public function run(): void
     {
-        // Clean all loan data and references before seeding
-        $this->purgeLoanData();
 
+        if (env('DELETE_EXISTING_LOANS') == 1) {
+            // Clean all loan data and references before seeding
+            $this->purgeLoanData();
+        }
         // Order matters: parent tables first, then children with FKs
 
         $this->seedPermissions();
@@ -49,11 +51,13 @@ class DefaultDataSeeder extends Seeder
         $this->seedQuotationEmi();
         $this->seedQuotationDocuments();*/
 
-        // Clear quotations from previous seeder runs (fresh ones created below)
-        DB::table('quotation_documents')->delete();
-        DB::table('quotation_emi')->delete();
-        DB::table('quotation_banks')->delete();
-        DB::table('quotations')->delete();
+        if (env('DELETE_EXITING_QUOTATIONS') == 1) {
+            // Clear quotations from previous seeder runs (fresh ones created below)
+            DB::table('quotation_documents')->delete();
+            DB::table('quotation_emi')->delete();
+            DB::table('quotation_banks')->delete();
+            DB::table('quotations')->delete();
+        }
 
         $this->seedSampleQuotationAndLoan();
     }
@@ -172,6 +176,16 @@ class DefaultDataSeeder extends Seeder
             ['name' => 'Delete Loan Files', 'slug' => 'delete_loan_files', 'group' => 'Loans', 'description' => 'Remove uploaded document files'],
             // ── Tasks (id 52) ──
             ['name' => 'View All Tasks', 'slug' => 'view_all_tasks', 'group' => 'Tasks', 'description' => 'View all general tasks across users (read-only)'],
+            // ── Quotations (hold/cancel/resume) ──
+            ['name' => 'Hold Quotation', 'slug' => 'hold_quotation', 'group' => 'Quotations', 'description' => 'Put a quotation on hold with a reason and follow-up date'],
+            ['name' => 'Cancel Quotation', 'slug' => 'cancel_quotation', 'group' => 'Quotations', 'description' => 'Cancel a quotation with a reason (terminal state)'],
+            ['name' => 'Resume Quotation', 'slug' => 'resume_quotation', 'group' => 'Quotations', 'description' => 'Resume an on-hold quotation back to active'],
+            // ── DVR ──
+            ['name' => 'View DVR', 'slug' => 'view_dvr', 'group' => 'DVR', 'description' => 'View daily visit reports'],
+            ['name' => 'Create DVR', 'slug' => 'create_dvr', 'group' => 'DVR', 'description' => 'Create daily visit reports'],
+            ['name' => 'Edit DVR', 'slug' => 'edit_dvr', 'group' => 'DVR', 'description' => 'Edit daily visit reports'],
+            ['name' => 'Delete DVR', 'slug' => 'delete_dvr', 'group' => 'DVR', 'description' => 'Delete daily visit reports'],
+            ['name' => 'View All DVR', 'slug' => 'view_all_dvr', 'group' => 'DVR', 'description' => 'View all daily visit reports across users'],
         ];
 
         foreach ($permissions as $p) {
@@ -254,8 +268,9 @@ class DefaultDataSeeder extends Seeder
                 ['key' => 'fill_valuation', 'name' => 'Fill Valuation Form', 'sequence' => 2, 'role' => 'office_employee', 'roles' => ['office_employee'], 'type' => 'form', 'is_enabled' => true],
             ])],
             ['id' => 11, 'stage_key' => 'rate_pf', 'is_enabled' => true, 'stage_name_en' => 'Rate & PF Request', 'stage_name_gu' => 'Rate & PF Request', 'sequence_order' => 5, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Request interest rate and processing fee from bank', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","bank_employee"]', 'assigned_role' => 'task_owner', 'sub_actions' => json_encode([
-                ['key' => 'bank_rate_details', 'name' => 'Bank Rate Details', 'sequence' => 1, 'role' => 'bank_employee', 'roles' => ['bank_employee'], 'type' => 'form', 'is_enabled' => true],
-                ['key' => 'processing_charges', 'name' => 'Processing & Charges', 'sequence' => 2, 'role' => 'task_owner', 'roles' => ['branch_manager', 'loan_advisor', 'office_employee'], 'type' => 'form', 'is_enabled' => true],
+                ['key' => 'fill_rate_pf', 'name' => 'Fill Rate & PF Details', 'sequence' => 1, 'role' => 'task_owner', 'roles' => ['branch_manager', 'loan_advisor'], 'type' => 'form', 'is_enabled' => true],
+                ['key' => 'bank_rate_details', 'name' => 'Bank Rate Details', 'sequence' => 2, 'role' => 'bank_employee', 'roles' => ['bank_employee'], 'type' => 'form', 'is_enabled' => true],
+                ['key' => 'processing_charges', 'name' => 'Processing & Charges', 'sequence' => 3, 'role' => 'task_owner', 'roles' => ['branch_manager', 'loan_advisor', 'office_employee'], 'type' => 'form', 'is_enabled' => true],
             ])],
             ['id' => 12, 'stage_key' => 'sanction', 'is_enabled' => true, 'stage_name_en' => 'Sanction Letter', 'stage_name_gu' => 'Sanction Letter', 'sequence_order' => 6, 'is_parallel' => false, 'parent_stage_key' => null, 'stage_type' => 'sequential', 'description_en' => 'Bank issues sanction letter', 'description_gu' => null, 'default_role' => '["branch_manager","loan_advisor","bank_employee"]', 'assigned_role' => 'task_owner', 'sub_actions' => json_encode([
                 ['key' => 'send_for_sanction', 'name' => 'Send for Sanction Letter', 'sequence' => 1, 'role' => 'task_owner', 'roles' => ['branch_manager', 'loan_advisor'], 'type' => 'action_button', 'action' => 'send_for_sanction', 'is_enabled' => true],
@@ -291,8 +306,8 @@ class DefaultDataSeeder extends Seeder
         DB::table('bank_stage_configs')->delete();
         DB::table('product_stage_users')->delete();
 
-        // For Axis, HDFC, Kotak: rate_pf phase 0 = office_employee (not bank_employee)
-        // For Axis, HDFC, Kotak: sanction phase 1 = office_employee (not bank_employee)
+        // For Axis, HDFC, Kotak: rate_pf phase 2 (Bank Rate Details) = office_employee (not bank_employee)
+        // For Axis, HDFC, Kotak: sanction phase 2 (Sanction Letter Generated) = office_employee (not bank_employee)
         // ICICI keeps master defaults (bank_employee for both)
 
         $ratePfStageId = DB::table('stages')->where('stage_key', 'rate_pf')->value('id');
@@ -302,15 +317,15 @@ class DefaultDataSeeder extends Seeder
         $overrideBankIds = [1, 3, 4];
 
         foreach ($overrideBankIds as $bankId) {
-            // Rate & PF: phase 0 (Bank Rate Details) → office_employee instead of bank_employee
+            // Rate & PF: phase index 1 (Bank Rate Details) → office_employee instead of bank_employee
             if ($ratePfStageId) {
                 DB::table('bank_stage_configs')->updateOrInsert(
                     ['bank_id' => $bankId, 'stage_id' => $ratePfStageId],
-                    ['assigned_role' => null, 'phase_roles' => json_encode(['0' => 'office_employee']), 'created_at' => now(), 'updated_at' => now()]
+                    ['assigned_role' => null, 'phase_roles' => json_encode(['1' => 'office_employee']), 'created_at' => now(), 'updated_at' => now()]
                 );
             }
 
-            // Sanction: phase 1 (Sanction Letter Generated) → office_employee instead of bank_employee
+            // Sanction: phase index 1 (Sanction Letter Generated) → office_employee instead of bank_employee
             if ($sanctionStageId) {
                 DB::table('bank_stage_configs')->updateOrInsert(
                     ['bank_id' => $bankId, 'stage_id' => $sanctionStageId],
@@ -396,9 +411,14 @@ class DefaultDataSeeder extends Seeder
 
         // All loan advisors
         $advisorEmails = [
-            'jaydeep@shfworld.com', 'kuldeep@shfworld.com',
-            'rahul@shfworld.com', 'dipak@shfworld.com', 'jayesh@shfworld.com',
-            'chirag@shfworld.com', 'daxit@shfworld.som', 'milan@shfworld.com',
+            'jaydeep@shfworld.com',
+            'kuldeep@shfworld.com',
+            'rahul@shfworld.com',
+            'dipak@shfworld.com',
+            'jayesh@shfworld.com',
+            'chirag@shfworld.com',
+            'daxit@shfworld.som',
+            'milan@shfworld.com',
             'nitin@shfworld.com',
         ];
         foreach ($advisorEmails as $email) {
@@ -407,10 +427,15 @@ class DefaultDataSeeder extends Seeder
 
         // Bank employees
         $bankEmails = [
-            'pratik.hdfc@shfworld.com', 'rakshit.hdfc@shfworld.com',
-            'vishal.kotak@shfworld.com', 'jaydeep.kotak@shfworld.com',
-            'parth.axis@shfworld.com', 'kartik.axis@shfworld.com', 'mayan.axis@shfworld.com',
-            'rushika.icici@shfworld.com', 'avinash.icici@shfworld.com',
+            'pratik.hdfc@shfworld.com',
+            'rakshit.hdfc@shfworld.com',
+            'vishal.kotak@shfworld.com',
+            'jaydeep.kotak@shfworld.com',
+            'parth.axis@shfworld.com',
+            'kartik.axis@shfworld.com',
+            'mayan.axis@shfworld.com',
+            'rushika.icici@shfworld.com',
+            'avinash.icici@shfworld.com',
         ];
         foreach ($bankEmails as $email) {
             $userRoles[$email] = ['bank_employee'];
@@ -449,74 +474,227 @@ class DefaultDataSeeder extends Seeder
         // Define permissions per role (matches current production DB exactly)
         $rolePermissions = [
             'super_admin' => array_values(array_intersect_key($permIds, array_flip([
-                'manage_customers', 'view_customers', 'impersonate_users', 'view_dashboard', 'manage_notifications',
-                'transfer_loan_stages', 'reject_loan', 'change_loan_status', 'view_loan_timeline',
-                'manage_disbursement', 'manage_valuation', 'raise_query', 'resolve_query',
-                'download_pdf_branded', 'download_pdf_plain',
-                'view_settings', 'edit_company_info', 'edit_banks', 'edit_documents', 'edit_tenures',
-                'edit_charges', 'edit_services', 'edit_gst',
-                'create_quotation', 'generate_pdf', 'view_own_quotations', 'view_all_quotations',
-                'delete_quotations', 'download_pdf',
-                'view_users', 'create_users', 'edit_users', 'delete_users', 'assign_roles',
-                'change_own_password', 'manage_permissions', 'view_activity_log',
-                'convert_to_loan', 'view_loans', 'view_all_loans', 'create_loan', 'edit_loan',
-                'delete_loan', 'manage_loan_documents', 'manage_loan_stages',
-                'add_remarks', 'manage_workflow_config',
-                'upload_loan_documents', 'download_loan_documents', 'delete_loan_files',
+                'manage_customers',
+                'view_customers',
+                'impersonate_users',
+                'view_dashboard',
+                'manage_notifications',
+                'transfer_loan_stages',
+                'reject_loan',
+                'change_loan_status',
+                'view_loan_timeline',
+                'manage_disbursement',
+                'manage_valuation',
+                'raise_query',
+                'resolve_query',
+                'download_pdf_branded',
+                'download_pdf_plain',
+                'view_settings',
+                'edit_company_info',
+                'edit_banks',
+                'edit_documents',
+                'edit_tenures',
+                'edit_charges',
+                'edit_services',
+                'edit_gst',
+                'create_quotation',
+                'generate_pdf',
+                'view_own_quotations',
+                'view_all_quotations',
+                'delete_quotations',
+                'download_pdf',
+                'view_users',
+                'create_users',
+                'edit_users',
+                'delete_users',
+                'assign_roles',
+                'change_own_password',
+                'manage_permissions',
+                'view_activity_log',
+                'convert_to_loan',
+                'view_loans',
+                'view_all_loans',
+                'create_loan',
+                'edit_loan',
+                'delete_loan',
+                'manage_loan_documents',
+                'manage_loan_stages',
+                'add_remarks',
+                'manage_workflow_config',
+                'upload_loan_documents',
+                'download_loan_documents',
+                'delete_loan_files',
+                'hold_quotation',
+                'cancel_quotation',
+                'resume_quotation',
+                'view_dvr',
+                'create_dvr',
+                'edit_dvr',
+                'delete_dvr',
+                'view_all_dvr',
                 // Note: skip_loan_stages (id 46) is excluded for super_admin
             ]))),
 
             'admin' => array_values(array_intersect_key($permIds, array_flip([
-                'manage_customers', 'view_customers', 'impersonate_users', 'view_dashboard', 'manage_notifications',
-                'transfer_loan_stages', 'reject_loan', 'change_loan_status', 'view_loan_timeline',
-                'manage_disbursement', 'manage_valuation', 'raise_query', 'resolve_query',
-                'view_settings', 'edit_company_info', 'edit_banks', 'edit_documents', 'edit_tenures',
-                'edit_charges', 'edit_services', 'edit_gst',
-                'create_quotation', 'generate_pdf', 'view_own_quotations', 'view_all_quotations',
-                'delete_quotations', 'download_pdf',
-                'view_users', 'create_users', 'edit_users', 'assign_roles',
-                'change_own_password', 'manage_permissions', 'view_activity_log',
-                'convert_to_loan', 'view_loans', 'view_all_loans', 'create_loan', 'edit_loan',
-                'delete_loan', 'manage_loan_documents', 'manage_loan_stages',
-                'add_remarks', 'manage_workflow_config',
-                'upload_loan_documents', 'download_loan_documents', 'delete_loan_files',
+                'manage_customers',
+                'view_customers',
+                'impersonate_users',
+                'view_dashboard',
+                'manage_notifications',
+                'transfer_loan_stages',
+                'reject_loan',
+                'change_loan_status',
+                'view_loan_timeline',
+                'manage_disbursement',
+                'manage_valuation',
+                'raise_query',
+                'resolve_query',
+                'view_settings',
+                'edit_company_info',
+                'edit_banks',
+                'edit_documents',
+                'edit_tenures',
+                'edit_charges',
+                'edit_services',
+                'edit_gst',
+                'create_quotation',
+                'generate_pdf',
+                'view_own_quotations',
+                'view_all_quotations',
+                'delete_quotations',
+                'download_pdf',
+                'view_users',
+                'create_users',
+                'edit_users',
+                'assign_roles',
+                'change_own_password',
+                'manage_permissions',
+                'view_activity_log',
+                'convert_to_loan',
+                'view_loans',
+                'view_all_loans',
+                'create_loan',
+                'edit_loan',
+                'delete_loan',
+                'manage_loan_documents',
+                'manage_loan_stages',
+                'add_remarks',
+                'manage_workflow_config',
+                'upload_loan_documents',
+                'download_loan_documents',
+                'delete_loan_files',
                 'view_all_tasks',
-                // Note: delete_users (id 33) excluded, download_pdf_branded/plain excluded
+                'download_pdf_branded',
+                'download_pdf_plain',
+                'hold_quotation',
+                'cancel_quotation',
+                'resume_quotation',
+                'view_dvr',
+                'create_dvr',
+                'edit_dvr',
+                // Note: delete_users (id 33) excluded. DVR scoped to own (no view_all_dvr/delete_dvr).
             ]))),
 
             'branch_manager' => array_values(array_intersect_key($permIds, array_flip([
-                'manage_customers', 'view_customers', 'view_dashboard', 'manage_notifications',
-                'transfer_loan_stages', 'reject_loan', 'change_loan_status', 'view_loan_timeline',
-                'manage_disbursement', 'manage_valuation', 'raise_query', 'resolve_query',
-                'create_quotation', 'generate_pdf', 'view_own_quotations', 'view_all_quotations', 'download_pdf',
-                'view_users', 'change_own_password', 'view_activity_log',
-                'convert_to_loan', 'view_loans', 'view_all_loans', 'create_loan', 'edit_loan',
-                'manage_loan_documents', 'manage_loan_stages', 'add_remarks',
+                'manage_customers',
+                'view_customers',
+                'view_dashboard',
+                'manage_notifications',
+                'transfer_loan_stages',
+                'reject_loan',
+                'change_loan_status',
+                'view_loan_timeline',
+                'manage_disbursement',
+                'manage_valuation',
+                'raise_query',
+                'resolve_query',
+                'create_quotation',
+                'generate_pdf',
+                'view_own_quotations',
+                'download_pdf',
+                'download_pdf_branded',
+                'download_pdf_plain',
+                'hold_quotation',
+                'cancel_quotation',
+                'resume_quotation',
+                'view_users',
+                'change_own_password',
+                'view_activity_log',
+                'convert_to_loan',
+                'view_loans',
+                'create_loan',
+                'edit_loan',
+                'manage_loan_documents',
+                'manage_loan_stages',
+                'add_remarks',
+                'view_dvr',
+                'create_dvr',
+                'edit_dvr',
+                // Note: view_all_loans/view_all_quotations removed — branch scope applies via
+                // Loan/Quotation::scopeVisibleTo. bdh inherits this same set below.
             ]))),
 
             'loan_advisor' => array_values(array_intersect_key($permIds, array_flip([
-                'manage_customers', 'view_customers', 'view_dashboard', 'manage_notifications',
-                'transfer_loan_stages', 'change_loan_status', 'view_loan_timeline',
-                'manage_disbursement', 'raise_query', 'resolve_query',
-                'create_quotation', 'generate_pdf', 'view_own_quotations', 'download_pdf',
+                'manage_customers',
+                'view_customers',
+                'view_dashboard',
+                'manage_notifications',
+                'transfer_loan_stages',
+                'change_loan_status',
+                'view_loan_timeline',
+                'manage_disbursement',
+                'raise_query',
+                'resolve_query',
+                'create_quotation',
+                'generate_pdf',
+                'view_own_quotations',
+                'download_pdf',
+                'download_pdf_branded',
+                'download_pdf_plain',
+                'hold_quotation',
+                'cancel_quotation',
                 'change_own_password',
-                'convert_to_loan', 'view_loans', 'create_loan', 'edit_loan',
-                'manage_loan_documents', 'manage_loan_stages', 'add_remarks',
+                'convert_to_loan',
+                'view_loans',
+                'create_loan',
+                'edit_loan',
+                'manage_loan_documents',
+                'manage_loan_stages',
+                'add_remarks',
+                'view_dvr',
+                'create_dvr',
+                'edit_dvr',
             ]))),
 
             'bank_employee' => array_values(array_intersect_key($permIds, array_flip([
-                'view_customers', 'view_dashboard', 'manage_notifications',
-                'view_loan_timeline', 'raise_query',
+                'view_customers',
+                'view_dashboard',
+                'manage_notifications',
+                'view_loan_timeline',
+                'raise_query',
                 'change_own_password',
-                'view_loans', 'manage_loan_stages', 'add_remarks',
+                'view_loans',
+                'manage_loan_stages',
+                'add_remarks',
             ]))),
 
             'office_employee' => array_values(array_intersect_key($permIds, array_flip([
-                'view_customers', 'view_dashboard', 'manage_notifications',
-                'transfer_loan_stages', 'view_loan_timeline', 'manage_valuation', 'raise_query',
+                'view_customers',
+                'view_dashboard',
+                'manage_notifications',
+                'transfer_loan_stages',
+                'view_loan_timeline',
+                'manage_valuation',
+                'raise_query',
                 'change_own_password',
-                'view_loans', 'edit_loan',
-                'manage_loan_documents', 'manage_loan_stages', 'add_remarks',
+                'view_loans',
+                'edit_loan',
+                'manage_loan_documents',
+                'manage_loan_stages',
+                'add_remarks',
+                'view_dvr',
+                'create_dvr',
+                'edit_dvr',
             ]))),
         ];
 
@@ -1321,71 +1499,76 @@ class DefaultDataSeeder extends Seeder
                     'gu' => ($config['documents_gu'][$cust['type']] ?? $config['documents_gu']['proprietor'] ?? [])[$i] ?? $d,
                 ])->toArray();
 
-            $result = $quotationService->generate([
-                'customerName' => $cust['name'],
-                'customerType' => $cust['type'],
-                'loanAmount' => $amount,
-                'location_id' => 2,
-                'banks' => [
-                    [
-                        'name' => $product->bank_name,
-                        'roiMin' => $roi['min'],
-                        'roiMax' => $roi['max'],
-                        'charges' => [
-                            'pf' => $charges->pf ?? 0,
-                            'admin' => $charges->admin ?? 0,
-                            'stampNotary' => $charges->stamp_notary ?? 0,
-                            'registrationFee' => $charges->registration_fee ?? 0,
-                            'advocate' => $charges->advocate ?? 0,
-                            'iom' => 0,
-                            'tc' => $charges->tc ?? 0,
-                            'extra1Name' => null, 'extra1Amount' => 0,
-                            'extra2Name' => null, 'extra2Amount' => 0,
-                            'total' => $totalCharges,
+            if (env('SEED_QUOTATIONS') == 1) {
+                $result = $quotationService->generate([
+                    'customerName' => $cust['name'],
+                    'customerType' => $cust['type'],
+                    'loanAmount' => $amount,
+                    'location_id' => 2,
+                    'banks' => [
+                        [
+                            'name' => $product->bank_name,
+                            'roiMin' => $roi['min'],
+                            'roiMax' => $roi['max'],
+                            'charges' => [
+                                'pf' => $charges->pf ?? 0,
+                                'admin' => $charges->admin ?? 0,
+                                'stampNotary' => $charges->stamp_notary ?? 0,
+                                'registrationFee' => $charges->registration_fee ?? 0,
+                                'advocate' => $charges->advocate ?? 0,
+                                'iom' => 0,
+                                'tc' => $charges->tc ?? 0,
+                                'extra1Name' => null,
+                                'extra1Amount' => 0,
+                                'extra2Name' => null,
+                                'extra2Amount' => 0,
+                                'total' => $totalCharges,
+                            ],
+                            'emiByTenure' => collect($config['tenures'] ?? [5, 10, 15, 20])->mapWithKeys(function ($t) use ($amount, $avgRoi) {
+                                $r = $avgRoi / 12 / 100;
+                                $n = $t * 12;
+                                $emi = ($r > 0) ? (int) ceil($amount * $r * pow(1 + $r, $n) / (pow(1 + $r, $n) - 1)) : (int) ceil($amount / $n);
+
+                                return [$t => ['emi' => $emi, 'totalInterest' => ($emi * $n) - $amount, 'totalPayment' => $emi * $n]];
+                            })->toArray(),
                         ],
-                        'emiByTenure' => collect($config['tenures'] ?? [5, 10, 15, 20])->mapWithKeys(function ($t) use ($amount, $avgRoi) {
-                            $r = $avgRoi / 12 / 100;
-                            $n = $t * 12;
-                            $emi = ($r > 0) ? (int) ceil($amount * $r * pow(1 + $r, $n) / (pow(1 + $r, $n) - 1)) : (int) ceil($amount / $n);
-
-                            return [$t => ['emi' => $emi, 'totalInterest' => ($emi * $n) - $amount, 'totalPayment' => $emi * $n]];
-                        })->toArray(),
                     ],
-                ],
-                'documents' => $typeDocs,
-                'selectedTenures' => $config['tenures'] ?? [5, 10, 15, 20],
-                'preparedByName' => $creator->name ?? $admin->name,
-                'preparedByMobile' => $creator->phone ?? $admin->phone ?? '',
-            ], $creatorId);
+                    'documents' => $typeDocs,
+                    'selectedTenures' => $config['tenures'] ?? [5, 10, 15, 20],
+                    'preparedByName' => $creator->name ?? $admin->name,
+                    'preparedByMobile' => $creator->phone ?? $admin->phone ?? '',
+                ], $creatorId);
 
-            if (! empty($result['error']) || empty($result['quotation'])) {
-                $this->command?->warn("  ⚠ Quotation failed for {$product->bank_name}/{$product->product_name}: ".($result['error'] ?? 'unknown'));
+                if (! empty($result['error']) || empty($result['quotation'])) {
+                    $this->command?->warn("  ⚠ Quotation failed for {$product->bank_name}/{$product->product_name}: ".($result['error'] ?? 'unknown'));
 
-                continue;
+                    continue;
+                }
             }
 
-            $quotation = $result['quotation'];
-            $amountLabel = '₹'.number_format($amount / 100000).'L';
-            $creatorName = $creator->name ?? 'Admin';
-            $this->command?->line("  + Quotation #{$quotation->id}: {$cust['name']} / {$product->bank_name} {$product->product_name} / {$amountLabel} (by {$creatorName})");
+            if (env('SEED_QUOTATIONS') == 1) {
+                $quotation = $result['quotation'];
+                $amountLabel = '₹'.number_format($amount / 100000).'L';
+                $creatorName = $creator->name ?? 'Admin';
+                $this->command?->line("  + Quotation #{$quotation->id}: {$cust['name']} / {$product->bank_name} {$product->product_name} / {$amountLabel} (by {$creatorName})");
 
-            // Convert to loan — advisor is the same user who created the quotation
-            $loan = $conversionService->convertFromQuotation($quotation, 0, [
-                'branch_id' => 1,
-                'product_id' => $product->product_id,
-                'customer_phone' => $cust['phone'],
-                'customer_email' => null,
-                'date_of_birth' => $cust['dob'],
-                'pan_number' => $cust['pan'],
-                'assigned_advisor' => $creatorId,
-                'notes' => "Sample loan for {$product->bank_name} {$product->product_name}",
-            ]);
+                // Convert to loan — advisor is the same user who created the quotation
+                $loan = $conversionService->convertFromQuotation($quotation, 0, [
+                    'branch_id' => 1,
+                    'product_id' => $product->product_id,
+                    'customer_phone' => $cust['phone'],
+                    'customer_email' => null,
+                    'date_of_birth' => $cust['dob'],
+                    'pan_number' => $cust['pan'],
+                    'assigned_advisor' => $creatorId,
+                    'notes' => "Sample loan for {$product->bank_name} {$product->product_name}",
+                ]);
 
-            $this->command?->line("  + Loan #{$loan->id} ({$loan->loan_number}): {$product->bank_name} {$product->product_name}");
+                $this->command?->line("  + Loan #{$loan->id} ({$loan->loan_number}): {$product->bank_name} {$product->product_name}");
+            }
+            // Advance some loans through stages to demonstrate auto-assignment
+            $this->advanceSampleLoans();
         }
-
-        // Advance some loans through stages to demonstrate auto-assignment
-        $this->advanceSampleLoans();
 
         auth()->logout();
     }

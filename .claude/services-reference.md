@@ -1,6 +1,6 @@
 # Services Reference
 
-13 services in `app/Services/`. Orchestrate domain logic; called from controllers, never from views. Services are constructor-injected via Laravel's container (no explicit binding).
+14 services in `app/Services/`. Orchestrate domain logic; called from controllers, never from views. Services are constructor-injected via Laravel's container (no explicit binding).
 
 ## ConfigService
 
@@ -42,17 +42,19 @@ Reads/writes `app_config` table (key `main`) and merges with `config/app-default
 | `userRolesHavePermission` | `(User, string): bool` | Only checks role-level |
 | `getUserPermissions` | `(User): array` | `[slug => bool]` for all permissions |
 | `getGroupedPermissions` | `(): array` | `[group => [Permission,...]]` |
+| `allSlugs` | `(): array` | Returns all permission slugs; cached 1h; used by `Gate::before` so `@can('slug')` / `$user->can('slug')` resolve through this service |
 | `clearUserCache` | `(User): void` | Call after user roles or overrides change |
 | `clearRoleCache` | `(): void` | Call after any role_permission change |
-| `clearAllCaches` | `(): void` | After bulk edits or permission schema change |
+| `clearAllCaches` | `(): void` | After bulk edits or permission schema change; also forgets `all_permission_slugs` |
 
 ### Cache
 
 | Key | TTL | Populated by |
 |---|---|---|
-| `user_perms:{userId}` | 300s | `getUserOverride()` — maps slug → grant/deny for that user |
-| `user_role_ids:{userId}` | 300s | `getUserRoleIds()` |
-| `role_perms:{sortedRoleIds}` | 300s | `getRolePermissionSlugs()` — unique slugs across the role set |
+| `user_perms:{userId}` | 300s (5 min) | `getUserOverride()` — maps slug → grant/deny for that user |
+| `user_role_ids:{userId}` | 300s (5 min) | `getUserRoleIds()` — role IDs for a user |
+| `role_perms:{sortedRoleIds}` | 300s (5 min) | `getRolePermissionSlugs()` — unique slugs across the comma-joined, sorted role-id set |
+| `all_permission_slugs` | 3600s (1 hour) | `allSlugs()` — all permission slugs; returns `[]` quietly on table error (mid-migration safe) |
 
 ---
 
@@ -69,6 +71,12 @@ Validation rules (inline in service):
 - `loanAmount` ≤ 10^12
 - `banks[]` required array
 - Per bank: `roiMin`, `roiMax` in (0, 30], `roiMin ≤ roiMax`
+
+Additional accepted inputs (optional, passed through to template/persistence):
+- `location_id`, `branch_id` — persisted on the Quotation row
+- `selectedTenures` — int array; intersected with config `tenures` before use
+- `ourServices` — free-text; defaults to config `ourServices` if absent
+- `preparedByName`, `preparedByMobile` — persisted on the Quotation row
 
 Return shapes:
 - Success: `['success' => true, 'quotation' => Quotation]`
@@ -89,9 +97,11 @@ Three-tier fallback:
 2. Else try Chrome headless (if `isChromeAvailable()`) → fallback to microservice on failure
 3. Else microservice only
 
-### `generate(array $data): array`
-
-Returns `['success' => true, 'filename' => ..., 'path' => ...]` or `['error' => string]`. Writes HTML to `storage/app/temp/`, PDF to `storage/app/pdfs/Loan_Proposal_{Name}_{date}_{time}.pdf`.
+| Method | Signature | Notes |
+|---|---|---|
+| `generate` | `(array $data): array` | Renders HTML via `renderHtml()`, writes it to `storage/app/tmp/pdf_{uniqid}.html`, produces PDF at `storage/app/pdfs/Loan_Proposal_{Name}_{date}_{time}.pdf`. Returns `['success' => true, 'filename' => ..., 'path' => ...]` or `['error' => string]`. |
+| `renderHtml` | `(array $data): string` | Builds the full bilingual HTML document (fonts, colors, charges, EMI comparison, documents, notes). Called internally by `generate()`; also usable standalone for previews. |
+| `getTypeLabel` | `(string $type): string` *(static)* | Bilingual customer-type label (e.g. `proprietor` → `Proprietor / માલિકી`). Returns the raw key if unknown. |
 
 Config keys read:
 - `app.pdf_use_microservice`
@@ -133,7 +143,7 @@ Inside DB transaction:
 7. `initializeStages` → all stage_assignments
 8. `autoCompleteStages(['inquiry','document_selection'])`
 9. Auto-assign `document_collection` stage
-10. Log `convert_to_loan` activity
+10. Log `convert_quotation_to_loan` activity
 
 ### `createDirectLoan(array $data): LoanDetail`
 
@@ -172,18 +182,32 @@ No injected deps. Talks directly to Stage, StageAssignment, StageTransfer, BankS
 - `updateStageStatus(LoanDetail, string, string, ?int $userId): StageAssignment` — validates via `StageAssignment::canTransitionTo()`, blocks on pending queries, runs `handleStageCompletion()` post-update
 - `revertStageIfIncomplete(LoanDetail, string, bool $isStillComplete): bool` — soft-revert when collected data becomes incomplete; reverts subsequent stages too
 - `getNextStage(string): ?string` — next main stage by sequence_order
-- `canStartStage(LoanDetail, string): bool` — prerequisite checker (sub-stage needs parent in_progress; `rate_pf` needs `is_sanctioned` + any parallel sub done)
+- `canStartStage(LoanDetail, string): bool` — prerequisite checker — behavior branches on `app.open_rate_pf_parallel`; see Feature flag subsection below.
+- `checkParallelCompletion(LoanDetail): bool` — marks `parallel_processing` parent complete when all its sub-stages are `completed`/`skipped`. Flag-off: auto-advances to `rate_pf` (assigns + starts it). Flag-on: calls `advanceToSanctionIfReady()`. Recalculates progress.
+- `getParallelSubStages(LoanDetail): Collection` — returns all sub-stage assignments of `parallel_processing` with eager-loaded `stage` and `assignee`.
+- `getLoanStageStatus(LoanDetail): Collection` — returns every `StageAssignment` for the loan with eager-loaded `stage`/`assignee`, sorted by `stage.sequence_order` (then `stage.id`). Used by stage UI to render in workflow order.
 
 ### `handleStageCompletion(LoanDetail, string)` (protected)
 
 Orchestration logic:
 - **app_number** done → start `bsm_osv` only
-- **bsm_osv** done → start remaining parallel subs (legal_verification, technical_valuation, sanction_decision)
-- All parallel subs done → mark `parallel_processing` complete, advance to `rate_pf`
+- **bsm_osv** done → start remaining parallel subs (legal_verification, technical_valuation, sanction_decision); if `config('app.open_rate_pf_parallel')` is truthy, also call `openRatePfInParallel()`
+- All parallel subs done → mark `parallel_processing` complete; flag off → advance to `rate_pf`; flag on → call `advanceToSanctionIfReady()`
+- **rate_pf** done (flag on only) → intercepted at top; call `advanceToSanctionIfReady()` and return
 - **sanction** done → compute `expected_docket_date` from app_number stage notes (custom_docket_date OR docket_days_offset)
 - **disbursement** (fund_transfer) → skip `otc_clearance`, mark loan `completed`
 - **otc_clearance** done → mark loan `completed`
 - Sequential advance + auto-assign next stage otherwise
+
+### Feature flag: `open_rate_pf_parallel`
+
+| Method | Purpose |
+|---|---|
+| `usesParallelRatePf(): bool` (private) | Reads `config('app.open_rate_pf_parallel')` |
+| `openRatePfInParallel(LoanDetail): void` (public) | After bsm_osv completes (flag on), marks `rate_pf` in_progress, auto-assigns via `getLoanStageRole` + `findUserForRole`, writes StageTransfer row |
+| `advanceToSanctionIfReady(LoanDetail): void` (public) | Opens `sanction` only when BOTH `parallel_processing` and `rate_pf` are completed/skipped. Called from `handleStageCompletion('rate_pf')` and `checkParallelCompletion()` |
+
+`canStartStage()` branches on the flag: `rate_pf` opens after `bsm_osv` when on (not gated by `is_sanctioned`); `sanction` gate requires both `parallel_processing` and `rate_pf` complete when on. Legacy behavior preserved when off.
 
 ### Assignment & transfer
 
@@ -196,7 +220,7 @@ Orchestration logic:
 
 ### Rejection
 
-`rejectLoan(LoanDetail, string $stageKey, string $reason, ?int $userId): LoanDetail` — status=rejected, sets rejected_at/by/stage, closes active stage assignment.
+`rejectLoan(LoanDetail, string $stageKey, string $reason, ?int $userId): LoanDetail` — rejects only the named stage: sets loan status=rejected, writes `rejected_at`/`rejected_by`/`rejected_stage`/`rejection_reason`, closes that one stage assignment (saves `previous_status` then sets `status=rejected`). Sibling rejection for parallel-mode flows lives in `LoanStageController::sanctionDecisionAction` (lines 835-845), which bulk-updates pending/in_progress stages and saves `previous_status` for reactivation.
 
 ### Progress
 
@@ -217,7 +241,7 @@ Constructor: `ConfigService`.
 | `allRequiredResolved(LoanDetail): bool` | Gate for auto-completing document_collection stage |
 | `addDocument(LoanDetail, string $en, ?string $gu, bool $required = true): LoanDocument` | Adds custom doc with next sort_order |
 | `removeDocument(LoanDocument)` | Deletes file too |
-| `uploadFile(LoanDocument, UploadedFile, int $userId): LoanDocument` | Stores to `loan-documents/{loanId}/{docId}_{ts}.{ext}`; auto-marks received if pending |
+| `uploadFile(LoanDocument, UploadedFile, int $userId): LoanDocument` | Stores under `loan-documents/{loanId}/` via `FileUploadService::hashedFilename($file)` (random hash + ext) on the `local` disk; records `file_path`, `file_name` (original), `file_size`, `file_mime`, `uploaded_by`, `uploaded_at`; auto-marks document received if still pending |
 | `deleteFile(LoanDocument)` | Removes file only; keeps record |
 
 ---
@@ -232,8 +256,30 @@ Inside DB transaction:
 1. Upsert `disbursement_details` for loan
 2. If `disbursement_type=fund_transfer`: refresh relationships so `handleStageCompletion` can detect & skip OTC
 3. Mark `disbursement` stage completed → triggers stage service completion flow
-4. Log activity
+4. Log activity (action: `process_disbursement`; properties: `loan_number`, `type`, `amount`)
 5. If loan completed, notify creator + advisor
+
+---
+
+## FileUploadService
+
+Central upload validation + filename sanitization. All methods are `public static`; no constructor. Returns sanitized hashed filenames so client-supplied names never touch disk.
+
+| Method | Signature | Notes |
+|---|---|---|
+| `rules` | `(bool $required = true): array` | Returns Laravel validator rules: `['required'\|'nullable', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png,webp', 'mimetypes:application/pdf,image/jpeg,image/png,image/webp']`. Both `mimes` (extension) and `mimetypes` (content) checks are enforced — extension alone is spoofable. |
+| `messages` | `(): array` | Custom error messages for `file.mimes` / `file.mimetypes` / `file.max`. |
+| `hashedFilename` | `(UploadedFile $file): string` | Returns `"{bin2hex(random_bytes(16))}.{ext}"`. Extension is lowercased and whitelist-checked; unknown extensions collapse to `bin`. Does **not** write the file — caller uses `$file->storeAs($dir, $name, 'local')`. |
+
+### Constants
+
+- `MAX_SIZE_KB = 10240` (10 MB)
+- `ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'webp']`
+- `ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp']`
+
+### Storage
+
+Consumers (e.g. `LoanDocumentService::uploadFile`) persist to the `local` disk, which resolves to `storage/app/private/` under the Laravel 11+ default filesystem config. The service itself is storage-agnostic — it only vends filenames + validation rules.
 
 ---
 
@@ -263,8 +309,8 @@ Pending/responded queries **block stage completion** via a check inside `LoanSta
 
 | Method | Purpose |
 |---|---|
-| `notify(int $userId, string $title, string $msg, string $type='info', ?int $loanId, ?string $stageKey, ?string $link): ShfNotification` | Generic |
-| `notifyStageAssignment(LoanDetail, string, int $userId): ShfNotification` | "Stage X assigned for Loan Y" |
+| `notify(int $userId, string $title, string $msg, string $type='info', ?int $loanId, ?string $stageKey, ?string $link): ShfNotification` | Generic. Auto-fallback: if `$link` is null and `$loanId` is passed, the link is resolved to `route('loans.stages', $loanId)` (wrapped in try/catch — stays null if route is unavailable). Callers can still pass an explicit `$link` to override (e.g. general-tasks point to the task page). |
+| `notifyStageAssignment(LoanDetail, string $stageKey, int $userId): ShfNotification` | Title `"Stage Assigned"`, message `"You have been assigned to '{stageName}' for Loan #{loan_number} ({customer_name})"`, type `assignment`, link `route('loans.stages', $loan)`. `{stageName}` is `Stage.stage_name_en` (falls back to `stageKey`). |
 | `notifyStageCompleted(LoanDetail, string): void` | Sent to creator + advisor (excluding current user) |
 | `notifyLoanCompleted(LoanDetail): void` | Same audience |
 | `markRead(ShfNotification): void` | |
@@ -273,6 +319,14 @@ Pending/responded queries **block stage completion** via a check inside `LoanSta
 
 UI polls `/api/notifications/count` every 60s (see `layouts/app.blade.php`).
 
+### Daily reminders
+
+`reminders:send-daily --when=morning|evening` (Artisan command `SendDailyReminders`) iterates users with pending work for today (morning, scheduled 08:00) or tomorrow (evening, scheduled 20:00):
+- DVR follow-ups: `follow_up_needed=true`, `is_follow_up_done=false`, `follow_up_date = targetDate`, grouped by `user_id`
+- General tasks: `status IN (pending, in_progress)`, `due_date = targetDate`, grouped by `assigned_to`
+
+Users with zero in both buckets get no notification. Each recipient gets one in-app `ShfNotification` with a combined count ("You have N DVR follow-ups and M tasks due today/tomorrow.").
+
 ---
 
 ## LoanTimelineService
@@ -280,16 +334,16 @@ UI polls `/api/notifications/count` every 60s (see `layouts/app.blade.php`).
 ### `getTimeline(LoanDetail): Collection`
 
 Merges 9+ event types into a single chronological collection (each entry: `{type, date, title, description, user, icon, color}`):
-- quotation_created (if converted)
-- converted_to_loan (if from quotation)
-- loan_created (if direct)
-- stage_started / stage_completed_or_skipped
-- transfers
-- query_raised / query_response
-- remarks
-- loan_rejected (if rejected)
-- disbursement_processed
-- loan_completed (if completed)
+- `quotation_created` (if converted)
+- `converted` (if from quotation — "Converted to Loan")
+- `loan_created` (if direct)
+- `stage_started` / `stage_completed` / `stage_skipped` (from `stage_assignments`)
+- `transfer` (from `stage_transfers`)
+- `query_raised` / `query_response` (from `stage_queries` + their responses)
+- `remark` (from `remarks`)
+- `rejected` (if loan status=rejected — "Loan Rejected")
+- `disbursement` (if disbursement row exists — "Disbursement Processed")
+- `completed` (if loan status=completed — "Loan Completed")
 
 ---
 

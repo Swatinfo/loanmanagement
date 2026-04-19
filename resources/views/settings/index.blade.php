@@ -28,6 +28,7 @@
                         'tenures' => ['label' => 'Tenures', 'perm' => 'edit_tenures'],
                         'documents' => ['label' => 'Documents', 'perm' => 'edit_documents'],
                         'dvr' => ['label' => 'DVR', 'perm' => 'view_settings'],
+                        'quotation-reasons' => ['label' => 'Quotation Reasons', 'perm' => 'view_settings'],
                         'permissions' => ['label' => 'Permissions', 'perm' => 'manage_permissions'],
                     ];
                     $activeTab = request('tab', 'company');
@@ -263,7 +264,7 @@
                             Gujarati).</p>
 
                         <!-- Sub-tabs for document types -->
-                        <div class="d-flex gap-1 mb-3" style="border-bottom: 1px solid var(--border);">
+                        <div class="d-flex flex-wrap gap-1 mb-3" style="border-bottom: 1px solid var(--border);">
                             @foreach (['proprietor' => 'Proprietor', 'partnership_llp' => 'Partnership / LLP', 'pvt_ltd' => 'PVT LTD', 'salaried' => 'Salaried'] as $docType => $docLabel)
                                 <button type="button" class="doc-sub-tab small fw-semibold"
                                     data-doc-type="{{ $docType }}"
@@ -277,23 +278,31 @@
                             <div class="doc-type-pane shf-collapse-hidden" id="docPane-{{ $docType }}">
                                 <div class="d-flex flex-column gap-2 mb-3" id="docList-{{ $docType }}"></div>
 
-                                <div class="d-flex align-items-center gap-2">
-                                    <input type="text" class="shf-input flex-grow-1 newDocEn"
-                                        placeholder="Document name (English)">
-                                    <input type="text" class="shf-input flex-grow-1 newDocGu"
-                                        placeholder="દસ્તાવેજ નામ (Gujarati)">
-                                    <button type="button" class="btn-accent-sm addDocBtn"
-                                        data-doc-type="{{ $docType }}"><svg class="shf-icon-sm" fill="none"
-                                            stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M12 4v16m8-8H4" />
-                                        </svg> Add</button>
+                                <div class="shf-reason-add-row row g-2 align-items-end">
+                                    <div class="col-12 col-md-6 col-lg-5">
+                                        <label class="shf-form-label d-block d-lg-none mb-1">English</label>
+                                        <input type="text" class="shf-input w-100 newDocEn"
+                                            placeholder="Document name (English)">
+                                    </div>
+                                    <div class="col-12 col-md-6 col-lg-5">
+                                        <label class="shf-form-label d-block d-lg-none mb-1">Gujarati</label>
+                                        <input type="text" class="shf-input w-100 newDocGu"
+                                            placeholder="દસ્તાવેજ નામ (Gujarati)">
+                                    </div>
+                                    <div class="col-12 col-lg-2">
+                                        <button type="button" class="btn-accent-sm addDocBtn w-100 justify-content-center"
+                                            data-doc-type="{{ $docType }}"><svg class="shf-icon-sm" fill="none"
+                                                stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 4v16m8-8H4" />
+                                            </svg> Add</button>
+                                    </div>
                                 </div>
                             </div>
                         @endforeach
 
                         @if (auth()->user()->hasPermission('edit_documents'))
-                            <div class="mt-4 d-flex justify-content-end">
+                            <div class="shf-form-actions d-flex justify-content-end gap-3 mt-4 mb-2">
                                 <button type="submit" class="btn-accent">
                                     <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -316,26 +325,27 @@
                         <form method="POST" action="{{ route('settings.dvr-contact-types') }}" id="dvrContactTypesForm">
                             @csrf
                             <div class="d-flex flex-column gap-2 mb-3" id="dvrContactTypesList"></div>
-                            <div class="d-flex align-items-center gap-2">
-                                <input type="text" id="newContactTypeKey" class="shf-input" placeholder="key (e.g. architect)" style="width:8rem;">
-                                <input type="text" id="newContactTypeEn" class="shf-input flex-grow-1" placeholder="Label (English)">
-                                <input type="text" id="newContactTypeGu" class="shf-input flex-grow-1" placeholder="લેબલ (Gujarati)">
-                                <button type="button" id="addContactTypeBtn" class="btn-accent-sm">
-                                    <svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                    </svg> Add
-                                </button>
-                            </div>
-                            @if (auth()->user()->hasPermission('view_settings'))
-                                <div class="mt-3 d-flex justify-content-end">
-                                    <button type="submit" class="btn-accent">
-                                        <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                        </svg>
-                                        Save Contact Types
+                            <div class="shf-reason-add-row row g-2 align-items-end">
+                                <div class="col-12 col-md-6 col-lg-3">
+                                    <label class="shf-form-label d-block d-lg-none mb-1">Key</label>
+                                    <input type="text" id="newContactTypeKey" class="shf-input w-100" placeholder="key (e.g. architect)">
+                                </div>
+                                <div class="col-12 col-md-6 col-lg-4">
+                                    <label class="shf-form-label d-block d-lg-none mb-1">English</label>
+                                    <input type="text" id="newContactTypeEn" class="shf-input w-100" placeholder="Label (English)">
+                                </div>
+                                <div class="col-12 col-md-6 col-lg-3">
+                                    <label class="shf-form-label d-block d-lg-none mb-1">Gujarati</label>
+                                    <input type="text" id="newContactTypeGu" class="shf-input w-100" placeholder="લેબલ (Gujarati)">
+                                </div>
+                                <div class="col-12 col-md-6 col-lg-2">
+                                    <button type="button" id="addContactTypeBtn" class="btn-accent-sm w-100 justify-content-center">
+                                        <svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                        </svg> Add
                                     </button>
                                 </div>
-                            @endif
+                            </div>
                         </form>
                     </div>
 
@@ -347,15 +357,85 @@
                         <form method="POST" action="{{ route('settings.dvr-purposes') }}" id="dvrPurposesForm">
                             @csrf
                             <div class="d-flex flex-column gap-2 mb-3" id="dvrPurposesList"></div>
-                            <div class="d-flex align-items-center gap-2">
-                                <input type="text" id="newPurposeKey" class="shf-input" placeholder="key (e.g. site_visit)" style="width:8rem;">
-                                <input type="text" id="newPurposeEn" class="shf-input flex-grow-1" placeholder="Label (English)">
-                                <input type="text" id="newPurposeGu" class="shf-input flex-grow-1" placeholder="લેબલ (Gujarati)">
-                                <button type="button" id="addPurposeBtn" class="btn-accent-sm">
-                                    <svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                    </svg> Add
-                                </button>
+                            <div class="shf-reason-add-row row g-2 align-items-end">
+                                <div class="col-12 col-md-6 col-lg-3">
+                                    <label class="shf-form-label d-block d-lg-none mb-1">Key</label>
+                                    <input type="text" id="newPurposeKey" class="shf-input w-100" placeholder="key (e.g. site_visit)">
+                                </div>
+                                <div class="col-12 col-md-6 col-lg-4">
+                                    <label class="shf-form-label d-block d-lg-none mb-1">English</label>
+                                    <input type="text" id="newPurposeEn" class="shf-input w-100" placeholder="Label (English)">
+                                </div>
+                                <div class="col-12 col-md-6 col-lg-3">
+                                    <label class="shf-form-label d-block d-lg-none mb-1">Gujarati</label>
+                                    <input type="text" id="newPurposeGu" class="shf-input w-100" placeholder="લેબલ (Gujarati)">
+                                </div>
+                                <div class="col-12 col-md-6 col-lg-2">
+                                    <button type="button" id="addPurposeBtn" class="btn-accent-sm w-100 justify-content-center">
+                                        <svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                        </svg> Add
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    @if (auth()->user()->hasPermission('view_settings'))
+                        <div class="shf-form-actions d-flex flex-wrap justify-content-end gap-3 mt-4 mb-2">
+                            <button type="submit" form="dvrContactTypesForm" class="btn-accent">
+                                <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Save Contact Types
+                            </button>
+                            <button type="submit" form="dvrPurposesForm" class="btn-accent">
+                                <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Save Purposes
+                            </button>
+                        </div>
+                    @endif
+                </div>
+
+                {{-- Quotation Hold/Cancel Reasons --}}
+                <div class="settings-tab-pane p-4 shf-collapse-hidden" id="tab-quotation-reasons">
+                    <p class="small mb-3 shf-text-gray">Configure the reasons users can choose when putting a quotation on hold or cancelling it.</p>
+
+                    <p class="small mb-3 shf-text-gray-light">Each reason has an optional <strong>Group</strong>. Groups become <code>&lt;optgroup&gt;</code> headings in the Hold / Cancel modal dropdowns, so long lists stay scannable. Leave the group blank to land in "Other".</p>
+
+                    {{-- Hold Reasons --}}
+                    <div class="mb-4">
+                        <h6 class="font-display fw-semibold mb-3">Hold Reasons / હોલ્ડ કારણો</h6>
+                        <form method="POST" action="{{ route('settings.quotation-hold-reasons') }}" id="quotationHoldReasonsForm">
+                            @csrf
+                            <div class="d-flex flex-column gap-2 mb-3" id="quotationHoldReasonsList"></div>
+                            <div class="shf-reason-add-row row g-2 align-items-end">
+                                <div class="col-12 col-md-6 col-lg-2">
+                                    <label class="shf-form-label d-block d-lg-none mb-1">Key</label>
+                                    <input type="text" id="newHoldReasonKey" class="shf-input w-100" placeholder="key (e.g. rate_too_high)">
+                                </div>
+                                <div class="col-12 col-md-6 col-lg-3">
+                                    <label class="shf-form-label d-block d-lg-none mb-1">English</label>
+                                    <input type="text" id="newHoldReasonEn" class="shf-input w-100" placeholder="Label (English)">
+                                </div>
+                                <div class="col-12 col-md-6 col-lg-3">
+                                    <label class="shf-form-label d-block d-lg-none mb-1">Gujarati</label>
+                                    <input type="text" id="newHoldReasonGu" class="shf-input w-100" placeholder="લેબલ (Gujarati)">
+                                </div>
+                                <div class="col-12 col-md-6 col-lg-2">
+                                    <label class="shf-form-label d-block d-lg-none mb-1">Group</label>
+                                    <input type="text" id="newHoldReasonGroup" class="shf-input w-100" placeholder="Group (e.g. Documents)" list="holdGroupOptions">
+                                    <datalist id="holdGroupOptions"></datalist>
+                                </div>
+                                <div class="col-12 col-lg-2">
+                                    <button type="button" id="addHoldReasonBtn" class="btn-accent-sm w-100 justify-content-center">
+                                        <svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                        </svg> Add
+                                    </button>
+                                </div>
                             </div>
                             @if (auth()->user()->hasPermission('view_settings'))
                                 <div class="mt-3 d-flex justify-content-end">
@@ -363,7 +443,54 @@
                                         <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                         </svg>
-                                        Save Purposes
+                                        Save Hold Reasons
+                                    </button>
+                                </div>
+                            @endif
+                        </form>
+                    </div>
+
+                    <hr class="my-4" style="border-color:var(--border);">
+
+                    {{-- Cancel Reasons --}}
+                    <div>
+                        <h6 class="font-display fw-semibold mb-3">Cancel Reasons / રદ કારણો</h6>
+                        <form method="POST" action="{{ route('settings.quotation-cancel-reasons') }}" id="quotationCancelReasonsForm">
+                            @csrf
+                            <div class="d-flex flex-column gap-2 mb-3" id="quotationCancelReasonsList"></div>
+                            <div class="shf-reason-add-row row g-2 align-items-end">
+                                <div class="col-12 col-md-6 col-lg-2">
+                                    <label class="shf-form-label d-block d-lg-none mb-1">Key</label>
+                                    <input type="text" id="newCancelReasonKey" class="shf-input w-100" placeholder="key (e.g. rate_better_elsewhere)">
+                                </div>
+                                <div class="col-12 col-md-6 col-lg-3">
+                                    <label class="shf-form-label d-block d-lg-none mb-1">English</label>
+                                    <input type="text" id="newCancelReasonEn" class="shf-input w-100" placeholder="Label (English)">
+                                </div>
+                                <div class="col-12 col-md-6 col-lg-3">
+                                    <label class="shf-form-label d-block d-lg-none mb-1">Gujarati</label>
+                                    <input type="text" id="newCancelReasonGu" class="shf-input w-100" placeholder="લેબલ (Gujarati)">
+                                </div>
+                                <div class="col-12 col-md-6 col-lg-2">
+                                    <label class="shf-form-label d-block d-lg-none mb-1">Group</label>
+                                    <input type="text" id="newCancelReasonGroup" class="shf-input w-100" placeholder="Group (e.g. Customer)" list="cancelGroupOptions">
+                                    <datalist id="cancelGroupOptions"></datalist>
+                                </div>
+                                <div class="col-12 col-lg-2">
+                                    <button type="button" id="addCancelReasonBtn" class="btn-accent-sm w-100 justify-content-center">
+                                        <svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                        </svg> Add
+                                    </button>
+                                </div>
+                            </div>
+                            @if (auth()->user()->hasPermission('view_settings'))
+                                <div class="mt-3 d-flex justify-content-end">
+                                    <button type="submit" class="btn-accent">
+                                        <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Save Cancel Reasons
                                     </button>
                                 </div>
                             @endif
@@ -568,22 +695,27 @@
                 var sortableInstances = {};
 
                 function renderDocList(type) {
+                    var esc = function (s) { return $('<span>').text(s == null ? '' : s).html(); };
                     var html = '';
                     $.each(docs[type].en, function(idx, enVal) {
                         var guVal = docs[type].gu[idx] || '';
                         html +=
-                            '<div class="doc-sortable-item d-flex align-items-center gap-2 p-3 rounded" style="background:var(--bg);border:1px solid var(--border);">' +
-                            '<span class="doc-drag-handle" style="cursor:grab;color:#9ca3af;font-size:1rem;padding:0 4px;" title="Drag to reorder">⠿</span>' +
-                            '<span class="fw-bold" style="font-size:0.75rem;color:rgba(255,255,255,0.85);width:1.5rem;">' +
-                            (idx + 1) + '.</span>' +
-                            '<input type="text" name="documents_en[' + type + '][]" value="' + $('<span>').text(
-                                enVal).html() + '" class="shf-input flex-grow-1 small" placeholder="English">' +
-                            '<input type="text" name="documents_gu[' + type + '][]" value="' + $('<span>').text(
-                                guVal).html() +
-                            '" class="shf-input flex-grow-1 small" placeholder="Gujarati">' +
-                            '<button type="button" class="btn-accent-sm removeDocBtn shf-btn-danger" data-type="' +
-                            type + '" data-idx="' + idx +
-                            '"><svg class="shf-icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Remove</button>' +
+                            '<div class="doc-sortable-item shf-reason-row row g-2 align-items-center p-2 rounded" style="background:var(--bg);border:1px solid var(--border);margin:0 0 4px 0;">' +
+                            '<div class="col-auto d-flex align-items-center gap-2" style="min-width:0;">' +
+                                '<span class="doc-drag-handle" style="cursor:grab;color:#9ca3af;font-size:1rem;padding:0 2px;" title="Drag to reorder">⠿</span>' +
+                                '<span class="fw-bold shf-text-xs shf-text-gray-light">' + (idx + 1) + '.</span>' +
+                            '</div>' +
+                            '<div class="col-12 col-md">' +
+                                '<input type="text" name="documents_en[' + type + '][]" value="' + esc(enVal) + '" class="shf-input w-100 small" placeholder="English">' +
+                            '</div>' +
+                            '<div class="col-12 col-md">' +
+                                '<input type="text" name="documents_gu[' + type + '][]" value="' + esc(guVal) + '" class="shf-input w-100 small" placeholder="Gujarati">' +
+                            '</div>' +
+                            '<div class="col-12 col-md-auto">' +
+                                '<button type="button" class="btn-accent-sm removeDocBtn shf-btn-danger w-100 w-md-auto justify-content-center" data-type="' + type + '" data-idx="' + idx + '">' +
+                                    '<svg class="shf-icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Remove' +
+                                '</button>' +
+                            '</div>' +
                             '</div>';
                     });
                     $('#docList-' + type).html(html);
@@ -683,17 +815,27 @@
                 var dvrPurposes = @json($config['dvrPurposes'] ?? []);
 
                 function renderDvrList(items, containerId, inputPrefix) {
+                    var esc = function (s) { return $('<span>').text(s == null ? '' : s).html(); };
                     var html = '';
                     $.each(items, function(idx, item) {
-                        html += '<div class="d-flex align-items-center gap-2 p-2 rounded" style="background:var(--bg);border:1px solid var(--border);">'
-                            + '<span class="fw-bold shf-text-xs" style="width:1.5rem;">' + (idx + 1) + '.</span>'
-                            + '<input type="hidden" name="' + inputPrefix + '[' + idx + '][key]" value="' + $('<span>').text(item.key).html() + '">'
-                            + '<span class="shf-badge shf-badge-gray shf-text-2xs" style="min-width:5rem;">' + $('<span>').text(item.key).html() + '</span>'
-                            + '<input type="text" name="' + inputPrefix + '[' + idx + '][label_en]" value="' + $('<span>').text(item.label_en).html() + '" class="shf-input flex-grow-1 small" placeholder="English">'
-                            + '<input type="text" name="' + inputPrefix + '[' + idx + '][label_gu]" value="' + $('<span>').text(item.label_gu).html() + '" class="shf-input flex-grow-1 small" placeholder="Gujarati">'
-                            + '<button type="button" class="btn-accent-sm shf-btn-danger dvr-remove-btn" data-list="' + containerId + '" data-idx="' + idx + '">'
-                            + '<svg class="shf-icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>'
-                            + '</button></div>';
+                        html += '<div class="shf-reason-row row g-2 align-items-center p-2 rounded" style="background:var(--bg);border:1px solid var(--border);margin:0 0 4px 0;">'
+                            + '<input type="hidden" name="' + inputPrefix + '[' + idx + '][key]" value="' + esc(item.key) + '">'
+                            + '<div class="col-auto d-flex align-items-center gap-2" style="min-width:0;">'
+                            +   '<span class="fw-bold shf-text-xs shf-text-gray-light">' + (idx + 1) + '.</span>'
+                            +   '<span class="shf-badge shf-badge-gray shf-text-2xs text-truncate" style="max-width:10rem;" title="' + esc(item.key) + '">' + esc(item.key) + '</span>'
+                            + '</div>'
+                            + '<div class="col-12 col-md">'
+                            +   '<input type="text" name="' + inputPrefix + '[' + idx + '][label_en]" value="' + esc(item.label_en) + '" class="shf-input w-100 small" placeholder="English">'
+                            + '</div>'
+                            + '<div class="col-12 col-md">'
+                            +   '<input type="text" name="' + inputPrefix + '[' + idx + '][label_gu]" value="' + esc(item.label_gu) + '" class="shf-input w-100 small" placeholder="Gujarati">'
+                            + '</div>'
+                            + '<div class="col-12 col-md-auto">'
+                            +   '<button type="button" class="btn-accent-sm shf-btn-danger dvr-remove-btn w-100 w-md-auto justify-content-center" data-list="' + containerId + '" data-idx="' + idx + '">'
+                            +     '<svg class="shf-icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>'
+                            +   '</button>'
+                            + '</div>'
+                            + '</div>';
                     });
                     $('#' + containerId).html(html);
                 }
@@ -731,9 +873,134 @@
                     if (listId === 'dvrContactTypesList') {
                         dvrContactTypes.splice(idx, 1);
                         renderDvrList(dvrContactTypes, 'dvrContactTypesList', 'dvrContactTypes');
-                    } else {
+                    } else if (listId === 'dvrPurposesList') {
                         dvrPurposes.splice(idx, 1);
                         renderDvrList(dvrPurposes, 'dvrPurposesList', 'dvrPurposes');
+                    }
+                });
+
+                // ============================================================
+                //  QUOTATION HOLD / CANCEL REASONS MANAGER (with `group`)
+                // ============================================================
+                var quotationHoldReasons = @json($config['quotationHoldReasons'] ?? []);
+                var quotationCancelReasons = @json($config['quotationCancelReasons'] ?? []);
+
+                function escapeHtml(s) { return $('<span>').text(s == null ? '' : s).html(); }
+
+                function uniqueGroups(items) {
+                    var seen = {}, out = [];
+                    items.forEach(function (it) {
+                        var g = (it.group || '').trim();
+                        if (g && !seen[g]) { seen[g] = true; out.push(g); }
+                    });
+                    return out.sort();
+                }
+
+                function refreshGroupDatalist(datalistId, items) {
+                    var html = '';
+                    uniqueGroups(items).forEach(function (g) {
+                        html += '<option value="' + escapeHtml(g) + '">';
+                    });
+                    $('#' + datalistId).html(html);
+                }
+
+                function renderReasonList(items, containerId, inputPrefix, datalistId) {
+                    // Items keep their original index so form POST preserves order + allows targeted remove.
+                    // We group by `group` just for visual rendering — server still stores the flat array order.
+                    var groups = {}; // label -> [{idx,item}]
+                    items.forEach(function (item, idx) {
+                        var g = (item.group || 'Other').trim() || 'Other';
+                        (groups[g] = groups[g] || []).push({ idx: idx, item: item });
+                    });
+
+                    var groupOrder = Object.keys(groups).sort(function (a, b) {
+                        if (a === 'Other') return 1;
+                        if (b === 'Other') return -1;
+                        return a.localeCompare(b);
+                    });
+
+                    var html = '';
+                    groupOrder.forEach(function (groupName) {
+                        html += '<div class="shf-form-label mt-2 mb-1" style="color:var(--accent);">' + escapeHtml(groupName) + '</div>';
+                        groups[groupName].forEach(function (entry) {
+                            var item = entry.item, idx = entry.idx;
+                            html += '<div class="shf-reason-row row g-2 align-items-center p-2 rounded" style="background:var(--bg);border:1px solid var(--border);margin:0 0 4px 0;">'
+                                + '<input type="hidden" name="' + inputPrefix + '[' + idx + '][key]" value="' + escapeHtml(item.key) + '">'
+                                + '<div class="col-auto d-flex align-items-center gap-2" style="min-width:0;">'
+                                +   '<span class="fw-bold shf-text-xs shf-text-gray-light">' + (idx + 1) + '.</span>'
+                                +   '<span class="shf-badge shf-badge-gray shf-text-2xs text-truncate" style="max-width:10rem;" title="' + escapeHtml(item.key) + '">' + escapeHtml(item.key) + '</span>'
+                                + '</div>'
+                                + '<div class="col-12 col-md-6 col-lg">'
+                                +   '<input type="text" name="' + inputPrefix + '[' + idx + '][label_en]" value="' + escapeHtml(item.label_en) + '" class="shf-input w-100 small" placeholder="English">'
+                                + '</div>'
+                                + '<div class="col-12 col-md-6 col-lg">'
+                                +   '<input type="text" name="' + inputPrefix + '[' + idx + '][label_gu]" value="' + escapeHtml(item.label_gu) + '" class="shf-input w-100 small" placeholder="Gujarati">'
+                                + '</div>'
+                                + '<div class="col-12 col-md-8 col-lg-3">'
+                                +   '<input type="text" name="' + inputPrefix + '[' + idx + '][group]" value="' + escapeHtml(item.group || 'Other') + '" class="shf-input w-100 small" placeholder="Group" list="' + datalistId + '">'
+                                + '</div>'
+                                + '<div class="col-12 col-md-4 col-lg-auto text-md-end">'
+                                +   '<button type="button" class="btn-accent-sm shf-btn-danger reason-remove-btn w-100 w-md-auto justify-content-center" data-list="' + containerId + '" data-idx="' + idx + '">'
+                                +     '<svg class="shf-icon-xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>'
+                                +     ' <span class="d-lg-none">Remove</span>'
+                                +   '</button>'
+                                + '</div>'
+                                + '</div>';
+                        });
+                    });
+
+                    $('#' + containerId).html(html);
+                    refreshGroupDatalist(datalistId, items);
+                }
+
+                renderReasonList(quotationHoldReasons, 'quotationHoldReasonsList', 'quotationHoldReasons', 'holdGroupOptions');
+                renderReasonList(quotationCancelReasons, 'quotationCancelReasonsList', 'quotationCancelReasons', 'cancelGroupOptions');
+
+                function pushReason(items, $keyIn, $enIn, $guIn, $groupIn) {
+                    var key = $.trim($keyIn.val());
+                    var en = $.trim($enIn.val());
+                    if (!key || !en) return false;
+                    var gu = $.trim($guIn.val());
+                    var group = $.trim($groupIn.val()) || 'Other';
+                    key = key.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+                    items.push({ key: key, label_en: en, label_gu: gu || en, group: group });
+                    $keyIn.val(''); $enIn.val(''); $guIn.val(''); $groupIn.val('');
+                    return true;
+                }
+
+                $('#addHoldReasonBtn').on('click', function () {
+                    if (pushReason(quotationHoldReasons, $('#newHoldReasonKey'), $('#newHoldReasonEn'), $('#newHoldReasonGu'), $('#newHoldReasonGroup'))) {
+                        renderReasonList(quotationHoldReasons, 'quotationHoldReasonsList', 'quotationHoldReasons', 'holdGroupOptions');
+                    }
+                });
+
+                $('#addCancelReasonBtn').on('click', function () {
+                    if (pushReason(quotationCancelReasons, $('#newCancelReasonKey'), $('#newCancelReasonEn'), $('#newCancelReasonGu'), $('#newCancelReasonGroup'))) {
+                        renderReasonList(quotationCancelReasons, 'quotationCancelReasonsList', 'quotationCancelReasons', 'cancelGroupOptions');
+                    }
+                });
+
+                $(document).on('click', '.reason-remove-btn', function () {
+                    var listId = $(this).data('list');
+                    var idx = $(this).data('idx');
+                    if (listId === 'quotationHoldReasonsList') {
+                        quotationHoldReasons.splice(idx, 1);
+                        renderReasonList(quotationHoldReasons, 'quotationHoldReasonsList', 'quotationHoldReasons', 'holdGroupOptions');
+                    } else if (listId === 'quotationCancelReasonsList') {
+                        quotationCancelReasons.splice(idx, 1);
+                        renderReasonList(quotationCancelReasons, 'quotationCancelReasonsList', 'quotationCancelReasons', 'cancelGroupOptions');
+                    }
+                });
+
+                // Auto-add pending items on form submit
+                $('#quotationHoldReasonsForm').on('submit', function () {
+                    if (pushReason(quotationHoldReasons, $('#newHoldReasonKey'), $('#newHoldReasonEn'), $('#newHoldReasonGu'), $('#newHoldReasonGroup'))) {
+                        renderReasonList(quotationHoldReasons, 'quotationHoldReasonsList', 'quotationHoldReasons', 'holdGroupOptions');
+                    }
+                });
+                $('#quotationCancelReasonsForm').on('submit', function () {
+                    if (pushReason(quotationCancelReasons, $('#newCancelReasonKey'), $('#newCancelReasonEn'), $('#newCancelReasonGu'), $('#newCancelReasonGroup'))) {
+                        renderReasonList(quotationCancelReasons, 'quotationCancelReasonsList', 'quotationCancelReasons', 'cancelGroupOptions');
                     }
                 });
 

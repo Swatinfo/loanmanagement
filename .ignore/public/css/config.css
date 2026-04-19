@@ -1,0 +1,421 @@
+/* ============================================================
+   CONFIG PAGE STYLES — Specific to config.php
+   ============================================================ */
+
+/* Config page uses narrower max-width */
+.header-inner {
+    max-width: 900px;
+}
+
+.main {
+    max-width: 900px;
+}
+
+.section-title {
+    flex: 1;
+}
+
+/* Header back link */
+.header-link {
+    color: rgba(255, 255, 255, 0.6);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: color 0.2s;
+}
+
+.header-link:hover {
+    color: var(--accent);
+}
+
+/* Tag/Chip list */
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.tag .remove-tag {
+    background: none;
+    border: none;
+    color: var(--red);
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0;
+}
+
+.tag .remove-tag:hover {
+    opacity: 0.7;
+}
+
+.add-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.add-row input {
+    flex: 1;
+}
+
+.btn-add {
+    padding: 10px 20px;
+    background: var(--primary-dark);
+    color: var(--bg-alt);
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+}
+
+.btn-add:hover {
+    opacity: 0.85;
+}
+
+/* Document list editor */
+.doc-list-editor {
+    margin-top: 8px;
+}
+
+.doc-list-editor .doc-entry {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.doc-list-editor .doc-entry:last-child {
+    border-bottom: none;
+}
+
+.doc-list-editor .doc-entry span {
+    flex: 1;
+    font-size: 0.88rem;
+}
+
+.doc-list-editor .doc-entry .gu-text {
+    flex: 1;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.doc-list-editor .btn-remove {
+    background: none;
+    border: none;
+    color: var(--red);
+    cursor: pointer;
+    font-size: 1.1rem;
+    font-weight: 700;
+    padding: 2px 6px;
+}
+
+.doc-list-editor .btn-remove:hover {
+    opacity: 0.7;
+}
+
+/* Tabs */
+.tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 16px;
+}
+
+.tab-btn {
+    padding: 8px 20px;
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.2s;
+}
+
+.tab-btn:first-child {
+    border-radius: 8px 0 0 8px;
+}
+
+.tab-btn:last-child {
+    border-radius: 0 8px 8px 0;
+}
+
+.tab-btn:not(:first-child) {
+    border-left: none;
+}
+
+.tab-btn.active {
+    background: var(--primary-dark);
+    color: var(--bg-alt);
+    border-color: var(--primary-dark);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Save Bar */
+.save-bar {
+    position: sticky;
+    bottom: 0;
+    background: var(--white);
+    border-top: 2px solid var(--border);
+    padding: 16px 32px;
+    text-align: center;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.save-bar-inner {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.password-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 200px;
+}
+
+.password-group label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.password-group input {
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.88rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.password-group input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.btn-save {
+    padding: 14px 48px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-warm) 100%);
+    color: var(--white);
+    border: none;
+    border-radius: 30px;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 16px rgba(241, 90, 41, 0.3);
+}
+
+.btn-save:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(241, 90, 41, 0.4);
+}
+
+.btn-reset {
+    padding: 14px 32px;
+    background: transparent;
+    color: var(--red);
+    border: 2px solid var(--red);
+    border-radius: 30px;
+    font-family: inherit;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-reset:hover {
+    background: var(--red);
+    color: var(--white);
+}
+
+/* Toast override for config page (above save bar) */
+.toast {
+    bottom: 80px;
+}
+
+/* Password Input Wrap (with toggle) */
+.password-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input-wrap input {
+    flex: 1;
+    padding-right: 40px;
+}
+
+.toggle-pw {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 4px;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.toggle-pw:hover {
+    opacity: 1;
+}
+
+/* Strength Meter */
+.strength-meter {
+    height: 6px;
+    background: var(--bg-alt);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.strength-bar {
+    height: 100%;
+    width: 0;
+    border-radius: 3px;
+    transition: width 0.3s, background 0.3s;
+}
+
+.strength-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+/* Password Policy Checklist */
+.password-policy {
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: var(--bg);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+.policy-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.password-policy ul {
+    list-style: none;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 16px;
+}
+
+.password-policy li {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    padding-left: 20px;
+    position: relative;
+}
+
+.password-policy li::before {
+    content: '\2717';
+    position: absolute;
+    left: 0;
+    color: var(--red);
+    font-weight: 700;
+}
+
+.password-policy li.met {
+    color: var(--green);
+}
+
+.password-policy li.met::before {
+    content: '\2713';
+    color: var(--green);
+}
+
+/* Confirm Message */
+.confirm-msg {
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.confirm-msg.match {
+    color: var(--green);
+}
+
+.confirm-msg.mismatch {
+    color: var(--red);
+}
+
+/* Change Password Button */
+.btn-change-pw {
+    padding: 12px 36px;
+    background: var(--primary-dark);
+    color: var(--bg-alt);
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.btn-change-pw:hover {
+    opacity: 0.85;
+}
+
+.btn-change-pw:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Responsive - config-specific */
+@media (max-width: 768px) {
+    .save-bar-inner {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .password-group {
+        min-width: 100%;
+    }
+
+    .password-policy ul {
+        grid-template-columns: 1fr;
+    }
+}

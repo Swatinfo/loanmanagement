@@ -244,6 +244,12 @@
                 $('#taskModal').modal('show');
             @endif
 
+            // ── FAB deep-link: ?create=1 opens the task create modal on page load ──
+            if (new URLSearchParams(window.location.search).get('create') === '1') {
+                $('#taskModal').modal('show');
+                history.replaceState(null, '', window.location.pathname);
+            }
+
             // ── Datepicker ──
             $('.shf-datepicker').datepicker({
                 format: 'dd/mm/yyyy',

@@ -15,10 +15,12 @@ Developer documentation for **Shreenathji Home Finance (SHF)** — a bilingual (
 | Auth & session | `authentication.md` |
 | Access control | `permissions.md`, `roles.md`, `user-assignment.md` |
 | User management | `users.md` |
+| Customers | see `.claude/routes-reference.md` → Customers; scope in `Customer::scopeVisibleTo` |
 | Quotations & PDF | `quotations.md`, `pdf-generation.md` |
 | Loan CRUD | `loans.md` |
 | Loan workflow (user-facing) | `workflow-guide.md` |
 | Loan workflow (dev) | `workflow-developer.md` |
+| Workflow code changes (step-by-step) | `workflow-code-changes.md` |
 | Dashboard | `dashboard.md` |
 | General tasks | `general-tasks.md` |
 | DVR (Daily Visit Reports) | `dvr.md` |
@@ -30,6 +32,10 @@ Developer documentation for **Shreenathji Home Finance (SHF)** — a bilingual (
 | Frontend (CSS/JS) | `frontend.md` |
 | Blade views | `views.md` |
 | Offline / PWA | `offline-pwa.md` |
+| Operations (queue, scheduler, deploy) | `ops.md` |
+| Real-time + Web Push setup | `realtime-setup.md` |
+| Service layer audit & inventory | `service-audit.md` |
+| Settings package decision record | `settings-package-decision.md` |
 
 ## Deep references
 

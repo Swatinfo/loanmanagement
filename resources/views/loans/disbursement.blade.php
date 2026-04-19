@@ -97,39 +97,44 @@
                                 {{-- Cheque fields --}}
                                 <div class="col-12 shf-cheque-fields shf-collapse-hidden">
                                     <label class="shf-form-label">Cheques</label>
-                                    <div class="row g-2 mb-1 shf-text-xs text-muted d-none d-sm-flex">
-                                        <div class="col-sm-3">Name</div>
-                                        <div class="col-sm-3">Cheque No.</div>
-                                        <div class="col-sm-2">Date</div>
-                                        <div class="col-sm-2">Amount</div>
+                                    <div class="row g-2 mb-1 shf-text-xs text-muted d-none d-lg-flex">
+                                        <div class="col-lg-3">Name</div>
+                                        <div class="col-lg-3">Cheque No.</div>
+                                        <div class="col-lg-2">Date</div>
+                                        <div class="col-lg-2">Amount</div>
+                                        <div class="col-lg-2"></div>
                                     </div>
                                     <div id="chequeList">
                                         @php $existingCheques = old('cheques', $disbursement?->cheques ?? []); @endphp
                                         @if (!empty($existingCheques))
                                             @foreach ($existingCheques as $i => $chq)
-                                                <div class="row g-2 mb-2 cheque-row">
-                                                    <div class="col-sm-3">
+                                                <div class="row g-2 mb-3 mb-lg-2 cheque-row shf-cheque-row">
+                                                    <div class="col-12 col-sm-6 col-lg-3">
+                                                        <label class="shf-form-label d-block d-lg-none mb-1 shf-text-2xs">Name</label>
                                                         <input type="text"
                                                             name="cheques[{{ $i }}][cheque_name]"
-                                                            class="shf-input shf-input-sm" placeholder="Name"
+                                                            class="shf-input shf-input-sm w-100" placeholder="Name"
                                                             value="{{ $chq['cheque_name'] ?? '' }}" required>
                                                     </div>
-                                                    <div class="col-sm-3">
+                                                    <div class="col-12 col-sm-6 col-lg-3">
+                                                        <label class="shf-form-label d-block d-lg-none mb-1 shf-text-2xs">Cheque No.</label>
                                                         <input type="text"
                                                             name="cheques[{{ $i }}][cheque_number]"
-                                                            class="shf-input shf-input-sm" placeholder="Cheque Number"
+                                                            class="shf-input shf-input-sm w-100" placeholder="Cheque Number"
                                                             value="{{ $chq['cheque_number'] ?? '' }}" required>
                                                     </div>
-                                                    <div class="col-sm-2">
+                                                    <div class="col-6 col-lg-2">
+                                                        <label class="shf-form-label d-block d-lg-none mb-1 shf-text-2xs">Date</label>
                                                         <input type="text"
                                                             name="cheques[{{ $i }}][cheque_date]"
-                                                            class="shf-input shf-input-sm shf-datepicker-custom"
+                                                            class="shf-input shf-input-sm shf-datepicker-custom w-100"
                                                             data-min-date="{{ $disbursement?->created_at ? $disbursement->created_at->format('d/m/Y') : now()->subDays(30)->format('d/m/Y') }}"
                                                             data-max-date="{{ $disbursement?->created_at ? now()->format('d/m/Y') : now()->addDays(30)->format('d/m/Y') }}"
                                                             placeholder="dd/mm/yyyy"
                                                             value="{{ $chq['cheque_date'] ?? '' }}" required>
                                                     </div>
-                                                    <div class="col-sm-2">
+                                                    <div class="col-6 col-lg-2">
+                                                        <label class="shf-form-label d-block d-lg-none mb-1 shf-text-2xs">Amount</label>
                                                         <div class="shf-amount-wrap">
                                                             <div class="input-group input-group-sm"><span
                                                                     class="input-group-text">₹</span>
@@ -145,15 +150,15 @@
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div class="col-sm-2">
+                                                    <div class="col-12 col-lg-2 d-flex align-items-end">
                                                         <button type="button"
-                                                            class="btn-accent-outline btn-accent-sm remove-cheque w-100"><svg
+                                                            class="btn-accent-outline btn-accent-sm remove-cheque shf-btn-danger w-100 justify-content-center"><svg
                                                                 class="shf-btn-icon shf-icon-2xs" fill="none"
                                                                 stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round"
                                                                     stroke-width="2"
                                                                     d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                            </svg></button>
+                                                            </svg><span class="d-lg-none ms-1">Remove</span></button>
                                                     </div>
                                                 </div>
                                             @endforeach
@@ -237,17 +242,21 @@
 
             // Add cheque row
             $('#addCheque').on('click', function() {
-                var html = '<div class="row g-2 mb-2 cheque-row">' +
-                    '<div class="col-sm-3"><input type="text" name="cheques[' + chequeIndex +
-                    '][cheque_name]" class="shf-input shf-input-sm" placeholder="Name" required></div>' +
-                    '<div class="col-sm-3"><input type="text" name="cheques[' + chequeIndex +
-                    '][cheque_number]" class="shf-input shf-input-sm" placeholder="Cheque Number" required></div>' +
-                    '<div class="col-sm-2"><input type="text" name="cheques[' + chequeIndex +
-                    '][cheque_date]" class="shf-input shf-input-sm shf-datepicker-custom" data-min-date="{{ now()->subDays(30)->format('d/m/Y') }}" data-max-date="{{ now()->addDays(30)->format('d/m/Y') }}" placeholder="dd/mm/yyyy" required></div>' +
-                    '<div class="col-sm-2"><div class="shf-amount-wrap"><div class="input-group input-group-sm"><span class="input-group-text">₹</span><input type="text" class="shf-input shf-input-sm shf-amount-input cheque-amount-display" required></div><input type="hidden" name="cheques[' +
-                    chequeIndex +
-                    '][cheque_amount]" class="shf-amount-raw cheque-amount"><div class="shf-text-2xs text-muted mt-1" data-amount-words></div></div></div>' +
-                    '<div class="col-sm-2"><button type="button" class="btn-accent-outline btn-accent-sm remove-cheque w-100"><svg class="shf-btn-icon shf-icon-2xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button></div>' +
+                var html = '<div class="row g-2 mb-3 mb-lg-2 cheque-row shf-cheque-row">' +
+                    '<div class="col-12 col-sm-6 col-lg-3">' +
+                    '<label class="shf-form-label d-block d-lg-none mb-1 shf-text-2xs">Name</label>' +
+                    '<input type="text" name="cheques[' + chequeIndex + '][cheque_name]" class="shf-input shf-input-sm w-100" placeholder="Name" required></div>' +
+                    '<div class="col-12 col-sm-6 col-lg-3">' +
+                    '<label class="shf-form-label d-block d-lg-none mb-1 shf-text-2xs">Cheque No.</label>' +
+                    '<input type="text" name="cheques[' + chequeIndex + '][cheque_number]" class="shf-input shf-input-sm w-100" placeholder="Cheque Number" required></div>' +
+                    '<div class="col-6 col-lg-2">' +
+                    '<label class="shf-form-label d-block d-lg-none mb-1 shf-text-2xs">Date</label>' +
+                    '<input type="text" name="cheques[' + chequeIndex + '][cheque_date]" class="shf-input shf-input-sm shf-datepicker-custom w-100" data-min-date="{{ now()->subDays(30)->format('d/m/Y') }}" data-max-date="{{ now()->addDays(30)->format('d/m/Y') }}" placeholder="dd/mm/yyyy" required></div>' +
+                    '<div class="col-6 col-lg-2">' +
+                    '<label class="shf-form-label d-block d-lg-none mb-1 shf-text-2xs">Amount</label>' +
+                    '<div class="shf-amount-wrap"><div class="input-group input-group-sm"><span class="input-group-text">₹</span><input type="text" class="shf-input shf-input-sm shf-amount-input cheque-amount-display" required></div><input type="hidden" name="cheques[' + chequeIndex + '][cheque_amount]" class="shf-amount-raw cheque-amount"><div class="shf-text-2xs text-muted mt-1" data-amount-words></div></div></div>' +
+                    '<div class="col-12 col-lg-2 d-flex align-items-end">' +
+                    '<button type="button" class="btn-accent-outline btn-accent-sm remove-cheque shf-btn-danger w-100 justify-content-center"><svg class="shf-btn-icon shf-icon-2xs" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg><span class="d-lg-none ms-1">Remove</span></button></div>' +
                     '</div>';
                 $('#chequeList').append(html);
                 var $newRow = $('#chequeList .cheque-row:last');

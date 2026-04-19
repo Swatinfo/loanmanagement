@@ -60,6 +60,7 @@ class GeneralTask extends Model
         'created_by',
         'assigned_to',
         'loan_detail_id',
+        'quotation_id',
         'status',
         'priority',
         'due_date',
@@ -89,6 +90,11 @@ class GeneralTask extends Model
     public function loan(): BelongsTo
     {
         return $this->belongsTo(LoanDetail::class, 'loan_detail_id');
+    }
+
+    public function quotation(): BelongsTo
+    {
+        return $this->belongsTo(Quotation::class);
     }
 
     public function comments(): HasMany

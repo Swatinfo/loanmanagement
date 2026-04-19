@@ -1,0 +1,226 @@
+/* ============================================================
+   INDEX PAGE STYLES — Specific to index.php
+   ============================================================ */
+
+/* Settings link */
+.settings-link {
+    color: rgba(255,255,255,0.6);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: color 0.2s;
+}
+.settings-link:hover { color: var(--accent); }
+
+/* PWA Install button */
+.install-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.install-btn:hover { opacity: 0.85; }
+
+/* Document Checklist */
+.doc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+.doc-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--bg);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+}
+.doc-item.checked {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+}
+.doc-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.doc-item span {
+    font-size: 0.84rem;
+    color: var(--text);
+    line-height: 1.3;
+}
+.doc-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 24px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Bank Selection */
+.bank-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 24px;
+}
+.bank-chip {
+    padding: 8px 18px;
+    border: 2px solid var(--border);
+    border-radius: 24px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--white);
+    color: var(--text);
+    user-select: none;
+}
+.bank-chip:hover { border-color: var(--accent); }
+.bank-chip.active {
+    background: var(--primary-dark);
+    color: var(--bg-alt);
+    border-color: var(--primary-dark);
+}
+
+/* Bank Cards */
+.bank-cards { display: flex; flex-direction: column; gap: 20px; }
+.bank-card {
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    animation: slideIn 0.3s ease;
+}
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.bank-card-header {
+    background: var(--bg);
+    padding: 14px 20px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--primary-dark);
+    border-bottom: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.bank-card-header .bank-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--primary-dark);
+    color: var(--bg-alt);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+}
+.bank-card-body { padding: 20px; }
+
+/* EMI Display */
+.emi-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-top: 16px;
+    margin-bottom: 20px;
+}
+.emi-box {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-dark-light) 100%);
+    border-radius: 10px;
+    padding: 14px 16px;
+    text-align: center;
+    color: var(--white);
+}
+.emi-box .emi-tenure {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    opacity: 0.7;
+    margin-bottom: 6px;
+}
+.emi-box .emi-value {
+    font-family: 'Jost', sans-serif;
+    font-size: 1.15rem;
+    color: var(--accent-light);
+}
+
+/* Charges Sub-section */
+.charges-divider {
+    font-size: 0.73rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--border);
+    margin-bottom: 16px;
+    margin-top: 4px;
+}
+
+.iom-display {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.92rem;
+    color: var(--text);
+    font-weight: 600;
+}
+.iom-note {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    font-weight: 400;
+}
+
+/* Generate Button */
+.generate-section {
+    text-align: center;
+    padding: 32px;
+}
+.btn-generate {
+    padding: 16px 48px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-warm) 100%);
+    color: var(--white);
+    border: none;
+    border-radius: 30px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 16px rgba(241, 90, 41, 0.3);
+}
+.btn-generate:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(241, 90, 41, 0.4);
+}
+.btn-generate:active { transform: translateY(0); }
+
+/* Custom Charges */
+.custom-charge-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+/* Responsive - index-specific */
+@media (max-width: 768px) {
+    .doc-grid { grid-template-columns: 1fr; }
+    .emi-row { grid-template-columns: 1fr; }
+    .custom-charge-row { grid-template-columns: 1fr; }
+}

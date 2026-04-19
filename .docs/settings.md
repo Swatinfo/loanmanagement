@@ -56,6 +56,8 @@ All endpoints require `auth`. Specific permission per tab — see `.claude/route
 | GST | `/settings/gst` | `edit_gst` | `gstPercent` numeric 0–100 |
 | DVR Contact Types | `/settings/dvr-contact-types` | `view_settings` | `dvrContactTypes[]` of `{key, label_en, label_gu}` |
 | DVR Purposes | `/settings/dvr-purposes` | `view_settings` | `dvrPurposes[]` of `{key, label_en, label_gu}` |
+| Quotation Hold Reasons | `/settings/quotation-hold-reasons` | `view_settings` | `quotationHoldReasons[]` of `{key, label_en, label_gu, group}` — `group` buckets the reason in the hold modal via `<optgroup>`; missing = `Other` |
+| Quotation Cancel Reasons | `/settings/quotation-cancel-reasons` | `view_settings` | `quotationCancelReasons[]` of `{key, label_en, label_gu, group}` — same `<optgroup>` grouping |
 | Reset | `/settings/reset` | `view_settings` | Reset config, truncate bank_charges |
 
 ### Documents tab (important UX detail)

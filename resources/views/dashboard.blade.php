@@ -14,38 +14,9 @@
             </svg>
             Dashboard
         </h2>
-        <div class="d-flex gap-2 flex-wrap">
-            @if (auth()->user()->hasPermission('create_quotation'))
-                <a href="{{ route('quotations.create') }}" class="btn-accent btn-accent-sm">
-                    <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    <span class="d-none d-sm-inline">New Quotation</span>
-                    <span class="d-sm-none">Quotation</span>
-                </a>
-            @endif
-            <button class="btn-accent-outline btn-accent-outline-white btn-accent-sm" data-bs-toggle="modal"
-                data-bs-target="#dashCreateTaskModal" data-dash-create-task>
-                <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
-                <span class="d-none d-sm-inline">New Task</span>
-                <span class="d-sm-none">Task</span>
-            </button>
-            @if (auth()->user()->hasPermission('create_dvr'))
-                <button class="btn-accent-outline btn-accent-outline-white btn-accent-sm" data-bs-toggle="modal"
-                    data-bs-target="#dashCreateDvrModal">
-                    <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span class="d-none d-sm-inline">New Visit</span>
-                    <span class="d-sm-none">Visit</span>
-                </button>
-            @endif
-        </div>
+        {{-- Primary create CTAs (New Quotation / Task / Visit) live in the mobile
+             FAB (partials/mobile-fab.blade.php) and on their respective listing
+             pages. They're not surfaced on the dashboard header any more. --}}
     </div>
 @endsection
 
@@ -59,7 +30,7 @@
 
                 {{-- Quotation Stats --}}
                 @if ($canViewQuotations)
-                    <div class="col-6 col-md-{{ $statCol }}">
+                    <div class="col-6 col-md-4 col-xl-{{ $statCol }}">
                         <div class="shf-stat-card">
                             <div class="shf-stat-icon">
                                 <svg class="shf-icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -73,7 +44,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-{{ $statCol }}">
+                    <div class="col-6 col-md-4 col-xl-{{ $statCol }}">
                         <div class="shf-stat-card">
                             <div class="shf-stat-icon">
                                 <svg class="shf-icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,7 +58,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-{{ $statCol }}">
+                    <div class="col-6 col-md-4 col-xl-{{ $statCol }}">
                         <div class="shf-stat-card">
                             <div class="shf-stat-icon">
                                 <svg class="shf-icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,7 +76,7 @@
 
                 {{-- Loan Stats --}}
                 @if ($loanStats)
-                    <div class="col-6 col-md-{{ $statCol }}">
+                    <div class="col-6 col-md-4 col-xl-{{ $statCol }}">
                         <div class="shf-stat-card shf-stat-card-blue">
                             <div class="shf-stat-icon shf-stat-icon-blue">
                                 <svg class="shf-icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -119,7 +90,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-{{ $statCol }}">
+                    <div class="col-6 col-md-4 col-xl-{{ $statCol }}">
                         <div class="shf-stat-card shf-stat-card-accent">
                             <div class="shf-stat-icon shf-stat-icon-accent">
                                 <svg class="shf-icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -133,7 +104,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-6 col-md-{{ $statCol }}">
+                    <div class="col-6 col-md-4 col-xl-{{ $statCol }}">
                         <div class="shf-stat-card shf-stat-card-green">
                             <div class="shf-stat-icon shf-stat-icon-green">
                                 <svg class="shf-icon-lg" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -273,24 +244,14 @@
                 <div class="shf-section shf-section-no-top-radius">
                     <div class="shf-section-header d-flex align-items-center justify-content-between">
                         <span class="shf-section-title">Personal Tasks</span>
-                        <div class="d-flex gap-2">
-                            <a href="{{ route('general-tasks.index') }}"
-                                class="btn-accent-outline btn-accent-outline-white btn-accent-sm shf-text-xs">
-                                <svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                                </svg>
-                                View All
-                            </a>
-                            <button class="btn-accent btn-accent-sm shf-text-xs" data-bs-toggle="modal"
-                                data-bs-target="#dashCreateTaskModal">
-                                <svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 4v16m8-8H4" />
-                                </svg>
-                                Create Task
-                            </button>
-                        </div>
+                        <a href="{{ route('general-tasks.index') }}"
+                            class="btn-accent-outline btn-accent-outline-white btn-accent-sm shf-text-xs">
+                            <svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                            </svg>
+                            View All
+                        </a>
                     </div>
                     <div id="personalTasksMobileCards" class="d-md-none p-3"></div>
                     <div id="personalTasksDesktop" class="shf-dt-section">
@@ -323,26 +284,14 @@
                     <div class="shf-section shf-section-no-top-radius">
                         <div class="shf-section-header d-flex align-items-center justify-content-between">
                             <span class="shf-section-title">Daily Visit Reports</span>
-                            <div class="d-flex gap-2">
-                                <a href="{{ route('dvr.index') }}"
-                                    class="btn-accent-outline btn-accent-outline-white btn-accent-sm shf-text-xs">
-                                    <svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                                    </svg>
-                                    View All
-                                </a>
-                                @if (auth()->user()->hasPermission('create_dvr'))
-                                    <button class="btn-accent btn-accent-sm shf-text-xs" data-bs-toggle="modal"
-                                        data-bs-target="#dashCreateDvrModal">
-                                        <svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M12 4v16m8-8H4" />
-                                        </svg>
-                                        New Visit
-                                    </button>
-                                @endif
-                            </div>
+                            <a href="{{ route('dvr.index') }}"
+                                class="btn-accent-outline btn-accent-outline-white btn-accent-sm shf-text-xs">
+                                <svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                </svg>
+                                View All
+                            </a>
                         </div>
                         {{-- Filter --}}
                         <div class="shf-section-body border-bottom py-2 px-3">
@@ -455,6 +404,17 @@
                                 </div>
 
                                 <div class="col-6 col-md-auto" style="min-width: 10rem;">
+                                    <label class="shf-form-label d-block mb-1">Status</label>
+                                    <select id="filter-status" class="shf-input">
+                                        <option value="not_cancelled">Active + On Hold</option>
+                                        <option value="active">Active</option>
+                                        <option value="on_hold">On Hold</option>
+                                        <option value="cancelled">Cancelled</option>
+                                        <option value="all">All Statuses</option>
+                                    </select>
+                                </div>
+
+                                <div class="col-6 col-md-auto" style="min-width: 10rem;">
                                     <label class="shf-form-label d-block mb-1">Loan Status</label>
                                     <select id="filter-loan-status" class="shf-input">
                                         <option value="not_converted">Not Converted</option>
@@ -522,6 +482,7 @@
                                             <th>Type</th>
                                             <th>Loan Amount</th>
                                             <th>Banks</th>
+                                            <th class="no-sort">Status</th>
                                             @if ($permissions['view_all'])
                                                 <th>Created By</th>
                                             @endif
@@ -915,6 +876,62 @@
             </div>
         </div>
     @endif
+
+    {{-- Push Notification Prompt Modal — auto-opens on every dashboard load when not subscribed. Suppressed during impersonation. --}}
+    @unless (app('impersonate')->isImpersonating())
+    <div class="modal fade" id="pushPromptModal" tabindex="-1" aria-labelledby="pushPromptModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title font-display fw-semibold d-flex align-items-center gap-2" id="pushPromptModalLabel">
+                        <svg class="shf-icon-md shf-text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                        <span id="pushPromptModalTitle">Enable Notifications</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    {{-- Enable state --}}
+                    <div id="pushPromptEnableState">
+                        <p class="mb-2">Get alerted on your phone or desktop — even when SHF is closed.</p>
+                        <p class="text-muted small mb-0">ફોન અથવા ડેસ્કટોપ પર સૂચના મેળવો — SHF બંધ હોય ત્યારે પણ.</p>
+                    </div>
+
+                    {{-- Blocked state --}}
+                    <div id="pushPromptBlockedState" style="display:none;">
+                        <p class="mb-1 text-danger"><strong>Notifications are blocked in your browser.</strong></p>
+                        <p class="text-muted small mb-3">તમારા બ્રાઉઝરમાં નોટિફિકેશન બ્લોક છે.</p>
+                        <p class="mb-1"><strong>To re-enable / ફરીથી ચાલુ કરવા:</strong></p>
+                        <ol class="small mb-0">
+                            <li>
+                                Tap the <strong>lock</strong> icon in the address bar<br>
+                                <span class="text-muted">સરનામા પટ્ટીમાં <strong>લોક</strong> આઇકન પર ટેપ કરો</span>
+                            </li>
+                            <li>
+                                Open <strong>Permissions</strong> → <strong>Notifications</strong><br>
+                                <span class="text-muted"><strong>પરવાનગી</strong> → <strong>સૂચનાઓ</strong> ખોલો</span>
+                            </li>
+                            <li>
+                                Select <strong>Allow</strong><br>
+                                <span class="text-muted"><strong>મંજૂરી આપો</strong> પસંદ કરો</span>
+                            </li>
+                            <li>
+                                Reload this page<br>
+                                <span class="text-muted">આ પાનું રીલોડ કરો</span>
+                            </li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn-accent-outline btn-accent-sm" data-bs-dismiss="modal">Not Now / હમણાં નહીં</button>
+                    <button type="button" class="btn-accent btn-accent-sm" id="pushPromptEnableBtn">Enable / ચાલુ કરો</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endunless
 @endsection
 
 @push('scripts')
@@ -1963,6 +1980,7 @@
                     ajax: function(data, callback, settings) {
                         data.customer_type = $('#filter-type').val();
                         data.loan_status = $('#filter-loan-status').val();
+                        data.status = $('#filter-status').val();
                         data.date_from = getDateValue('#filter-date-from');
                         data.date_to = getDateValue('#filter-date-to');
                         data.created_by = $('#filter-created-by').val() || '';
@@ -2014,7 +2032,11 @@
                     },
                     searching: true,
                     createdRow: function(row, data) {
-                        if (data.is_converted) {
+                        if (data.is_cancelled) {
+                            $(row).css('background', '#fff1f2');
+                        } else if (data.is_on_hold) {
+                            $(row).css('background', '#fff7ed');
+                        } else if (data.is_converted) {
                             $(row).css('background', '#f0fdf4');
                         }
                     },
@@ -2090,6 +2112,18 @@
                             html += '</div>';
                             return html;
                         }
+                    },
+                    {
+                        data: 'status_html',
+                        orderable: false,
+                        render: function(data, type, row) {
+                            var html = data || '';
+                            if (row.is_on_hold && row.hold_follow_up_date) {
+                                html += '<div class="shf-text-2xs shf-text-gray-light mt-1">Follow-up: ' +
+                                    $('<span>').text(row.hold_follow_up_date).html() + '</div>';
+                            }
+                            return html;
+                        }
                     }
                 ];
 
@@ -2148,6 +2182,34 @@
                                 '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>' +
                                 '</svg></a>';
                         }
+                        // Hold
+                        if (data.hold_url) {
+                            html += '<button type="button" class="btn btn-link p-0 btn-hold-quotation" data-id="' + data.id +
+                                '" data-name="' + $('<span>').text(data.customer_name).html() +
+                                '" style="color:#d97706;" title="Put on Hold">' +
+                                '<svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+                                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>' +
+                                '</svg></button>';
+                        }
+                        // Resume
+                        if (data.resume_url) {
+                            html += '<button type="button" class="btn btn-link p-0 btn-resume-quotation" data-url="' +
+                                data.resume_url + '" data-name="' + $('<span>').text(data.customer_name).html() +
+                                '" style="color:#16a34a;" title="Resume">' +
+                                '<svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+                                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>' +
+                                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>' +
+                                '</svg></button>';
+                        }
+                        // Cancel
+                        if (data.cancel_url) {
+                            html += '<button type="button" class="btn btn-link p-0 btn-cancel-quotation" data-id="' + data.id +
+                                '" data-name="' + $('<span>').text(data.customer_name).html() +
+                                '" style="color:#c0392b;" title="Cancel">' +
+                                '<svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+                                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>' +
+                                '</svg></button>';
+                        }
                         // Delete
                         if (data.delete_url) {
                             html +=
@@ -2166,11 +2228,13 @@
             }
 
             function getDateColumnIndex() {
-                return canViewAll ? 6 : 5;
+                // Columns: #, Customer, Type, Amount, Banks, Status, [Created By?], Date, Actions
+                return canViewAll ? 7 : 6;
             }
 
             function updateEmptyState() {
                 hasFilters = $('#filter-search').val() || $('#filter-type').val() ||
+                    $('#filter-status').val() !== 'not_cancelled' ||
                     $('#filter-loan-status').val() !== 'not_converted' ||
                     $('#filter-date-from').val() || $('#filter-date-to').val() ||
                     ($('#filter-created-by').length && $('#filter-created-by').val());
@@ -2208,6 +2272,7 @@
             $('#btn-clear').on('click', function() {
                 $('#filter-search').val('');
                 $('#filter-type').val('');
+                $('#filter-status').val('not_cancelled');
                 $('#filter-loan-status').val('not_converted');
                 $('#filter-date-from').datepicker('clearDates');
                 $('#filter-date-to').datepicker('clearDates');
@@ -2221,6 +2286,7 @@
                 var count = 0;
                 if ($('#filter-search').val()) count++;
                 if ($('#filter-type').val()) count++;
+                if ($('#filter-status').val() && $('#filter-status').val() !== 'not_cancelled') count++;
                 if ($('#filter-loan-status').val() && $('#filter-loan-status').val() !== 'not_converted') count++;
                 if ($('#filter-date-from').val()) count++;
                 if ($('#filter-date-to').val()) count++;
@@ -2229,9 +2295,54 @@
                 count > 0 ? $b.text(count).removeClass('shf-collapse-hidden') : $b.addClass('shf-collapse-hidden');
             }
             $(document).on('change',
-                '#filter-type, #filter-loan-status, #filter-date-from, #filter-date-to, #filter-created-by',
+                '#filter-type, #filter-status, #filter-loan-status, #filter-date-from, #filter-date-to, #filter-created-by',
                 updateQuotFilterCount);
             $('#filter-search').on('keyup', updateQuotFilterCount);
+
+            // --- Hold / Cancel: navigate to show page (full modal lives there) ---
+            $(document).on('click', '.btn-hold-quotation', function() {
+                var id = $(this).data('id');
+                window.location.href = '/quotations/' + id + '?action=hold';
+            });
+            $(document).on('click', '.btn-cancel-quotation', function() {
+                var id = $(this).data('id');
+                window.location.href = '/quotations/' + id + '?action=cancel';
+            });
+
+            // --- Resume: SweetAlert confirm + POST ---
+            $(document).on('click', '.btn-resume-quotation', function() {
+                var url = $(this).data('url');
+                var name = $(this).data('name');
+                Swal.fire({
+                    title: 'Resume quotation?',
+                    text: 'Resume "' + name + '" and move it back to active.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#f15a29',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, resume',
+                    cancelButtonText: 'Cancel'
+                }).then(function(result) {
+                    if (!result.isConfirmed) return;
+                    $.ajax({
+                        url: url,
+                        type: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+                            'Accept': 'application/json'
+                        },
+                        success: function(res) {
+                            showToast(res.message || 'Quotation resumed.', 'success');
+                            if (table) table.draw(false);
+                            loadMobileCards(true);
+                        },
+                        error: function(xhr) {
+                            var msg = (xhr.responseJSON && (xhr.responseJSON.error || xhr.responseJSON.message)) || 'Failed to resume quotation.';
+                            showToast(msg, 'error');
+                        }
+                    });
+                });
+            });
 
             // --- AJAX Delete ---
             $(document).on('click', '.btn-delete', function() {
@@ -2294,6 +2405,7 @@
                         length: mobileLength,
                         'search[value]': $('#filter-search').val() || '',
                         customer_type: $('#filter-type').val() || '',
+                        status: $('#filter-status').val() || 'not_cancelled',
                         loan_status: $('#filter-loan-status').val() || 'not_converted',
                         date_from: getDateValue('#filter-date-from'),
                         date_to: getDateValue('#filter-date-to'),
@@ -2400,6 +2512,30 @@
                         '</svg>Loan</a>';
                 }
 
+                if (q.hold_url) {
+                    actionsHtml += '<button type="button" class="btn btn-link p-0 d-flex align-items-center gap-1 btn-hold-quotation" data-id="' +
+                        q.id + '" data-name="' + $('<span>').text(q.customer_name).html() +
+                        '" style="color:#d97706;font-size:0.78rem;text-decoration:none;">' +
+                        '<svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>' +
+                        '</svg>Hold</button>';
+                }
+                if (q.resume_url) {
+                    actionsHtml += '<button type="button" class="btn btn-link p-0 d-flex align-items-center gap-1 btn-resume-quotation" data-url="' +
+                        q.resume_url + '" data-name="' + $('<span>').text(q.customer_name).html() +
+                        '" style="color:#16a34a;font-size:0.78rem;text-decoration:none;">' +
+                        '<svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>' +
+                        '</svg>Resume</button>';
+                }
+                if (q.cancel_url) {
+                    actionsHtml += '<button type="button" class="btn btn-link p-0 d-flex align-items-center gap-1 btn-cancel-quotation" data-id="' +
+                        q.id + '" data-name="' + $('<span>').text(q.customer_name).html() +
+                        '" style="color:#c0392b;font-size:0.78rem;text-decoration:none;">' +
+                        '<svg class="shf-icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">' +
+                        '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>' +
+                        '</svg>Cancel</button>';
+                }
                 if (q.delete_url) {
                     actionsHtml +=
                         '<button type="button" class="btn btn-link p-0 d-flex align-items-center gap-1 ms-auto btn-delete" data-url="' +
@@ -2413,6 +2549,16 @@
                 var locLine = q.location_name ? '<div class="location-info shf-text-2xs">' + $('<span>')
                     .text(q.location_name).html() + '</div>' : '';
 
+                var statusLine = '';
+                if (q.status_html) {
+                    statusLine = '<div class="mt-1">' + q.status_html;
+                    if (q.is_on_hold && q.hold_follow_up_date) {
+                        statusLine += ' <span class="shf-text-2xs shf-text-gray-light">Follow-up: ' +
+                            $('<span>').text(q.hold_follow_up_date).html() + '</span>';
+                    }
+                    statusLine += '</div>';
+                }
+
                 return '<div class="shf-card mb-3 p-3">' +
                     '<div class="d-flex align-items-start justify-content-between mb-2">' +
                     '<div>' +
@@ -2421,6 +2567,7 @@
                     locLine +
                     '<div class="mt-1"><span class="shf-badge ' + q.type_badge_class + '">' + q.type_label +
                     '</span></div>' +
+                    statusLine +
                     '</div>' +
                     '<span class="shf-text-gray" style="font-size:0.72rem">#' + q.id + '</span>' +
                     '</div>' +
@@ -2547,5 +2694,74 @@
                 }
             });
         }
+    </script>
+
+    {{-- Push Notification Prompt: auto-open on every dashboard visit unless already subscribed --}}
+    <script>
+        (function () {
+            if (!window.SHFPush || typeof SHFPush.supported !== 'function' || !SHFPush.supported()) {
+                return;
+            }
+            var modalEl = document.getElementById('pushPromptModal');
+            if (!modalEl) {
+                return;
+            }
+
+            var enableState = document.getElementById('pushPromptEnableState');
+            var blockedState = document.getElementById('pushPromptBlockedState');
+            var title = document.getElementById('pushPromptModalTitle');
+            var enableBtn = document.getElementById('pushPromptEnableBtn');
+            var modal = null;
+            var enableLabel = enableBtn.textContent;
+
+            var showBlockedMode = function () {
+                enableState.style.display = 'none';
+                blockedState.style.display = '';
+                title.textContent = 'Notifications Blocked / નોટિફિકેશન બ્લોક છે';
+                enableBtn.style.display = 'none';
+            };
+
+            var showEnableMode = function () {
+                enableState.style.display = '';
+                blockedState.style.display = 'none';
+                title.textContent = 'Enable Notifications';
+                enableBtn.style.display = '';
+            };
+
+            enableBtn.addEventListener('click', function () {
+                enableBtn.disabled = true;
+                enableBtn.textContent = 'Enabling…';
+                SHFPush.enable().then(function () {
+                    if (modal) { modal.hide(); }
+                }).catch(function (err) {
+                    SHFPush.status().then(function (s) {
+                        if (s.permission === 'denied') {
+                            showBlockedMode();
+                        } else {
+                            alert(err && err.message ? err.message : 'Failed to enable notifications.');
+                        }
+                    });
+                }).finally(function () {
+                    enableBtn.disabled = false;
+                    enableBtn.textContent = enableLabel;
+                });
+            });
+
+            SHFPush.status().then(function (s) {
+                if (s.subscribed) { return; }
+                if (s.permission === 'denied') {
+                    showBlockedMode();
+                } else {
+                    showEnableMode();
+                }
+                modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            }).catch(function () {
+                // If status check fails, fall back to enable mode — user can still try
+                showEnableMode();
+                modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            });
+        })();
     </script>
 @endpush

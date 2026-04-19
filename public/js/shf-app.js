@@ -377,4 +377,26 @@ $(function () {
 
     SHF.initAmountFields();
 
+    // ─── Mobile FAB expand/collapse ────────────────────────────────────
+    // Toggles body.shf-fab-open when the main FAB is tapped; backdrop and
+    // Escape key close it. Pill-link clicks close and navigate normally.
+    var $fabMain = $('#shfFabMain');
+    if ($fabMain.length) {
+        var closeFab = function () {
+            $('body').removeClass('shf-fab-open');
+            $fabMain.attr('aria-expanded', 'false');
+        };
+        $fabMain.on('click', function (e) {
+            e.stopPropagation();
+            var open = $('body').toggleClass('shf-fab-open').hasClass('shf-fab-open');
+            $fabMain.attr('aria-expanded', open ? 'true' : 'false');
+        });
+        $(document).on('click', '.shf-fab-backdrop', closeFab);
+        $(document).on('keydown', function (e) {
+            if (e.key === 'Escape' && $('body').hasClass('shf-fab-open')) {
+                closeFab();
+            }
+        });
+    }
+
 });

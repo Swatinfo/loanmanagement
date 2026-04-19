@@ -33,6 +33,7 @@ Before generating ANY code, read the relevant reference files.
 | Dashboard tabs/stats | `.docs/dashboard.md` |
 | Roles / role system | `.docs/roles.md` + `.docs/permissions.md` |
 | Activity logging | `.docs/activity-log.md` + `.claude/services-reference.md` |
+| Feature flags / workflow flags | `.docs/workflow-developer.md` + `.docs/ops.md` |
 
 ## Always Read (every task)
 1. `tasks/lessons.md` — past corrections to avoid repeating

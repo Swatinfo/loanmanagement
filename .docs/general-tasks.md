@@ -17,7 +17,7 @@ Personal / delegated tasks — separate from loan workflow stages. Any user can 
 
 `GeneralTask` (table `general_tasks`):
 
-- `title`, `description`, `created_by`, `assigned_to`, `loan_detail_id`
+- `title`, `description`, `created_by`, `assigned_to`, `loan_detail_id`, `quotation_id`
 - `status`: `pending` / `in_progress` / `completed` / `cancelled`
 - `priority`: `low` / `normal` / `high` / `urgent`
 - `due_date`, `completed_at`

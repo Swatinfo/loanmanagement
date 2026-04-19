@@ -21,10 +21,11 @@ Shreenathji Home Finance (SHF) -- a bilingual (English/Gujarati) loan management
 - **Stages**: Inquiry -> Document Selection -> Document Collection -> Parallel Processing (parent):
   - 4a. Application Number -> 4b. BSM/OSV -> 4c. Legal Verification (3-phase) + 4d. Technical Valuation + 4e. Property Valuation (parallel)
   -> Sanction Decision (approve/escalate/reject gate) -> Rate & PF (3-phase) -> Sanction Letter (3-phase) -> Docket Login (3-phase) -> KFS -> E-Sign & eNACH (4-phase) -> Disbursement -> OTC Clearance (cheque only)
+  - With `OPEN_RATE_PF_PARALLEL=1`, Rate & PF runs in parallel with the 4c/4d/4e sub-stages from BSM/OSV onward, and Sanction Letter waits for both parallel_processing and Rate & PF.
 - **Multi-phase stages**: Legal Verification (3-phase), Rate & PF (3-phase), Sanction Letter (3-phase), Docket Login (3-phase), E-Sign & eNACH (4-phase) -- role handoffs between loan_advisor, bank_employee, and office_employee
 - **Stage model**: `Stage` with `stage_key`, `stage_name_en`/`stage_name_gu`, `sequence_order`, `is_parallel`, `parent_stage_key`, `stage_type` (including 'decision'), `default_role` (JSON array), `sub_actions` (JSON array). Scopes: `enabled()`, `mainStages()`, `subStagesOf()`
 - **33 Eloquent models** across core, quotation, loan, workflow, task, DVR, and config domains
-- **13 services** + **24 controllers** (21 web + 3 API)
+- **14 services** + **24 controllers** (21 web + 3 API)
 - **Loan statuses**: active, completed, rejected, cancelled, on_hold (with color labels)
 - Auto-assignment by role/bank/branch/product (priority-based), manual transfer with history via `StageTransfer` model
 - Two-way query system (`StageQuery` + `QueryResponse`) blocks stage completion until resolved

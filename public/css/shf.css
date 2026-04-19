@@ -97,6 +97,55 @@
     /* 20px — page titles */
 
     --bs-border-width: 2px;
+
+    /* Mobile bottom nav height. Defaults to 0 so desktop + pages without the nav
+       are unaffected. Layout sets body.has-bottom-nav below xl, which raises it
+       to the actual bar height (see mobile media query further down). Sticky
+       action bars and the FAB both read this variable so they rise the correct
+       amount. */
+    --shf-bottom-nav-height: 0px;
+}
+
+/* ── Bottom chrome height contract ──
+   Reserves space at the bottom of the body so scrollable content never
+   disappears under the fixed UI. Two pieces of fixed UI can occupy the
+   bottom-right: the mobile bottom nav (64 px tall) and the FAB (~72 px
+   tall including its 16 px margin). When both are present the FAB rides
+   above the nav, so the reserved space must cover the FAB's top edge.
+
+     - < xl, has-bottom-nav, no FAB (deep-workflow)   → 64px  (nav only)
+     - < xl, has-bottom-nav + has-fab                 → 152px (nav + FAB stack)
+     - ≥ xl, has-fab (nav hidden)                      → 90px  (FAB zone)
+     - ≥ xl, no has-fab (deep-workflow)                → 0px   (no chrome)
+
+   Sticky page action bars read --shf-bottom-nav-height too, so they rise
+   above the bottom nav in the same amount without knowing about the FAB. */
+@media (max-width: 1199.98px) {
+    body.has-bottom-nav {
+        --shf-bottom-nav-height: 64px;
+    }
+}
+@media (min-width: 1200px) {
+    body.has-fab {
+        --shf-bottom-nav-height: 90px;
+    }
+}
+
+/* Apply the clearance to <main> rather than <body> — body-level padding sits
+   outside the `.min-vh-100` wrapper (which fills the whole viewport by design),
+   so a page with short content still ends with its last element touching the
+   bottom chrome. Padding on <main> lifts the content itself. */
+body.has-bottom-nav main {
+    padding-bottom: var(--shf-bottom-nav-height);
+}
+@media (max-width: 1199.98px) {
+    body.has-bottom-nav.has-fab main {
+        /* nav 64 + FAB 56 + spacing 32 */
+        padding-bottom: 152px;
+    }
+}
+body:not(.has-bottom-nav).has-fab main {
+    padding-bottom: var(--shf-bottom-nav-height);
 }
 
 /* ── Font Size Utilities ── */
@@ -137,6 +186,7 @@
 /* ---- Font Families ---- */
 body {
     font-family: 'Archivo', sans-serif;
+    overflow-x: hidden;
 }
 
 .font-display {
@@ -209,6 +259,8 @@ body {
     cursor: pointer;
     transition: opacity 0.2s, transform 0.2s;
     text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .btn-accent:hover {
@@ -256,6 +308,8 @@ body {
     cursor: pointer;
     transition: all 0.2s;
     text-decoration: none;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .btn-accent-outline:hover {
@@ -356,6 +410,69 @@ body {
 
 .table-hover>tbody>tr:hover>td {
     background: var(--accent-dim);
+}
+
+/* ---- Sticky table header ---- */
+/* Add `.shf-sticky-thead` to a `.table-responsive` wrapper to keep thead visible while scrolling the table body. */
+.shf-sticky-thead {
+    max-height: calc(100vh - 280px);
+    overflow-y: auto;
+}
+
+.shf-sticky-thead>table>thead>tr>th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--bg);
+    box-shadow: inset 0 -2px 0 var(--border);
+}
+
+/* ---- Reason manager rows (settings → Quotation Reasons) ---- */
+/* Existing rows: Bootstrap grid row with all controls on one line on lg+ screens. */
+.shf-reason-row {
+    margin-left: 0;
+    margin-right: 0;
+}
+.shf-reason-row>[class^="col"],
+.shf-reason-row>[class*=" col"] {
+    min-width: 0;
+}
+/* Add-new row: elevated, dashed separator above it to distinguish from existing rows. */
+.shf-reason-add-row {
+    padding: 12px;
+    margin-top: 8px;
+    background: #fefefe;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+}
+/* Make w-100 work on flex buttons (btn-accent-sm is inline-flex by default). */
+.shf-reason-row .btn-accent-sm.w-100,
+.shf-reason-add-row .btn-accent-sm.w-100 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+/* Utility: auto width on md+ (used to flip remove button back to auto on desktop). */
+@media (min-width: 768px) {
+    .w-md-auto { width: auto !important; }
+}
+
+/* ---- Disbursement cheque rows ---- */
+/* On mobile (< lg / 992px) each cheque is a visually grouped card so the 5 stacked
+   fields (Name / Cheque No / Date / Amount / Remove) read as one logical unit. */
+@media (max-width: 991.98px) {
+    .shf-cheque-row {
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg);
+        margin-left: 0;
+        margin-right: 0;
+    }
+    .shf-cheque-row>[class^="col"],
+    .shf-cheque-row>[class*=" col"] {
+        min-width: 0;
+    }
 }
 
 /* ---- Stats Card ---- */
@@ -769,6 +886,195 @@ select.is-invalid,
     bottom: 24px;
     right: 24px;
     z-index: 999;
+}
+
+/* ---- Mobile FAB (expanding create-actions launcher, < xl only) ---- */
+.shf-fab-wrap {
+    position: fixed;
+    right: 16px;
+    bottom: calc(var(--shf-bottom-nav-height, 0px) + 16px + env(safe-area-inset-bottom, 0px));
+    z-index: 1035;
+    pointer-events: none;
+}
+
+.shf-fab-wrap .shf-fab-main,
+.shf-fab-wrap .shf-fab-menu {
+    pointer-events: auto;
+}
+
+.shf-fab-main {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-warm));
+    color: var(--white);
+    border: none;
+    box-shadow: 0 6px 20px rgba(241, 90, 41, 0.45), 0 2px 6px rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+    position: relative;
+    z-index: 2;
+}
+
+.shf-fab-main:hover {
+    transform: scale(1.04);
+}
+
+.shf-fab-main svg {
+    width: 26px;
+    height: 26px;
+    transition: transform 0.25s ease;
+}
+
+body.shf-fab-open .shf-fab-main svg {
+    transform: rotate(45deg);
+}
+
+.shf-fab-menu {
+    position: absolute;
+    right: 0;
+    bottom: 72px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+body.shf-fab-open .shf-fab-menu {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.shf-fab-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: var(--white);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    text-decoration: none;
+    font-family: 'Jost', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    cursor: pointer;
+    transform: translateY(6px);
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+body.shf-fab-open .shf-fab-item {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+body.shf-fab-open .shf-fab-item:nth-child(1) { transition-delay: 0.03s; }
+body.shf-fab-open .shf-fab-item:nth-child(2) { transition-delay: 0.08s; }
+body.shf-fab-open .shf-fab-item:nth-child(3) { transition-delay: 0.13s; }
+
+.shf-fab-item-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    flex-shrink: 0;
+}
+
+.shf-fab-item-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.shf-fab-item-icon.shf-fab-icon-quotation { background: #2563eb; }
+.shf-fab-item-icon.shf-fab-icon-task      { background: #059669; }
+.shf-fab-item-icon.shf-fab-icon-visit     { background: var(--accent); }
+
+.shf-fab-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 1034;
+}
+
+body.shf-fab-open .shf-fab-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* ---- Mobile Bottom Nav (shown < xl on pages where body.has-bottom-nav is set) ---- */
+.shf-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: var(--white);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: stretch;
+    justify-content: space-around;
+    z-index: 1029;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.shf-bottom-nav-item {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-family: 'Jost', sans-serif;
+    font-weight: 600;
+    font-size: 0.65rem;
+    line-height: 1;
+    border-top: 3px solid transparent;
+    padding: 6px 4px 4px;
+    transition: color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.shf-bottom-nav-item span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.shf-bottom-nav-item svg {
+    width: 22px;
+    height: 22px;
+}
+
+.shf-bottom-nav-item:hover {
+    color: var(--text);
+}
+
+.shf-bottom-nav-item.shf-bottom-nav-active {
+    color: var(--accent);
+    border-top-color: var(--accent);
 }
 
 /* ---- Nav Link Styles ---- */
@@ -2079,8 +2385,13 @@ input[type="checkbox"]:disabled+label {
 }
 
 @keyframes shf-conn-appear {
-    0%   { opacity: 0; }
-    100% { opacity: 1; }
+    0% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
+    }
 }
 
 /* Step 2: solid line fills over dashed (only for filled/arriving) */
@@ -2091,8 +2402,13 @@ input[type="checkbox"]:disabled+label {
 }
 
 @keyframes shf-conn-fill-line {
-    0%   { width: 0; }
-    100% { width: 100%; }
+    0% {
+        width: 0;
+    }
+
+    100% {
+        width: 100%;
+    }
 }
 
 .shf-stage-dot {
@@ -2117,7 +2433,9 @@ input[type="checkbox"]:disabled+label {
     box-shadow: 0 2px 4px rgba(39, 174, 96, 0.25);
 }
 
-.shf-stage-dot--completed svg { stroke: #fff; }
+.shf-stage-dot--completed svg {
+    stroke: #fff;
+}
 
 .shf-stage-dot--current {
     background: var(--accent) !important;
@@ -2129,7 +2447,11 @@ input[type="checkbox"]:disabled+label {
     animation: shf-current-pulse 2.5s ease-in-out infinite;
 }
 
-.shf-stage-dot--current svg { stroke: #fff; width: 18px; height: 18px; }
+.shf-stage-dot--current svg {
+    stroke: #fff;
+    width: 18px;
+    height: 18px;
+}
 
 .shf-stage-dot--in-progress {
     background: var(--accent-warm) !important;
@@ -2138,7 +2460,9 @@ input[type="checkbox"]:disabled+label {
     box-shadow: 0 2px 4px rgba(244, 121, 41, 0.2);
 }
 
-.shf-stage-dot--in-progress svg { stroke: #fff; }
+.shf-stage-dot--in-progress svg {
+    stroke: #fff;
+}
 
 .shf-stage-dot--pending {
     background: var(--white) !important;
@@ -2146,7 +2470,9 @@ input[type="checkbox"]:disabled+label {
     border: 2px solid var(--border) !important;
 }
 
-.shf-stage-dot--pending svg { stroke: var(--text-muted); }
+.shf-stage-dot--pending svg {
+    stroke: var(--text-muted);
+}
 
 .shf-stage-dot--skipped {
     background: var(--border) !important;
@@ -2154,7 +2480,9 @@ input[type="checkbox"]:disabled+label {
     border: 2px solid var(--border) !important;
 }
 
-.shf-stage-dot--skipped svg { stroke: #fff; }
+.shf-stage-dot--skipped svg {
+    stroke: #fff;
+}
 
 .shf-stage-dot--rejected {
     background: var(--red) !important;
@@ -2163,11 +2491,20 @@ input[type="checkbox"]:disabled+label {
     box-shadow: 0 2px 4px rgba(192, 57, 43, 0.25);
 }
 
-.shf-stage-dot--rejected svg { stroke: #fff; }
+.shf-stage-dot--rejected svg {
+    stroke: #fff;
+}
 
 @keyframes shf-current-pulse {
-    0%, 100% { box-shadow: 0 0 0 4px rgba(241, 90, 41, 0.10), 0 3px 8px rgba(241, 90, 41, 0.2); }
-    50%      { box-shadow: 0 0 0 7px rgba(241, 90, 41, 0.22), 0 3px 8px rgba(241, 90, 41, 0.3); }
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 4px rgba(241, 90, 41, 0.10), 0 3px 8px rgba(241, 90, 41, 0.2);
+    }
+
+    50% {
+        box-shadow: 0 0 0 7px rgba(241, 90, 41, 0.22), 0 3px 8px rgba(241, 90, 41, 0.3);
+    }
 }
 
 .shf-stage-label {
@@ -2205,8 +2542,15 @@ input[type="checkbox"]:disabled+label {
 }
 
 @keyframes shf-highlight-pulse {
-    0%, 100% { box-shadow: none; }
-    50%      { box-shadow: 0 0 0 4px rgba(241, 90, 41, 0.35); }
+
+    0%,
+    100% {
+        box-shadow: none;
+    }
+
+    50% {
+        box-shadow: 0 0 0 4px rgba(241, 90, 41, 0.35);
+    }
 }
 
 /* ── Pipeline sequential fill animation ── */
@@ -2225,10 +2569,12 @@ input[type="checkbox"]:disabled+label {
         border-color: var(--border) !important;
         box-shadow: none !important;
     }
+
     60% {
         transform: scale(1.15);
         opacity: 1;
     }
+
     100% {
         transform: scale(1);
         opacity: 1;
@@ -2237,6 +2583,7 @@ input[type="checkbox"]:disabled+label {
 
 /* Disable animations if user prefers reduced motion */
 @media (prefers-reduced-motion: reduce) {
+
     .shf-anim-dot,
     .shf-anim-conn-appear,
     .shf-anim-conn-appear::after {
@@ -2247,13 +2594,38 @@ input[type="checkbox"]:disabled+label {
 
 /* Tablet */
 @media (max-width: 991.98px) and (min-width: 768px) {
-    .shf-pipeline { padding: 16px 12px 28px; }
-    .shf-stage-dot { width: 30px; height: 30px; }
-    .shf-stage-dot svg { width: 14px; height: 14px; }
-    .shf-stage-dot--current { width: 34px; height: 34px; }
-    .shf-stage-dot--current svg { width: 16px; height: 16px; }
-    .shf-connector { min-width: 8px; }
-    .shf-stage-label { font-size: 0.55rem; max-width: 56px; }
+    .shf-pipeline {
+        padding: 16px 12px 28px;
+    }
+
+    .shf-stage-dot {
+        width: 30px;
+        height: 30px;
+    }
+
+    .shf-stage-dot svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .shf-stage-dot--current {
+        width: 34px;
+        height: 34px;
+    }
+
+    .shf-stage-dot--current svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .shf-connector {
+        min-width: 8px;
+    }
+
+    .shf-stage-label {
+        font-size: 0.55rem;
+        max-width: 56px;
+    }
 }
 
 /* Mobile */
@@ -2265,12 +2637,35 @@ input[type="checkbox"]:disabled+label {
         padding: 14px 8px 10px;
         overflow-x: visible;
     }
-    .shf-stage-dot { width: 28px; height: 28px; }
-    .shf-stage-dot svg { width: 13px; height: 13px; }
-    .shf-stage-dot--current { width: 32px; height: 32px; }
-    .shf-stage-dot--current svg { width: 15px; height: 15px; }
-    .shf-connector { min-width: 6px; max-width: 16px; }
-    .shf-stage-label { display: none; }
+
+    .shf-stage-dot {
+        width: 28px;
+        height: 28px;
+    }
+
+    .shf-stage-dot svg {
+        width: 13px;
+        height: 13px;
+    }
+
+    .shf-stage-dot--current {
+        width: 32px;
+        height: 32px;
+    }
+
+    .shf-stage-dot--current svg {
+        width: 15px;
+        height: 15px;
+    }
+
+    .shf-connector {
+        min-width: 6px;
+        max-width: 16px;
+    }
+
+    .shf-stage-label {
+        display: none;
+    }
 }
 
 /* ── Collapsible Arrow ── */
@@ -2383,27 +2778,39 @@ input[type="checkbox"]:disabled+label {
     padding: 2px 6px;
 }
 
-/* ── Sticky form actions bar on mobile/tablet ── */
+/* ── Sticky form actions bar on mobile/tablet ──
+   Rides ABOVE the mobile bottom nav (--shf-bottom-nav-height reserves the
+   64px nav zone). z-index 1040 sits below Bootstrap offcanvas (1045) so the
+   "More" sheet covers it cleanly, but above the bottom nav (1029). */
 @media (max-width: 1199.98px) {
     .shf-form-actions {
         position: fixed;
-        bottom: 0;
+        bottom: var(--shf-bottom-nav-height, 0px);
         left: 0;
         right: 0;
-        z-index: 1050;
+        z-index: 1040;
         background: var(--white);
         border-top: 1px solid var(--border);
         box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
         padding: 10px 16px;
-        padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
         margin: 0 !important;
         justify-content: center !important;
     }
 
-    .shf-form-actions ~ *,
-    form:has(.shf-form-actions) {
-        padding-bottom: 70px;
+    /* Reserve space so scrollable form content never hides under the sticky
+       bar. 70 + --shf-bottom-nav-height = total bottom chrome. */
+    .shf-form-actions~*,
+    form:has(.shf-form-actions),
+    .settings-tab-pane:has(> .shf-form-actions) {
+        padding-bottom: calc(70px + var(--shf-bottom-nav-height, 0px));
     }
+}
+
+/* Pages with a sticky .shf-form-actions shouldn't also reserve the main-level
+   FAB/nav padding — the bar's own padding-bottom rule covers the chrome. */
+body.has-bottom-nav main:has(.shf-form-actions),
+body.has-fab main:has(.shf-form-actions) {
+    padding-bottom: 0;
 }
 
 /* ── Inline Upload Label ── */

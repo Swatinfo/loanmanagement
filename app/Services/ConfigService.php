@@ -8,17 +8,30 @@ class ConfigService
 {
     /**
      * Load config from DB, or initialize from defaults.
+     *
+     * Self-heals drift: when app-defaults.php gains a new top-level key after
+     * the DB row was first seeded (e.g. quotationHoldReasons added later),
+     * the merge-on-read path silently covers it — but the DB row stays frozen
+     * at its original shape, which is misleading and fragile. Detect missing
+     * top-level keys and persist the merge back exactly once.
      */
     public function load(): array
     {
         $record = AppConfig::where('config_key', 'main')->first();
 
-        if ($record && !empty($record->config_json)) {
-            return $this->mergeWithDefaults($record->config_json);
+        if ($record && ! empty($record->config_json)) {
+            $merged = $this->mergeWithDefaults($record->config_json);
+            $loaded = is_array($record->config_json) ? $record->config_json : (json_decode($record->config_json, true) ?? []);
+
+            if (array_diff_key($merged, $loaded)) {
+                $this->save($merged);
+            }
+
+            return $merged;
         }
 
         // No DB config — initialize from defaults
-        $defaults = config('app-defaults');
+        $defaults = $this->defaults();
         $this->save($defaults);
 
         return $defaults;
@@ -40,7 +53,7 @@ class ConfigService
      */
     public function reset(): array
     {
-        $defaults = config('app-defaults');
+        $defaults = $this->defaults();
         $this->save($defaults);
 
         return $defaults;
@@ -88,14 +101,25 @@ class ConfigService
     }
 
     /**
+     * Load defaults directly from the defaults file, bypassing Laravel's
+     * `config()` helper so `php artisan config:cache` never freezes the
+     * admin-editable defaults. The AppConfig DB row remains the source of
+     * truth; this file is only the fallback / seed shape.
+     */
+    protected function defaults(): array
+    {
+        return require base_path('config/app-defaults.php');
+    }
+
+    /**
      * Merge loaded config with defaults to ensure all keys exist.
      */
     protected function mergeWithDefaults($configJson): array
     {
-        $defaults = config('app-defaults');
+        $defaults = $this->defaults();
         $loaded = is_array($configJson) ? $configJson : json_decode($configJson, true);
 
-        if (!is_array($loaded)) {
+        if (! is_array($loaded)) {
             return $defaults;
         }
 

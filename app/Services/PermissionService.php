@@ -126,6 +126,23 @@ class PermissionService
     }
 
     /**
+     * All known permission slugs (cached 1 hour).
+     * Used by Gate::before so @can('slug') / $user->can('slug') resolve here
+     * instead of falling through to a missing gate definition.
+     * Returns [] quietly if the permissions table is unavailable (e.g., mid-migration).
+     */
+    public function allSlugs(): array
+    {
+        return Cache::remember('all_permission_slugs', 3600, function () {
+            try {
+                return Permission::pluck('slug')->toArray();
+            } catch (\Throwable) {
+                return [];
+            }
+        });
+    }
+
+    /**
      * Clear cached permissions for a user.
      */
     public function clearUserCache(User $user): void
@@ -139,22 +156,34 @@ class PermissionService
      */
     public function clearRoleCache(): void
     {
-        // Clear all role permission combo caches
         $roleIds = DB::table('roles')->pluck('id')->toArray();
-        // Clear individual and combo caches by pattern
         foreach ($roleIds as $id) {
             Cache::forget("role_perms:{$id}");
         }
+
+        // Combination caches keyed by sorted-id lists — forget every subset we have touched.
+        // Cheapest reliable way: also forget by full combos present in role_user.
+        DB::table('role_user')
+            ->select('user_id')
+            ->distinct()
+            ->pluck('user_id')
+            ->each(function ($userId): void {
+                $ids = DB::table('role_user')->where('user_id', $userId)->pluck('role_id')->sort()->values()->toArray();
+                if (! empty($ids)) {
+                    Cache::forget('role_perms:'.implode(',', $ids));
+                }
+            });
     }
 
     /**
-     * Clear all permission caches.
+     * Clear all permission caches (slugs list + per-role + per-user).
      */
     public function clearAllCaches(): void
     {
+        Cache::forget('all_permission_slugs');
         $this->clearRoleCache();
 
-        User::pluck('id')->each(function ($userId) {
+        User::pluck('id')->each(function ($userId): void {
             Cache::forget("user_perms:{$userId}");
             Cache::forget("user_role_ids:{$userId}");
         });

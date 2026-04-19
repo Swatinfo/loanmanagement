@@ -151,6 +151,20 @@ Contacts endpoint is the slickest — it lets the user re-use existing contacts 
 - **New Visit** button opens `#dashCreateDvrModal` — same validation as full create route
 - Pending/overdue follow-ups surfaced as actionable items on dashboard
 
+## Auto-created from quotation hold
+
+When a quotation is put on hold (`POST /quotations/{id}/hold`), a DVR is auto-created with:
+- `quotation_id` = the held quotation
+- `purpose` = `follow_up`
+- `contact_type` = `existing_customer`
+- `follow_up_needed` = true, `follow_up_date` = user-supplied date
+- `notes` = "Quotation #N put on hold. Reason: …"
+- `user_id` / `branch_id` = actor + quotation branch (or user default)
+
+## Daily reminder command
+
+`php artisan reminders:send-daily --when=morning|evening` sends an in-app notification (via `NotificationService`) to each user with due DVR follow-ups + tasks for today (morning, 08:00) or tomorrow (evening, 20:00). Scheduled in `routes/console.php`.
+
 ## Activity actions logged
 
 `dvr_created`, `dvr_updated`, `dvr_deleted`, `dvr_follow_up_marked_done`.

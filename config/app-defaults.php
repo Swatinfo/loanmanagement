@@ -146,6 +146,98 @@ return [
         ['key' => 'relationship', 'label_en' => 'Relationship', 'label_gu' => 'સંબંધ'],
         ['key' => 'other', 'label_en' => 'Other', 'label_gu' => 'અન્ય'],
     ],
+    'quotationHoldReasons' => [
+        // Documents
+        ['key' => 'awaiting_kyc_docs', 'label_en' => 'Awaiting KYC / Income Documents', 'label_gu' => 'KYC / આવક દસ્તાવેજોની રાહ', 'group' => 'Documents'],
+        ['key' => 'awaiting_property_docs', 'label_en' => 'Awaiting Property Documents (NOC, chain, title)', 'label_gu' => 'મિલકત દસ્તાવેજોની રાહ (NOC, ચેઇન, ટાઇટલ)', 'group' => 'Documents'],
+        ['key' => 'builder_noc_pending', 'label_en' => 'Builder NOC Pending', 'label_gu' => 'બિલ્ડર NOC બાકી', 'group' => 'Documents'],
+        ['key' => 'society_noc_pending', 'label_en' => 'Society NOC / Share Certificate Pending', 'label_gu' => 'સોસાયટી NOC / શેર પ્રમાણપત્ર બાકી', 'group' => 'Documents'],
+        ['key' => 'property_legal_opinion_pending', 'label_en' => 'Property Legal Opinion Pending', 'label_gu' => 'મિલકત કાનૂની અભિપ્રાય બાકી', 'group' => 'Documents'],
+        ['key' => 'property_valuation_pending', 'label_en' => 'Property Valuation Pending', 'label_gu' => 'મિલકત મૂલ્યાંકન બાકી', 'group' => 'Documents'],
+
+        // Rate / Pricing
+        ['key' => 'rate_too_high', 'label_en' => 'Rates Too High — Waiting to Negotiate', 'label_gu' => 'દરો વધુ છે — વાટાઘાટની રાહ', 'group' => 'Rate / Pricing'],
+        ['key' => 'awaiting_rate_cut', 'label_en' => 'Awaiting Repo Rate Cut / RBI Policy', 'label_gu' => 'રેપો રેટ ઘટાડો / RBI નીતિની રાહ', 'group' => 'Rate / Pricing'],
+        ['key' => 'pf_waiver_pending', 'label_en' => 'Processing Fee Waiver Under Discussion', 'label_gu' => 'પ્રોસેસિંગ ફી છૂટની ચર્ચા ચાલુ', 'group' => 'Rate / Pricing'],
+        ['key' => 'rate_negotiation', 'label_en' => 'Rate Negotiation with Bank', 'label_gu' => 'બેંક સાથે દરની વાટાઘાટ', 'group' => 'Rate / Pricing'],
+        ['key' => 'fixed_vs_floating_decision', 'label_en' => 'Fixed vs Floating Decision Pending', 'label_gu' => 'ફિક્સ્ડ વિ. ફ્લોટિંગ નિર્ણય બાકી', 'group' => 'Rate / Pricing'],
+        ['key' => 'special_scheme_awaited', 'label_en' => 'Awaiting Special Scheme (PMAY / festive offer)', 'label_gu' => 'ખાસ યોજનાની રાહ (PMAY / તહેવાર ઓફર)', 'group' => 'Rate / Pricing'],
+
+        // Amount / Tenure / Eligibility
+        ['key' => 'amount_revision_pending', 'label_en' => 'Loan Amount Being Revised', 'label_gu' => 'લોન રકમમાં ફેરફાર ચાલુ', 'group' => 'Amount / Tenure'],
+        ['key' => 'tenure_not_suitable', 'label_en' => 'Desired Tenure Not Available', 'label_gu' => 'ઇચ્છિત અવધિ ઉપલબ્ધ નથી', 'group' => 'Amount / Tenure'],
+        ['key' => 'ltv_shortfall', 'label_en' => 'Bank LTV Too Low — Arranging Own Contribution', 'label_gu' => 'બેંક LTV ઓછો — પોતાનો હિસ્સો ગોઠવી રહ્યા છે', 'group' => 'Amount / Tenure'],
+
+        // Property
+        ['key' => 'property_not_finalized', 'label_en' => 'Property Not Yet Finalized', 'label_gu' => 'મિલકત હજુ નક્કી નથી', 'group' => 'Property'],
+        ['key' => 'under_construction_timing', 'label_en' => 'Property Under Construction — Disbursement Timing', 'label_gu' => 'મિલકત બાંધકામ હેઠળ — વિતરણ સમય', 'group' => 'Property'],
+        ['key' => 'property_issue', 'label_en' => 'Property Issue (other)', 'label_gu' => 'મિલકત સંબંધી સમસ્યા (અન્ય)', 'group' => 'Property'],
+
+        // Customer
+        ['key' => 'customer_reviewing', 'label_en' => 'Customer Reviewing Options', 'label_gu' => 'ગ્રાહક વિકલ્પોની સમીક્ષા કરે છે', 'group' => 'Customer'],
+        ['key' => 'customer_undecided', 'label_en' => 'Customer Undecided', 'label_gu' => 'ગ્રાહક અનિર્ણિત', 'group' => 'Customer'],
+        ['key' => 'customer_unavailable', 'label_en' => 'Customer Traveling / Unreachable', 'label_gu' => 'ગ્રાહક મુસાફરી / સંપર્ક બહાર', 'group' => 'Customer'],
+        ['key' => 'co_applicant_pending', 'label_en' => 'Co-applicant Discussion / Documents', 'label_gu' => 'સહ-અરજદારની ચર્ચા / દસ્તાવેજો', 'group' => 'Customer'],
+        ['key' => 'income_update_expected', 'label_en' => 'Waiting for ITR / Salary Update', 'label_gu' => 'ITR / પગાર અપડેટની રાહ', 'group' => 'Customer'],
+        ['key' => 'credit_score_improvement', 'label_en' => 'CIBIL Improvement in Progress', 'label_gu' => 'CIBIL સુધારણા ચાલુ', 'group' => 'Customer'],
+        ['key' => 'probation_notice_period', 'label_en' => 'Customer on Probation / Notice Period', 'label_gu' => 'ગ્રાહક પ્રોબેશન / નોટિસ પીરિયડમાં', 'group' => 'Customer'],
+        ['key' => 'job_change_underway', 'label_en' => 'Job Change in Progress', 'label_gu' => 'નોકરી બદલી ચાલુ', 'group' => 'Customer'],
+        ['key' => 'muhurat_timing', 'label_en' => 'Waiting for Auspicious Date (Muhurat)', 'label_gu' => 'મુહૂર્ત / શુભ મુહૂર્તની રાહ', 'group' => 'Customer'],
+
+        // Product / Scheme
+        ['key' => 'exploring_bt_topup', 'label_en' => 'Exploring Balance Transfer / Top-up', 'label_gu' => 'બેલેન્સ ટ્રાન્સફર / ટોપ-અપ વિચારી રહ્યા છે', 'group' => 'Product / Scheme'],
+        ['key' => 'composite_loan_pending', 'label_en' => 'Composite (Plot + Construction) Structuring', 'label_gu' => 'કમ્પોઝિટ (પ્લોટ + બાંધકામ) રચના', 'group' => 'Product / Scheme'],
+        ['key' => 'construction_milestone_wait', 'label_en' => 'Construction Milestone Disbursement Timing', 'label_gu' => 'બાંધકામ માઇલસ્ટોન વિતરણ સમય', 'group' => 'Product / Scheme'],
+
+        // Bank / Policy
+        ['key' => 'bank_policy_wait', 'label_en' => 'Awaiting Bank Underwriting / Policy Clarity', 'label_gu' => 'બેંક અન્ડરરાઇટિંગ / નીતિ સ્પષ્ટતાની રાહ', 'group' => 'Bank / Policy'],
+
+        // Other
+        ['key' => 'other', 'label_en' => 'Other', 'label_gu' => 'અન્ય', 'group' => 'Other'],
+    ],
+    'quotationCancelReasons' => [
+        // Channel attrition
+        ['key' => 'went_direct_to_bank', 'label_en' => 'Customer Went Direct to Bank', 'label_gu' => 'ગ્રાહક સીધા બેંક પાસે ગયા', 'group' => 'Channel Attrition'],
+        ['key' => 'went_with_other_dsa', 'label_en' => 'Went Through Another DSA / Connector', 'label_gu' => 'અન્ય DSA / કનેક્ટર દ્વારા ગયા', 'group' => 'Channel Attrition'],
+        ['key' => 'competitor_bank', 'label_en' => 'Chose a Bank We Do Not Facilitate', 'label_gu' => 'અમે જે બેંક સાથે કામ કરતા નથી તે પસંદ કરી', 'group' => 'Channel Attrition'],
+        ['key' => 'went_with_other_bank', 'label_en' => 'Went With Other Bank', 'label_gu' => 'અન્ય બેંક પસંદ કરી', 'group' => 'Channel Attrition'],
+        ['key' => 'customer_declined', 'label_en' => 'Customer Declined', 'label_gu' => 'ગ્રાહકે નકાર્યું', 'group' => 'Channel Attrition'],
+        ['key' => 'employer_tie_up', 'label_en' => 'Employer Tie-up With Another Bank', 'label_gu' => 'એમ્પ્લોયરનું અન્ય બેંક સાથે ટાઇ-અપ', 'group' => 'Channel Attrition'],
+
+        // Rate / Pricing
+        ['key' => 'rate_better_elsewhere', 'label_en' => 'Better Rate Offered Elsewhere', 'label_gu' => 'અન્યત્ર વધુ સારો દર મળ્યો', 'group' => 'Rate / Pricing'],
+        ['key' => 'charges_too_high', 'label_en' => 'Total Charges Too High', 'label_gu' => 'કુલ ચાર્જીસ વધુ છે', 'group' => 'Rate / Pricing'],
+        ['key' => 'amount_not_sanctioned', 'label_en' => 'Required Amount Not Sanctionable', 'label_gu' => 'જરૂરી રકમ મંજૂર થઈ શકે તેમ નથી', 'group' => 'Rate / Pricing'],
+
+        // Eligibility / Compliance
+        ['key' => 'not_eligible', 'label_en' => 'Not Eligible', 'label_gu' => 'યોગ્ય નથી', 'group' => 'Eligibility / Compliance'],
+        ['key' => 'cibil_too_low', 'label_en' => 'CIBIL Score Below Threshold', 'label_gu' => 'CIBIL સ્કોર મર્યાદા થી ઓછો', 'group' => 'Eligibility / Compliance'],
+        ['key' => 'income_insufficient', 'label_en' => 'Income Insufficient for Any Bank', 'label_gu' => 'કોઈપણ બેંક માટે આવક પૂરતી નથી', 'group' => 'Eligibility / Compliance'],
+        ['key' => 'tax_compliance_issue', 'label_en' => 'ITR / GST Compliance Issue', 'label_gu' => 'ITR / GST અનુપાલન સમસ્યા', 'group' => 'Eligibility / Compliance'],
+        ['key' => 'docs_not_furnished', 'label_en' => 'Customer Could Not Furnish Documents', 'label_gu' => 'ગ્રાહક દસ્તાવેજો આપી શક્યા નથી', 'group' => 'Eligibility / Compliance'],
+
+        // Property
+        ['key' => 'property_deal_cancelled', 'label_en' => 'Property Deal Fell Through', 'label_gu' => 'મિલકતનો સોદો ભાંગી ગયો', 'group' => 'Property'],
+        ['key' => 'property_rejected', 'label_en' => 'Property Rejected (Legal / Technical)', 'label_gu' => 'મિલકત નામંજૂર (કાનૂની / ટેકનિકલ)', 'group' => 'Property'],
+        ['key' => 'property_blacklisted', 'label_en' => 'Property / Builder Blacklisted by Banks', 'label_gu' => 'મિલકત / બિલ્ડર બેંકો દ્વારા બ્લેકલિસ્ટેડ', 'group' => 'Property'],
+        ['key' => 'title_dispute', 'label_en' => 'Property Title Disputed / Ambiguous', 'label_gu' => 'મિલકત ટાઇટલ વિવાદિત / અસ્પષ્ટ', 'group' => 'Property'],
+
+        // Customer
+        ['key' => 'self_funded', 'label_en' => 'Customer Self-Funded', 'label_gu' => 'ગ્રાહકે પોતાના ભંડોળથી ચૂકવ્યું', 'group' => 'Customer'],
+        ['key' => 'co_applicant_backed_out', 'label_en' => 'Co-applicant Backed Out', 'label_gu' => 'સહ-અરજદાર પાછા હટ્યા', 'group' => 'Customer'],
+        ['key' => 'purchase_postponed', 'label_en' => 'Purchase Postponed Indefinitely', 'label_gu' => 'ખરીદી અનિશ્ચિત સમય માટે મોકૂફ', 'group' => 'Customer'],
+        ['key' => 'customer_unresponsive', 'label_en' => 'Customer Unresponsive (30+ days)', 'label_gu' => 'ગ્રાહક અપ્રતિભાવી (30+ દિવસ)', 'group' => 'Customer'],
+        ['key' => 'not_serious_lead', 'label_en' => 'Non-serious Enquiry', 'label_gu' => 'ગંભીર પૂછપરછ નથી', 'group' => 'Customer'],
+        ['key' => 'medical_emergency', 'label_en' => 'Medical / Family Emergency', 'label_gu' => 'તબીબી / કુટુંબ કટોકટી', 'group' => 'Customer'],
+
+        // Product Mismatch
+        ['key' => 'wrong_loan_type', 'label_en' => 'Customer Needed LAP / OD / Different Product', 'label_gu' => 'ગ્રાહકને LAP / OD / અન્ય ઉત્પાદન જોઈતું હતું', 'group' => 'Product Mismatch'],
+        ['key' => 'wrong_product_type', 'label_en' => 'Wrong Customer Type / Product — Replaced', 'label_gu' => 'ખોટો ગ્રાહક પ્રકાર / ઉત્પાદન — બદલ્યું', 'group' => 'Product Mismatch'],
+        ['key' => 'duplicate', 'label_en' => 'Duplicate Quotation', 'label_gu' => 'ડુપ્લિકેટ ક્વોટેશન', 'group' => 'Product Mismatch'],
+
+        // Other
+        ['key' => 'other', 'label_en' => 'Other', 'label_gu' => 'અન્ય', 'group' => 'Other'],
+    ],
     'gstPercent' => 18,
     'ourServices' => "Home Loan, Mortgage Loan, Commercial Loan, Industrial Loan,\nLand Loan, Over Draft(OD)",
 ];

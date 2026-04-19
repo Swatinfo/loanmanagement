@@ -45,9 +45,9 @@ Dark (`#3a3536`) full-height background, centered card with orange top border (`
 
 ### `layouts/navigation.blade.php` — top navbar
 
-Dark blurred bar (`.shf-navbar-bg`), logo + app name, permission-gated menu links (Dashboard, Quotations, Loans, Tasks, DVR, Users, Settings, Loan Settings, Reports), user dropdown (Profile, Impersonate, Logout), notification bell with unread count polled every 60s.
+Dark blurred bar (`.shf-navbar-bg`), logo + app name, permission-gated menu links (Dashboard, Quotations, Loans, Tasks, DVR, Customers, Users, Settings, Loan Settings, Reports), user dropdown (Profile, Impersonate, Logout), notification bell with unread count polled every 60s.
 
-Mobile: hamburger (`navbar-expand-xl` — 1200px breakpoint).
+Mobile (< xl / < 1200 px): hamburger is **removed**. Navigation is served by the fixed bottom nav (`partials/bottom-nav.blade.php`) + create FAB (`partials/mobile-fab.blade.php`), both included in `layouts/app.blade.php`. The `#shfNavbar` `.collapse` wrapper stays because Bootstrap's `navbar-expand-xl` uses it for desktop layout at ≥ xl. See `frontend.md` → "Mobile chrome" for the CSS contract (`--shf-bottom-nav-height`, `body.has-bottom-nav`).
 
 ## Page template
 

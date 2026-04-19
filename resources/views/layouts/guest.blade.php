@@ -10,10 +10,11 @@
     <link rel="icon" type="image/x-icon" href="{{ asset('favicon/favicon.ico') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon/favicon-16x16.png') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('favicon/favicon-32x32.png') }}">
-    <link rel="icon" type="image/png" sizes="96x96" href="{{ asset('favicon/favicon-96x96.png') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ asset('favicon/android-chrome-192x192.png') }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ asset('favicon/android-chrome-512x512.png') }}">
 
     {{-- ── Apple / iOS ────────────────────────────────────────── --}}
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('favicon/apple-touch-icon-180x180.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('favicon/apple-touch-icon.png') }}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="SHF World">
@@ -25,7 +26,7 @@
 
     {{-- ── Windows Tiles ─────────────────────────────────────── --}}
     <meta name="msapplication-TileColor" content="#3a3536">
-    <meta name="msapplication-TileImage" content="{{ asset('favicon/icon-192x192.png') }}">
+    <meta name="msapplication-TileImage" content="{{ asset('favicon/android-chrome-192x192.png') }}">
     <meta name="msapplication-config" content="none">
 
     <title>@yield('title', config('app.name', 'SHF Loan Management'))</title>

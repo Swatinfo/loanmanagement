@@ -2,7 +2,7 @@
 
 Complete schema for SHF Loan Quotation (Laravel 12 + SQLite). All tables, columns, foreign keys, indexes, and seed behavior derived from migrations and models.
 
-**Total: 38 application tables + 9 Laravel framework tables**
+**Total: 40 application tables + 9 Laravel framework tables**
 
 ## Conventions
 
@@ -26,7 +26,6 @@ Complete schema for SHF Loan Quotation (Laravel 12 + SQLite). All tables, column
 | password | string | no | | hashed |
 | is_active | boolean | no | true | |
 | created_by | bigint FK users.id | yes | | nullOnDelete |
-| updated_by | bigint FK users.id | yes | | nullOnDelete |
 | phone | varchar(20) | yes | | |
 | employee_id | string | yes | | |
 | default_branch_id | bigint FK branches.id | yes | | nullOnDelete |
@@ -107,9 +106,9 @@ Complete schema for SHF Loan Quotation (Laravel 12 + SQLite). All tables, column
 | id | PK | |
 | name | string | |
 | code | string | UNIQUE, nullable |
-| address | text | |
-| city | string | |
-| phone | varchar(20) | |
+| address | text | nullable |
+| city | string | nullable |
+| phone | varchar(20) | nullable |
 | is_active | boolean | default true |
 | manager_id | FK users.id | nullable |
 | location_id | FK locations.id | nullable |
@@ -152,7 +151,7 @@ Complete schema for SHF Loan Quotation (Laravel 12 + SQLite). All tables, column
 | tc | unsignedBigInt | default 0 |
 | extra1_name, extra1_amt | string / int | nullable |
 | extra2_name, extra2_amt | string / int | nullable |
-| audit_columns, soft_deletes, timestamps | | |
+| timestamps | | |
 
 ### bank_employees (pivot)
 
@@ -202,14 +201,14 @@ Complete schema for SHF Loan Quotation (Laravel 12 + SQLite). All tables, column
 | stage_key | string | UNIQUE — e.g., `inquiry`, `document_collection`, `parallel_processing` |
 | is_enabled | boolean | default true |
 | stage_name_en | string | |
-| stage_name_gu | string | |
+| stage_name_gu | string | nullable |
 | sequence_order | int | INDEX |
-| is_parallel | boolean | |
+| is_parallel | boolean | default false |
 | parent_stage_key | string | nullable, INDEX (for sub-stages of `parallel_processing`) |
-| stage_type | enum('sequential','parallel','decision') | |
+| stage_type | string | default 'sequential' — sequential / parallel / decision |
 | description_en, description_gu | text | nullable |
-| default_role | json | array of eligible role slugs |
-| assigned_role | varchar(50) | default assigned role |
+| default_role | string | nullable (stores JSON text — array of eligible role slugs, cast to array in model) |
+| assigned_role | varchar(50) | default 'task_owner' |
 | sub_actions | json | phase definitions: `[{name, role, ...}]` |
 | timestamps | | |
 
@@ -257,10 +256,10 @@ Complete schema for SHF Loan Quotation (Laravel 12 + SQLite). All tables, column
 |---|---|---|
 | id | PK | |
 | customer_name | string | |
-| mobile | varchar(20) | |
-| email | string | |
-| date_of_birth | date | |
-| pan_number | varchar(10) | |
+| mobile | varchar(20) | nullable |
+| email | string | nullable |
+| date_of_birth | date | nullable |
+| pan_number | varchar(10) | nullable |
 | audit_columns, soft_deletes, timestamps | | |
 
 ### quotations
@@ -279,6 +278,12 @@ Complete schema for SHF Loan Quotation (Laravel 12 + SQLite). All tables, column
 | selected_tenures | json | |
 | location_id | FK locations.id | nullable |
 | branch_id | FK branches.id | nullable |
+| status | string(20) | default `active`, INDEX — `active` / `on_hold` / `cancelled` |
+| hold_reason_key, cancel_reason_key | varchar(50) | nullable; keys into `quotationHoldReasons` / `quotationCancelReasons` config |
+| hold_note, cancel_note | text | nullable |
+| hold_follow_up_date | date | nullable, INDEX |
+| held_at, cancelled_at | timestamp | nullable |
+| held_by, cancelled_by | FK users.id | nullable, nullOnDelete |
 | audit_columns, soft_deletes, timestamps | | |
 
 ### quotation_banks
@@ -317,21 +322,21 @@ Per-bank rate/charge row per quotation. FK `quotation_id` CASCADE. Fields: bank_
 | location_id | FK locations.id | nullable |
 | customer_name | string | |
 | customer_type | string | INDEX |
-| customer_phone | varchar(20) | |
+| customer_phone | varchar(20) | nullable |
 | customer_email | string | nullable |
-| date_of_birth | date | |
-| pan_number | varchar(10) | uppercase |
+| date_of_birth | date | nullable |
+| pan_number | varchar(10) | nullable, uppercase |
 | loan_amount | unsignedBigInt | |
 | status | string | INDEX — active / on_hold / completed / rejected / cancelled |
 | is_sanctioned | boolean | default false |
 | current_stage | string | INDEX — default `inquiry` |
 | bank_name | string | denormalized from bank |
 | roi_min, roi_max | decimal(5,2) | |
-| total_charges | int | |
+| total_charges | string | nullable |
 | application_number | string | nullable — set during app_number stage |
 | assigned_bank_employee | FK users.id | nullable |
 | assigned_advisor | FK users.id | nullable |
-| created_by | FK users.id | |
+| created_by | FK users.id | cascadeOnDelete |
 | due_date | date | nullable |
 | expected_docket_date | date | nullable, auto-calculated from sanction |
 | rejected_at | timestamp | nullable |
@@ -358,16 +363,16 @@ Per-bank rate/charge row per quotation. FK `quotation_id` CASCADE. Fields: bank_
 | received_by | FK users.id | nullable |
 | rejected_reason | text | nullable |
 | notes | text | nullable |
-| sort_order | int | |
+| sort_order | int | default 0 |
 | file_path, file_name, file_mime | string | nullable |
-| file_size | unsignedBigInt | |
+| file_size | unsignedBigInt | nullable |
 | uploaded_by | FK users.id | nullable |
 | uploaded_at | timestamp | nullable |
 | audit_columns, timestamps | | |
 
 ### loan_progress
 
-One row per loan (`loan_id` UNIQUE). Fields: `total_stages` (int), `completed_stages` (int), `overall_percentage` (decimal 5,2), `estimated_completion` (date nullable), `workflow_snapshot` (json — current stage statuses), timestamps.
+One row per loan (`loan_id` UNIQUE). Fields: `total_stages` (int, default 10), `completed_stages` (int), `overall_percentage` (decimal 5,2), `estimated_completion` (date nullable), `workflow_snapshot` (text nullable — stores JSON text of current stage statuses, cast to array in model), timestamps.
 
 ### stage_assignments
 
@@ -382,15 +387,15 @@ One row per loan (`loan_id` UNIQUE). Fields: `total_stages` (int), `completed_st
 | priority | string | default normal |
 | started_at, completed_at | timestamp | nullable |
 | completed_by | FK users.id | nullable |
-| is_parallel_stage | boolean | |
+| is_parallel_stage | boolean | default false |
 | parent_stage_key | string | nullable, INDEX |
-| notes | json | phase/form data per stage |
+| notes | text | nullable — stores JSON text of phase/form data per stage (cast to array in model) |
 | UNIQUE (loan_id, stage_key) | | |
 | audit_columns, timestamps | | |
 
 ### stage_transfers
 
-Ledger row per transfer. `stage_assignment_id` (CASCADE), `loan_id` (CASCADE), `stage_key`, `transferred_from` + `transferred_to` (FK users.id CASCADE), `reason` (text), `transfer_type` (default 'manual'), `created_at` only (no updated_at).
+Ledger row per transfer. `stage_assignment_id` (CASCADE), `loan_id` (CASCADE), `stage_key`, `transferred_from` + `transferred_to` (FK users.id CASCADE), `reason` (text nullable), `transfer_type` (default 'manual'), `created_at` only (no updated_at).
 
 ### stage_queries
 
@@ -418,11 +423,11 @@ Ledger row per transfer. `stage_assignment_id` (CASCADE), `loan_id` (CASCADE), `
 
 ### valuation_details
 
-One or more rows per loan. Fields: `loan_id` (CASCADE INDEX), `valuation_type` (default 'property'), `property_address`, `latitude/longitude` (varchar 50), `landmark`, `property_type`, `land_area`, `land_rate` (decimal 12,2), `land_valuation`, `construction_area`, `construction_rate` (decimal 12,2), `construction_valuation`, `final_valuation`, `market_value`, `government_value` (all unsignedBigInt), `valuation_date`, `valuator_name`, `valuator_report_number`, `notes`, audit_columns, timestamps.
+One or more rows per loan. Fields: `loan_id` (CASCADE INDEX), `valuation_type` (default 'property'), `property_address` (text nullable), `latitude/longitude` (varchar 50), `landmark`, `property_type`, `land_area` (string), `land_rate` (decimal 12,2), `land_valuation` (unsignedBigInt nullable), `construction_area` (string), `construction_rate` (decimal 12,2), `construction_valuation` (unsignedBigInt nullable), `final_valuation` (unsignedBigInt nullable), `market_value` (unsignedBigInt nullable), `government_value` (unsignedBigInt nullable), `valuation_date`, `valuator_name`, `valuator_report_number`, `notes`, audit_columns, timestamps.
 
 ### disbursement_details
 
-One row per loan (`loan_id` UNIQUE CASCADE). Fields: `disbursement_type` (fund_transfer / cheque), `disbursement_date`, `amount_disbursed` (unsignedBigInt), `bank_account_number`, `ifsc_code`, `cheque_number`, `cheque_date`, `cheques` (json — array for multiple cheques), `dd_number`, `dd_date`, `is_otc` (boolean), `otc_branch`, `otc_cleared` (boolean), `otc_cleared_date`, `otc_cleared_by` (FK users.id nullable), `reference_number`, `notes`, audit_columns, timestamps.
+One row per loan (`loan_id` UNIQUE CASCADE). Fields: `disbursement_type` (fund_transfer / cheque / demand_draft), `disbursement_date` (date nullable), `amount_disbursed` (unsignedBigInt nullable), `bank_account_number`, `ifsc_code`, `cheque_number`, `cheque_date`, `cheques` (json — array for multiple cheques), `dd_number`, `dd_date`, `is_otc` (boolean), `otc_branch`, `otc_cleared` (boolean), `otc_cleared_date`, `otc_cleared_by` (FK users.id nullable), `reference_number`, `notes`, audit_columns, timestamps.
 
 ---
 
@@ -434,7 +439,43 @@ One row per loan (`loan_id` UNIQUE CASCADE). Fields: `disbursement_type` (fund_t
 
 ### activity_logs
 
-`user_id` (nullOnDelete INDEX), `action` (string), `subject_type` + `subject_id` (polymorphic INDEX), `properties` (json), `ip_address` (varchar 45), `user_agent` (string), INDEX (created_at), timestamps.
+`user_id` (nullOnDelete INDEX), `action` (string), `subject_type` + `subject_id` (polymorphic INDEX), `properties` (json), `ip_address` (varchar 45), `user_agent` (text), INDEX (created_at), timestamps.
+
+### activity_log (Spatie)
+
+| Column | Type | Notes |
+|---|---|---|
+| id | PK | |
+| log_name | string | nullable, INDEX |
+| description | text | |
+| subject_type | string | nullable (nullableMorphs, paired with subject_id) |
+| subject_id | unsignedBigInt | nullable, INDEX |
+| event | string | nullable |
+| causer_type | string | nullable (nullableMorphs, paired with causer_id) |
+| causer_id | unsignedBigInt | nullable, INDEX |
+| attribute_changes | json | nullable (Spatie maps this as `properties`) |
+| properties | json | nullable |
+| batch_uuid | uuid | nullable |
+| ip_address | varchar(45) | nullable — custom SHF field |
+| user_agent | text | nullable — custom SHF field |
+| timestamps | | |
+
+Created by `2026_04_17_125136_create_activity_log_table.php`. Coexists with legacy `activity_logs` table.
+
+### push_subscriptions
+
+| Column | Type | Notes |
+|---|---|---|
+| id | PK (bigIncrements) | |
+| subscribable_type | string | morphs (paired with subscribable_id), INDEX |
+| subscribable_id | unsignedBigInt | INDEX |
+| endpoint | varchar(500) | UNIQUE |
+| public_key | string | nullable |
+| auth_token | string | nullable |
+| content_encoding | string | nullable |
+| timestamps | | |
+
+Created by `2026_04_17_143109_create_push_subscriptions_table.php` (laravel-notification-channels/webpush). Uses `webpush.table_name` config.
 
 ### app_config
 
@@ -462,6 +503,7 @@ Simple key-value. `setting_key` (PK string), `setting_value` (text), `updated_at
 | created_by | FK users.id | |
 | assigned_to | FK users.id | nullable |
 | loan_detail_id | FK loan_details.id | nullable |
+| quotation_id | FK quotations.id | nullable, nullOnDelete |
 | status | string | default pending — pending / in_progress / completed / cancelled |
 | priority | string | default normal — low / normal / high / urgent |
 | due_date | date | nullable |
@@ -486,9 +528,9 @@ Simple key-value. `setting_key` (PK string), `setting_value` (text), `updated_at
 | contact_type | string | — configurable (see `dvrContactTypes` in app-defaults) |
 | purpose | string | — configurable (see `dvrPurposes` in app-defaults) |
 | notes, outcome, follow_up_notes | text | nullable |
-| follow_up_needed | boolean | |
+| follow_up_needed | boolean | default false |
 | follow_up_date | date | nullable, INDEX |
-| is_follow_up_done | boolean | |
+| is_follow_up_done | boolean | default false |
 | parent_visit_id | FK daily_visit_reports.id | nullable (for follow-up chain) |
 | follow_up_visit_id | FK daily_visit_reports.id | nullable |
 | quotation_id | FK quotations.id | nullable |
@@ -508,14 +550,14 @@ Simple key-value. `setting_key` (PK string), `setting_value` (text), `updated_at
 
 ## Permissions Catalog
 
-**45 permissions across 7 groups.** Managed via `config/permissions.php`, seeded into `permissions` table, assigned via `role_permission` pivot.
+**44 permissions across 7 groups.** Managed via `config/permissions.php`, seeded into `permissions` table, assigned via `role_permission` pivot. Note: `skip_loan_stages` was removed in `2026_04_09_211216_create_unified_roles_system`.
 
 | Group | Slugs |
 |---|---|
 | Settings (8) | view_settings, edit_company_info, edit_banks, edit_documents, edit_tenures, edit_charges, edit_services, edit_gst |
-| Quotations (8) | create_quotation, generate_pdf, view_own_quotations, view_all_quotations, delete_quotations, download_pdf, download_pdf_branded, download_pdf_plain |
+| Quotations (11) | create_quotation, generate_pdf, view_own_quotations, view_all_quotations, delete_quotations, download_pdf, download_pdf_branded, download_pdf_plain, hold_quotation, cancel_quotation, resume_quotation |
 | Users (5) | view_users, create_users, edit_users, delete_users, assign_roles |
-| Loans (14) | convert_to_loan, view_loans, view_all_loans, create_loan, edit_loan, delete_loan, manage_loan_documents, upload_loan_documents, download_loan_documents, delete_loan_files, manage_loan_stages, skip_loan_stages, add_remarks, manage_workflow_config |
+| Loans (13) | convert_to_loan, view_loans, view_all_loans, create_loan, edit_loan, delete_loan, manage_loan_documents, upload_loan_documents, download_loan_documents, delete_loan_files, manage_loan_stages, add_remarks, manage_workflow_config |
 | Tasks (1) | view_all_tasks |
 | DVR (5) | view_dvr, create_dvr, edit_dvr, delete_dvr, view_all_dvr |
 | System (4) | change_own_password, manage_permissions, view_activity_log, view_reports |
@@ -524,12 +566,12 @@ Simple key-value. `setting_key` (PK string), `setting_value` (text), `updated_at
 
 ### Role → default permission map
 
-- **super_admin** — all permissions except explicitly disabled `skip_loan_stages`
+- **super_admin** — all permissions (bypass via `PermissionService`)
 - **admin** — all except `delete_users`, `delete_loan`, branded/plain PDF variants
 - **branch_manager / bdh** — quotations, loans (not delete), remarks, advisor + manager tasks
-- **loan_advisor** — own quotations, create/edit own loans, remarks, raise/resolve query
-- **bank_employee** — view_loans, manage_loan_stages, add_remarks, raise_query
-- **office_employee** — loan doc management, stages, valuations, raise_query
+- **loan_advisor** — create_quotation, generate_pdf, view_own_quotations, download_pdf, change_own_password, view_dashboard, manage_notifications, convert_to_loan, view_loans, create_loan, edit_loan, manage_loan_documents, manage_loan_stages, add_remarks, upload_loan_documents, download_loan_documents, manage_customers, view_customers, transfer_loan_stages, reject_loan, change_loan_status, view_loan_timeline, manage_disbursement, raise_query, resolve_query
+- **bank_employee** — change_own_password, view_dashboard, manage_notifications, view_loans, add_remarks, download_loan_documents, view_customers, view_loan_timeline, raise_query
+- **office_employee** — change_own_password, view_dashboard, manage_notifications, view_loans, edit_loan, manage_loan_documents, manage_loan_stages, add_remarks, upload_loan_documents, download_loan_documents, view_customers, transfer_loan_stages, reject_loan, change_loan_status, view_loan_timeline, manage_valuation, raise_query
 
 ### Resolution order (PermissionService)
 
@@ -556,16 +598,19 @@ Simple key-value. `setting_key` (PK string), `setting_value` (text), `updated_at
 
 ## JSON columns cheat sheet
 
-| Table.column | Shape |
-|---|---|
-| stages.default_role | `["branch_manager", "loan_advisor", ...]` |
-| stages.sub_actions | `[{ "name": "send_for_sanction", "role": "bank_employee" }, ...]` |
-| product_stages.sub_actions_override | same shape as stages.sub_actions per-product override |
-| bank_stage_configs.phase_roles | `{ "0": "office_employee", "1": "bank_employee" }` |
-| stage_assignments.notes | free-form per-stage form values (phase fields, decisions) |
-| loan_details.workflow_config | snapshot `{ stage_key: { role, default_user_id, phases: {idx: {role, default_user_id}} } }` |
-| loan_progress.workflow_snapshot | `{ stage_key: { status, assigned_to } }` |
-| disbursement_details.cheques | `[{ cheque_name, cheque_number, cheque_date, cheque_amount }, ...]` |
-| quotations.selected_tenures | `[5, 10, 15, 20]` |
-| app_config.config_json | full defaults tree (see `config/app-defaults.php`) |
-| activity_logs.properties | arbitrary event snapshot |
+Columns below are either native `json` columns or `text`/`string` columns that hold JSON text decoded via model casts. The model-level cast is noted where the underlying column is not a native JSON type.
+
+| Table.column | Storage | Shape |
+|---|---|---|
+| stages.default_role | string (cast to array in model) | `["branch_manager", "loan_advisor", ...]` |
+| stages.sub_actions | json | `[{ "name": "send_for_sanction", "role": "bank_employee" }, ...]` |
+| product_stages.sub_actions_override | json | same shape as stages.sub_actions per-product override |
+| bank_stage_configs.phase_roles | json | `{ "0": "office_employee", "1": "bank_employee" }` |
+| stage_assignments.notes | text (cast to array in model) | free-form per-stage form values (phase fields, decisions) |
+| loan_details.workflow_config | json | snapshot `{ stage_key: { role, default_user_id, phases: {idx: {role, default_user_id}} } }` |
+| loan_progress.workflow_snapshot | text (cast to array in model) | `{ stage_key: { status, assigned_to } }` |
+| disbursement_details.cheques | json | `[{ cheque_name, cheque_number, cheque_date, cheque_amount }, ...]` |
+| quotations.selected_tenures | json | `[5, 10, 15, 20]` |
+| app_config.config_json | longText | full defaults tree (see `config/app-defaults.php`) |
+| activity_logs.properties | json | arbitrary event snapshot |
+| activity_log.properties / attribute_changes | json | Spatie event payload |

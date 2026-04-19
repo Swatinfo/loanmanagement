@@ -15,7 +15,7 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
-    'shf_version' => env('SHF_VERSION', '20260413'),
+    'shf_version' => env('SHF_VERSION', '20260417185506'),
 
     /*
     |--------------------------------------------------------------------------
@@ -45,6 +45,7 @@ return [
     'allow_impersonate_all' => (bool) env('ALLOW_IMPERSONATE_ALL', false),
 
     'show_stage_impersonate' => (bool) env('SHOW_STAGE_IMPERSONATE', false),
+    'open_rate_pf_parallel' => (bool) env('OPEN_RATE_PF_PARALLEL', false),
 
     /*
     |--------------------------------------------------------------------------

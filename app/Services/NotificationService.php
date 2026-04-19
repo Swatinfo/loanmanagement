@@ -11,6 +11,17 @@ class NotificationService
 {
     public function notify(int $userId, string $title, string $message, string $type = 'info', ?int $loanId = null, ?string $stageKey = null, ?string $link = null): ShfNotification
     {
+        // Default deep-link: if this notification belongs to a loan, send the
+        // user to that loan's stages page. Callers can still pass an explicit
+        // link to override (e.g. general-tasks go to the task page).
+        if ($link === null && $loanId) {
+            try {
+                $link = route('loans.stages', $loanId);
+            } catch (\Throwable) {
+                $link = null;
+            }
+        }
+
         return ShfNotification::create([
             'user_id' => $userId,
             'title' => $title,
@@ -29,7 +40,7 @@ class NotificationService
         return $this->notify(
             $assignedUserId,
             'Stage Assigned',
-            "You have been assigned to '{$stageName}' for Loan #{$loan->loan_number} ({$loan->customer_name})",
+            "You have been assigned to '{$stageName}' for Loan of ({$loan->customer_name}) #{$loan->loan_number}",
             'assignment',
             $loan->id,
             $stageKey,
@@ -40,7 +51,7 @@ class NotificationService
     public function notifyStageCompleted(LoanDetail $loan, string $stageKey): void
     {
         $stageName = Stage::where('stage_key', $stageKey)->value('stage_name_en') ?? $stageKey;
-        $message = "Stage '{$stageName}' completed for Loan #{$loan->loan_number}";
+        $message = "Stage '{$stageName}' completed for Loan of ({$loan->customer_name}) #{$loan->loan_number}";
         $link = route('loans.stages', $loan);
 
         $notifyUsers = collect([$loan->created_by, $loan->assigned_advisor])
@@ -49,14 +60,22 @@ class NotificationService
             ->reject(fn ($id) => $id === auth()->id());
 
         foreach ($notifyUsers as $userId) {
-            $this->notify($userId, 'Stage Completed', $message, 'stage_update', $loan->id, $stageKey, $link);
+            $this->notify(
+                $userId,
+                'Stage Completed',
+                $message,
+                'stage_update',
+                $loan->id,
+                $stageKey,
+                $link
+            );
         }
     }
 
     public function notifyLoanCompleted(LoanDetail $loan): void
     {
-        $message = "Loan #{$loan->loan_number} ({$loan->customer_name}) has been completed!";
-        $link = route('loans.show', $loan);
+        $message = "Loan of ({$loan->customer_name}) #{$loan->loan_number} has been completed!";
+        $link = route('loans.stages', $loan);
 
         $notifyUsers = collect([$loan->created_by, $loan->assigned_advisor])
             ->filter()->unique()->reject(fn ($id) => $id === auth()->id());

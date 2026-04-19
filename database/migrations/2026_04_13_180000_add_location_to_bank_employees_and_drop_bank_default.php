@@ -45,7 +45,7 @@ return new class extends Migration
 
         // Step 4: Update unique constraint to include location_id
         // Must drop FKs first, then unique index, then re-add FKs
-        $hasOldUnique = collect(DB::select("SHOW INDEX FROM bank_employees WHERE Key_name = 'bank_employees_bank_id_user_id_unique'"))->isNotEmpty();
+        $hasOldUnique = Schema::hasIndex('bank_employees', 'bank_employees_bank_id_user_id_unique');
         if ($hasOldUnique) {
             Schema::table('bank_employees', function (Blueprint $table) {
                 $table->dropForeign(['bank_id']);

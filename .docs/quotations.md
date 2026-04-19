@@ -6,17 +6,35 @@ Comparison quotations across multiple banks, with EMI calculations, per-bank cha
 
 See `.claude/routes-reference.md`. Key:
 
+- `GET /quotations` — listing page (`quotations.index`); access if user has any of `view_own_quotations`, `view_all_quotations`, `create_quotation`. Page header carries the `+ New Quotation` button (gated `create_quotation`). Uses the existing `dashboard.quotation-data` endpoint.
 - `GET /quotations/create` — form (permission: `create_quotation`)
 - `POST /quotations/generate` — create + render + save (permission: `generate_pdf`)
-- `GET /quotations/{id}` — show (any authenticated user; scoped by ownership + `view_all_quotations`)
+- `GET /quotations/{id}` — show (visibility: `Quotation::isVisibleTo($user)` — see "Visibility" below)
 - `GET /quotations/{id}/download?branded=1|0` — PDF download (permissions: `download_pdf` + branded/plain variant if configured)
 - `GET /quotations/{id}/preview-html?branded=1|0` — HTML preview (super_admin only, debugging)
 - `DELETE /quotations/{id}` — delete (permission: `delete_quotations`)
+- `POST /quotations/{id}/hold` — put on hold + auto-create follow-up DVR (permission: `hold_quotation`)
+- `POST /quotations/{id}/cancel` — cancel (terminal) (permission: `cancel_quotation`)
+- `POST /quotations/{id}/resume` — resume from on-hold (permission: `resume_quotation`)
 - `GET /quotations/{id}/convert`, `POST /quotations/{id}/convert` — conversion flow (permission: `convert_to_loan`)
+
+Show page accepts `?action=hold` or `?action=cancel` — the corresponding modal auto-opens (used by dashboard shortcut buttons).
+
+## Visibility
+
+`Quotation::scopeVisibleTo($user)` (mirrors `LoanDetail`):
+
+1. `view_all_quotations` → see everything (admin / super_admin)
+2. Own (`user_id === $user->id`)
+3. `branch_manager` / `bdh` → also any quotation where `branch_id` is in `$user->branches()->pluck('branches.id')`
+
+`isVisibleTo($user)` is the single-record helper used by controller auth checks (`show`, `download`, `destroy`, `authorizeMutation`, `LoanConversionController@showConvertForm`). Dashboard list + stats use `Quotation::visibleTo($user)`.
+
+**`branch_id` on create**: `QuotationService::generate()` falls back to `User::find($userId)?->default_branch_id` if the form did not supply one, so every quotation has a branch and scope queries never drop rows.
 
 ## Controller
 
-`QuotationController`, constructor-injects `ConfigService` + `QuotationService`.
+`QuotationController`, constructor-injects `ConfigService` + `QuotationService` + `NotificationService`.
 
 ## Data model
 
@@ -118,11 +136,24 @@ See `loans.md` and `workflow-developer.md` for the conversion side-effects.
 
 Quotations listing is on the **dashboard** — there's no standalone `/quotations` index. The dashboard has "Pending Quotations" and similar tabs (see `dashboard.md`).
 
+## Status lifecycle (hold / cancel / resume)
+
+Each quotation has a `status` column (`active` / `on_hold` / `cancelled`) that's independent of conversion (`loan_id`).
+
+- **Hold** (`POST /quotations/{id}/hold`) — requires `reason_key` (from config `quotationHoldReasons`), optional `note`, required `follow_up_date` (d/m/Y, future). Sets `status=on_hold`, stores reason/note/date + `held_by` + `held_at`. Auto-creates a `DailyVisitReport` linked via `quotation_id` with `purpose=follow_up`, `contact_type=existing_customer`, and the supplied follow-up date. Also fires a notification to the original `user_id` (creator) if someone else performed the action.
+- **Cancel** (`POST /quotations/{id}/cancel`) — requires `reason_key` (from config `quotationCancelReasons`), optional `note`. Terminal: cancelled quotations cannot be resumed or converted. Blocks conversion via `LoanConversionController::convert()`.
+- **Resume** (`POST /quotations/{id}/resume`) — only from `on_hold`. Clears all `hold_*` columns, sets `status=active`.
+
+**Reason vocab** is config-driven (same pattern as DVR contact types): `quotationHoldReasons` and `quotationCancelReasons` in `app_config.main`, editable at `/settings` → "Quotation Reasons" tab, defaults in `config/app-defaults.php`. Each reason has a `group` field (e.g. `Documents`, `Rate / Pricing`, `Customer`) — the show-page modals render these as HTML `<optgroup>` blocks so long dropdowns stay scannable. Missing/blank `group` falls back to `Other`.
+
+**Dashboard filter** — the Quotations tab has a status filter (`Active + On Hold` by default, plus `Active`, `On Hold`, `Cancelled`, `All`). Held and cancelled rows get coloured backgrounds.
+
 ## Soft delete / conversion gate
 
 - `Quotation` uses `SoftDeletes` + `HasAuditColumns`.
 - `destroy()`: blocks if `isConverted()` (quotation has `loan_id`).
 - Linked `loan_details.quotation_id` is set to null on loan delete, so the quotation becomes convertible again.
+- `LoanConversionController` also blocks conversion if the quotation is `cancelled`.
 
 ## Offline generation
 

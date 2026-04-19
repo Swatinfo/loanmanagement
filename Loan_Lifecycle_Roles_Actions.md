@@ -57,7 +57,7 @@ Multi-phase stages often ping-pong between two or three roles.
 - **Children** (stages 4a–4e below) run in two waves:
   - **Wave A (sequential)**: `app_number` → `bsm_osv`
   - **Wave B (parallel)**: `legal_verification`, `technical_valuation`, `sanction_decision` (all start when `bsm_osv` completes)
-- **Completion**: when all 5 sub-stages are resolved (completed/skipped/rejected), the parent auto-completes and the loan advances to Rate & PF (requires `is_sanctioned = true` — set by Sanction Decision)
+- **Completion**: when all 5 sub-stages are resolved (completed/skipped/rejected), the parent auto-completes. Flag-off: flow advances to Rate & PF (requires `is_sanctioned = true`). Flag-on (`OPEN_RATE_PF_PARALLEL=1`): Rate & PF has been in progress since BSM/OSV; Sanction Letter advances when both Rate & PF and parallel_processing are complete.
 
 ### Stage 4a — Application Number
 
@@ -109,18 +109,19 @@ Multi-phase stages often ping-pong between two or three roles.
 - **Default role**: `branch_manager` (escalates to `bdh` per the controller logic)
 - **Action endpoint**: `POST /loans/{loan}/stages/sanction_decision/action`
 - **Actions**:
-  - **approve** — sets `loan_details.is_sanctioned = true`, marks this stage completed. When all parallel subs are done, the parent completes and flow moves to Rate & PF.
+  - **approve** — sets `loan_details.is_sanctioned = true`, marks this stage completed. When all parallel subs are done, the parent completes. Flag-off: flow moves to Rate & PF. Flag-on: Rate & PF is already running since BSM/OSV and Sanction Letter opens once both are complete.
   - **escalate_to_bm** — requires `decision_remarks` (min 1 char). Appends to `escalation_history` JSON with timestamp; transfers to a BM.
   - **escalate_to_bdh** — same, escalates to BDH.
   - **reject** — requires `rejection_reason` (min 10 chars). Restricted to `super_admin` / `admin` / `branch_manager` / `bdh`. Rejects ALL pending/in_progress stages on the loan in one shot.
 
 ## Stage 5 — Rate & PF (3-phase)
 
-- **Sequence**: 5 (after Parallel Processing with `is_sanctioned=true`)
-- **Default phase roles**:
-  - Phase 1: `loan_advisor` (owner)
-  - Phase 2: `bank_employee` (review)
-  - Phase 3: `loan_advisor` (final completion)
+- Sequence: 5. Flag-off: after Parallel Processing with `is_sanctioned=true`. Flag-on (`OPEN_RATE_PF_PARALLEL=1`): opens in parallel with legal/technical/sanction_decision after BSM/OSV completes; no `is_sanctioned` gate.
+- **sub_actions entries**: 3 (one per runtime phase — normalized 2026-04-18).
+- **Default phase roles** (via `sub_actions[i].role` — zero-indexed):
+  - Phase 1 / index 0: `task_owner` (owner fills form)
+  - Phase 2 / index 1: `bank_employee` (reviews rates)
+  - Phase 3 / index 2: `task_owner` (finalizes PF + charges)
 - **Action endpoint**: `POST /loans/{loan}/stages/rate_pf/action`
 - **Required form fields** (checked before send_to_bank):
   - `interest_rate` (decimal)

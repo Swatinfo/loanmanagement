@@ -9,7 +9,7 @@
         </h2>
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <a href="{{ route('dashboard') }}" class="btn-accent-outline btn-accent-sm btn-accent-outline-white"><svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg> Back</a>
-            @if(!$quotation->is_converted && auth()->user()->hasPermission('convert_to_loan'))
+            @if(!$quotation->is_converted && !$quotation->is_cancelled && auth()->user()->hasPermission('convert_to_loan'))
                 <a href="{{ route('quotations.convert', $quotation) }}" class="btn-accent btn-accent-sm">
                     <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
@@ -54,6 +54,33 @@
                     </ul>
                 </div>
             @endif
+            @if($quotation->status === \App\Models\Quotation::STATUS_ACTIVE && !$quotation->is_converted && auth()->user()->hasPermission('hold_quotation'))
+                <button type="button" class="btn-accent btn-accent-sm" style="background: linear-gradient(135deg, #d97706, #f59e0b);" data-bs-toggle="modal" data-bs-target="#holdModal">
+                    <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Put on Hold
+                </button>
+            @endif
+            @if($quotation->is_on_hold && auth()->user()->hasPermission('resume_quotation'))
+                <form method="POST" action="{{ route('quotations.resume', $quotation) }}" class="shf-confirm-delete" data-confirm-title="Resume this quotation?" data-confirm-text="Move it back to active." data-confirm-button="Yes, resume" data-confirm-icon="question">
+                    @csrf
+                    <button type="submit" class="btn-accent btn-accent-sm" style="background: linear-gradient(135deg, #16a34a, #22c55e);">
+                        <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Resume
+                    </button>
+                </form>
+            @endif
+            @if(!$quotation->is_cancelled && !$quotation->is_converted && auth()->user()->hasPermission('cancel_quotation'))
+                <button type="button" class="btn-accent btn-accent-sm shf-btn-danger-alt" data-bs-toggle="modal" data-bs-target="#cancelModal">
+                    <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Cancel
+                </button>
+            @endif
             @if(auth()->user()->hasPermission('delete_quotations'))
                 <form method="POST" action="{{ route('quotations.destroy', $quotation) }}"
                       class="shf-confirm-delete" data-confirm-title="Delete this quotation?" data-confirm-text="This action cannot be undone.">
@@ -74,6 +101,49 @@
 @section('content')
     <div class="py-4">
         <div class="px-3 px-sm-4 px-lg-5">
+
+            @if($quotation->is_on_hold)
+                <div class="shf-section mb-4" style="border-left: 4px solid #d97706;">
+                    <div class="shf-section-body">
+                        <div class="d-flex align-items-start gap-3">
+                            <svg class="shf-icon-lg" fill="none" stroke="#d97706" viewBox="0 0 24 24" style="flex-shrink:0;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <div>
+                                <div class="fw-semibold" style="color:#d97706;">On Hold — {{ $quotation->hold_reason_label }}</div>
+                                <div class="small shf-text-gray mt-1">
+                                    Follow-up: <strong>{{ $quotation->hold_follow_up_date?->format('d M Y') }}</strong>
+                                    &middot; Held by {{ $quotation->heldBy?->name ?? '—' }}
+                                    on {{ $quotation->held_at?->format('d M Y, h:i A') }}
+                                </div>
+                                @if($quotation->hold_note)
+                                    <div class="small mt-2" style="white-space: pre-line;">{{ $quotation->hold_note }}</div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @elseif($quotation->is_cancelled)
+                <div class="shf-section mb-4" style="border-left: 4px solid #c0392b;">
+                    <div class="shf-section-body">
+                        <div class="d-flex align-items-start gap-3">
+                            <svg class="shf-icon-lg" fill="none" stroke="#c0392b" viewBox="0 0 24 24" style="flex-shrink:0;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <div>
+                                <div class="fw-semibold" style="color:#c0392b;">Cancelled — {{ $quotation->cancel_reason_label }}</div>
+                                <div class="small shf-text-gray mt-1">
+                                    Cancelled by {{ $quotation->cancelledBy?->name ?? '—' }}
+                                    on {{ $quotation->cancelled_at?->format('d M Y, h:i A') }}
+                                </div>
+                                @if($quotation->cancel_note)
+                                    <div class="small mt-2" style="white-space: pre-line;">{{ $quotation->cancel_note }}</div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             <!-- Customer & Loan Info -->
             <div class="shf-section mb-4">
@@ -278,4 +348,143 @@
 
         </div>
     </div>
+
+    {{-- Hold Modal --}}
+    @if($quotation->status === \App\Models\Quotation::STATUS_ACTIVE && !$quotation->is_converted && auth()->user()->hasPermission('hold_quotation'))
+        <div class="modal fade" id="holdModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content" style="border-radius: var(--radius); border: 1px solid var(--border);">
+                    <form method="POST" action="{{ route('quotations.hold', $quotation) }}" id="holdForm">
+                        @csrf
+                        <div class="modal-header" style="background: var(--primary-dark-solid); color: #fff;">
+                            <h5 class="modal-title font-display">Put Quotation on Hold</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <p class="small mb-3 shf-text-gray">A follow-up DVR will be automatically created with the date you provide below.</p>
+                            <div class="mb-3">
+                                <label class="shf-form-label">Reason <span class="text-danger">*</span></label>
+                                <select name="reason_key" class="shf-input" required>
+                                    <option value="">Select a reason…</option>
+                                    @php
+                                        $groupedHold = collect($holdReasons)->groupBy(fn ($r) => $r['group'] ?? 'Other')->sortKeys();
+                                    @endphp
+                                    @foreach($groupedHold as $groupName => $groupReasons)
+                                        <optgroup label="{{ $groupName }}">
+                                            @foreach($groupReasons as $reason)
+                                                <option value="{{ $reason['key'] }}">{{ $reason['label_en'] }} / {{ $reason['label_gu'] }}</option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="shf-form-label">Follow-up Date <span class="text-danger">*</span></label>
+                                <input type="text" name="follow_up_date" class="shf-input shf-datepicker" placeholder="dd/mm/yyyy" autocomplete="off" required>
+                                <small class="shf-text-gray-light">Must be in the future.</small>
+                            </div>
+                            <div class="mb-0">
+                                <label class="shf-form-label">Note (optional)</label>
+                                <textarea name="note" class="shf-input" rows="3" maxlength="5000" placeholder="Any additional context…"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer justify-content-end gap-2 border-0 pt-0 pb-4 pe-4">
+                            <button type="button" class="btn-accent-outline btn-accent-sm" data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn-accent btn-accent-sm" style="background: linear-gradient(135deg, #d97706, #f59e0b);">
+                                <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                Confirm Hold
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Cancel Modal --}}
+    @if(!$quotation->is_cancelled && !$quotation->is_converted && auth()->user()->hasPermission('cancel_quotation'))
+        <div class="modal fade" id="cancelModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content" style="border-radius: var(--radius); border: 1px solid var(--border);">
+                    <form method="POST" action="{{ route('quotations.cancel', $quotation) }}" id="cancelForm">
+                        @csrf
+                        <div class="modal-header" style="background: var(--primary-dark-solid); color: #fff;">
+                            <h5 class="modal-title font-display">Cancel Quotation</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            <p class="small mb-3 shf-text-gray" style="color:#c0392b!important;">Cancelled quotations cannot be resumed or converted to a loan. This is a terminal state.</p>
+                            <div class="mb-3">
+                                <label class="shf-form-label">Reason <span class="text-danger">*</span></label>
+                                <select name="reason_key" class="shf-input" required>
+                                    <option value="">Select a reason…</option>
+                                    @php
+                                        $groupedCancel = collect($cancelReasons)->groupBy(fn ($r) => $r['group'] ?? 'Other')->sortKeys();
+                                    @endphp
+                                    @foreach($groupedCancel as $groupName => $groupReasons)
+                                        <optgroup label="{{ $groupName }}">
+                                            @foreach($groupReasons as $reason)
+                                                <option value="{{ $reason['key'] }}">{{ $reason['label_en'] }} / {{ $reason['label_gu'] }}</option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="mb-0">
+                                <label class="shf-form-label">Note (optional)</label>
+                                <textarea name="note" class="shf-input" rows="3" maxlength="5000" placeholder="Any additional context…"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer justify-content-end gap-2 border-0 pt-0 pb-4 pe-4">
+                            <button type="button" class="btn-accent-outline btn-accent-sm" data-bs-dismiss="modal">Back</button>
+                            <button type="submit" class="btn-accent btn-accent-sm shf-btn-danger-alt">
+                                <svg class="shf-icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                Confirm Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @push('scripts')
+        <script>
+            $(function () {
+                // Datepicker: future dates only for hold follow-up
+                $('#holdModal .shf-datepicker').datepicker({
+                    format: 'dd/mm/yyyy',
+                    autoclose: true,
+                    todayHighlight: true,
+                    startDate: new Date(Date.now() + 86400000) // tomorrow
+                });
+
+                // Client-side validation
+                $('#holdForm').on('submit', function (e) {
+                    if (!SHF.validateForm($(this), {
+                        reason_key: { required: true, label: 'Reason' },
+                        follow_up_date: { required: true, dateFormat: 'dd/mm/yyyy', label: 'Follow-up Date' }
+                    })) { e.preventDefault(); }
+                });
+                $('#cancelForm').on('submit', function (e) {
+                    if (!SHF.validateForm($(this), {
+                        reason_key: { required: true, label: 'Reason' }
+                    })) { e.preventDefault(); }
+                });
+
+                // Auto-open modal when navigated from dashboard with ?action=hold or ?action=cancel
+                var params = new URLSearchParams(window.location.search);
+                var action = params.get('action');
+                if (action === 'hold' && $('#holdModal').length) {
+                    new bootstrap.Modal(document.getElementById('holdModal')).show();
+                } else if (action === 'cancel' && $('#cancelModal').length) {
+                    new bootstrap.Modal(document.getElementById('cancelModal')).show();
+                }
+            });
+        </script>
+    @endpush
 @endsection

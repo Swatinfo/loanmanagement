@@ -175,13 +175,10 @@ class LoanDetail extends Model
 
     public function getCurrentOwnerAttribute(): ?User
     {
-        // Show the assigned advisor as the loan's task owner
-        if ($this->assigned_advisor) {
-            return User::find($this->assigned_advisor);
-        }
-
-        // Fallback to loan creator
-        return $this->creator;
+        // Prefer the assigned advisor; fall back to loan creator.
+        // Use the already-loaded `advisor` relation so list pages don't run
+        // one extra query per loan.
+        return $this->advisor ?? $this->creator;
     }
 
     public function getTimeWithCurrentOwnerAttribute(): string

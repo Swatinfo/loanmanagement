@@ -1,0 +1,2804 @@
+/* ============================================================
+   SHF DESIGN SYSTEM — Custom CSS Theme
+   Pure CSS (no build step required)
+   ============================================================ */
+
+/* ---- @font-face — Local Fonts ---- */
+@font-face {
+    font-family: 'Jost';
+    src: url('/fonts/Jost-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Jost';
+    src: url('/fonts/Jost-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Jost';
+    src: url('/fonts/Jost-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Jost';
+    src: url('/fonts/Jost-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Archivo';
+    src: url('/fonts/Archivo-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Archivo';
+    src: url('/fonts/Archivo-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Archivo';
+    src: url('/fonts/Archivo-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+:root {
+    --primary-dark: #3a3536bf;
+    --primary-dark-solid: #3a3536;
+    --primary-dark-light: #3a353696;
+    --accent: #f15a29;
+    --accent-warm: #f47929;
+    --accent-light: #f99d3e;
+    --accent-dim: rgba(241, 90, 41, 0.10);
+    --bg: #f8f8f8;
+    --bg-alt: #e6e7e8;
+    --text: #1a1a1a;
+    --text-muted: #6b7280;
+    --border: #bcbec0;
+    --white: #ffffff;
+    --red: #c0392b;
+    --green: #27ae60;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.04);
+    --shadow-lg: 0 4px 24px rgba(0, 0, 0, 0.08);
+
+    /* ── Font Size Scale ── */
+    --shf-text-2xs: 0.65rem;
+    /* 10.4px — badges, tiny labels only */
+    --shf-text-xs: 0.75rem;
+    /* 12px — secondary labels, hints */
+    --shf-text-sm: 0.8rem;
+    /* 12.8px — form labels, small text */
+    --shf-text-base: 0.875rem;
+    /* 14px — body text default */
+    --shf-text-md: 0.95rem;
+    /* 15.2px — slightly emphasized */
+    --shf-text-lg: 1.1rem;
+    /* 17.6px — section headings */
+    --shf-text-xl: 1.25rem;
+    /* 20px — page titles */
+
+    --bs-border-width: 2px;
+}
+
+/* ── Font Size Utilities ── */
+.shf-text-2xs {
+    font-size: var(--shf-text-2xs) !important;
+}
+
+.shf-text-xs {
+    font-size: var(--shf-text-xs) !important;
+}
+
+.shf-text-sm {
+    font-size: var(--shf-text-sm) !important;
+}
+
+.shf-text-base {
+    font-size: var(--shf-text-base) !important;
+}
+
+.shf-text-md {
+    font-size: var(--shf-text-md) !important;
+}
+
+.shf-text-lg {
+    font-size: var(--shf-text-lg) !important;
+}
+
+.shf-text-xl {
+    font-size: var(--shf-text-xl) !important;
+}
+
+.shf-badge-username {
+    color: var(--white) !important;
+    background-color: transparent !important;
+
+}
+
+/* ---- Font Families ---- */
+body {
+    font-family: 'Archivo', sans-serif;
+}
+
+.font-display {
+    font-family: 'Jost', sans-serif;
+}
+
+.font-body {
+    font-family: 'Archivo', sans-serif;
+}
+
+/* ---- Section Headers (Dark gradient + orange numbered circle) ---- */
+.shf-section {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+
+.shf-section+.shf-section {
+    margin-top: 24px;
+}
+
+.shf-section-header {
+    background: linear-gradient(135deg, var(--primary-dark-solid) 0%, var(--primary-dark-light) 100%);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.shf-section-number {
+    width: 24px;
+    height: 24px;
+    background: var(--accent);
+    color: var(--white);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.7rem;
+    flex-shrink: 0;
+}
+
+.shf-section-title {
+    font-family: 'Jost', sans-serif;
+    color: var(--white) !important;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.shf-section-body {
+    padding: 20px;
+}
+
+/* ---- Pill Buttons ---- */
+.btn-accent {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 20px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-warm) 100%);
+    color: var(--white);
+    border: none;
+    border-radius: 30px;
+    font-family: 'Jost', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.2s;
+    text-decoration: none;
+}
+
+.btn-accent:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.btn-accent-sm {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 14px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-warm) 100%);
+    color: var(--white);
+    border: none;
+    border-radius: 30px;
+    font-family: 'Jost', sans-serif;
+    font-weight: 600;
+    font-size: 0.78rem;
+    line-height: 1.5rem;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.2s;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.btn-accent-sm:hover {
+    opacity: 0.9;
+    color: var(--white);
+    text-decoration: none;
+}
+
+.btn-accent-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 16px;
+    background: transparent;
+    color: var(--accent);
+    border: var(--bs-border-width) solid var(--accent);
+    border-radius: 30px;
+    font-family: 'Jost', sans-serif;
+    font-weight: 600;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.btn-accent-outline:hover {
+    background: var(--accent-dim);
+    color: var(--accent);
+}
+
+/* Icon alignment for Bootstrap standard buttons (btn btn-outline-*) */
+.btn svg.shf-btn-icon {
+    vertical-align: -2px;
+    margin-right: 4px;
+}
+
+/* Header back arrow link on dark backgrounds */
+.shf-header-back {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.shf-header-back:hover {
+    color: var(--white);
+}
+
+/* White variant for use on dark backgrounds (navbar, headers) */
+.btn-accent-outline-white {
+    color: var(--white);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.btn-accent-outline-white:hover {
+    color: var(--white);
+    border-color: var(--white);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* ---- Cards ---- */
+.shf-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+}
+
+/* ---- Tags / Chips ---- */
+.shf-tag {
+    display: inline-flex;
+    align-items: center;
+    text-align: center;
+    gap: 5px;
+    padding: 3px 10px;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--accent);
+}
+
+.shf-tag-remove {
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--white);
+    font-size: 0.6rem;
+    cursor: pointer;
+    line-height: 1;
+}
+
+/* ---- Bootstrap Table Overrides ---- */
+.table {
+    font-size: 0.85rem;
+    margin-bottom: 0;
+}
+
+.table>thead>tr>th {
+    font-family: 'Jost', sans-serif;
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-bottom-width: 2px;
+    border-bottom-color: var(--border);
+    padding: 10px 14px;
+    background: transparent;
+}
+
+.table>tbody>tr>td {
+    padding: 10px 14px;
+    vertical-align: middle;
+    border-color: #f0f0f0;
+}
+
+.table-hover>tbody>tr:hover>td {
+    background: var(--accent-dim);
+}
+
+/* ---- Sticky table header ---- */
+/* Add `.shf-sticky-thead` to a `.table-responsive` wrapper to keep thead visible while scrolling the table body. */
+.shf-sticky-thead {
+    max-height: calc(100vh - 280px);
+    overflow-y: auto;
+}
+
+.shf-sticky-thead>table>thead>tr>th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--bg);
+    box-shadow: inset 0 -2px 0 var(--border);
+}
+
+/* ---- Reason manager rows (settings → Quotation Reasons) ---- */
+/* Existing rows: Bootstrap grid row with all controls on one line on lg+ screens. */
+.shf-reason-row {
+    margin-left: 0;
+    margin-right: 0;
+}
+.shf-reason-row>[class^="col"],
+.shf-reason-row>[class*=" col"] {
+    min-width: 0;
+}
+/* Add-new row: elevated, dashed separator above it to distinguish from existing rows. */
+.shf-reason-add-row {
+    padding: 12px;
+    margin-top: 8px;
+    background: #fefefe;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+}
+/* Make w-100 work on flex buttons (btn-accent-sm is inline-flex by default). */
+.shf-reason-row .btn-accent-sm.w-100,
+.shf-reason-add-row .btn-accent-sm.w-100 {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+/* Utility: auto width on md+ (used to flip remove button back to auto on desktop). */
+@media (min-width: 768px) {
+    .w-md-auto { width: auto !important; }
+}
+
+/* ---- Disbursement cheque rows ---- */
+/* On mobile (< lg / 992px) each cheque is a visually grouped card so the 5 stacked
+   fields (Name / Cheque No / Date / Amount / Remove) read as one logical unit. */
+@media (max-width: 991.98px) {
+    .shf-cheque-row {
+        padding: 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg);
+        margin-left: 0;
+        margin-right: 0;
+    }
+    .shf-cheque-row>[class^="col"],
+    .shf-cheque-row>[class*=" col"] {
+        min-width: 0;
+    }
+}
+
+/* ---- Stats Card ---- */
+.shf-stat-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.shf-stat-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--accent-dim);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.shf-stat-value {
+    font-family: 'Jost', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+}
+
+.shf-stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-top: 2px;
+}
+
+/* ---- Form Styles ---- */
+.shf-form-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--primary-dark-light);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.input-group-text {
+    font-family: 'Jost', system-ui, sans-serif;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text);
+}
+
+.input-group>.shf-input {
+    width: 1% !important;
+    flex: 1 1 auto;
+}
+
+.shf-input {
+    padding: 8px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: 'Archivo', sans-serif;
+    font-size: 0.88rem;
+    color: var(--text);
+    background: var(--white);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+    field-sizing: content;
+    width: 100%;
+    box-sizing: border-box;
+    line-height: 1.5rem !important;
+}
+
+select.shf-input,
+select.shf-input-sm {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
+    cursor: pointer;
+    min-width: 6rem;
+    field-sizing: normal;
+}
+
+textarea.shf-input,
+textarea.shf-input-sm {
+    min-height: 4.5rem;
+    resize: vertical;
+}
+
+.shf-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.shf-input-sm {
+    padding: 5px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-family: 'Archivo', sans-serif;
+    font-size: 0.8rem;
+    color: var(--text);
+    background: var(--white);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+    line-height: 1.4rem !important;
+}
+
+.shf-input-sm:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.shf-input.is-invalid,
+.shf-input-sm.is-invalid,
+select.is-invalid,
+.form-select.is-invalid,
+.form-control.is-invalid {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.15) !important;
+}
+
+/* Client-side validation error messages */
+.shf-validation-error {
+    display: block;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    color: #dc3545;
+    font-weight: 500;
+}
+
+/* ---- Badges ---- */
+.shf-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.shf-badge-orange {
+    background: var(--accent-dim);
+    color: var(--accent-light);
+    border: 1px solid var(--accent);
+}
+
+.shf-badge-blue {
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #93c5fd;
+}
+
+.shf-badge-gray {
+    background: #f3f4f6;
+    color: #6b7280;
+    border: 1px solid #d1d5db;
+}
+
+.shf-badge-green {
+    background: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #86efac;
+}
+
+.shf-badge-purple {
+    background: #faf5ff;
+    color: #7c3aed;
+    border: 1px solid #c4b5fd;
+}
+
+/* Stage badges for loan listing */
+.shf-badge-stage-inquiry {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.shf-badge-stage-doc-selection {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #93c5fd;
+}
+
+.shf-badge-stage-doc-collection {
+    background: #eef2ff;
+    color: #4338ca;
+    border: 1px solid #a5b4fc;
+}
+
+.shf-badge-stage-app-number {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+.shf-badge-stage-bsm-osv {
+    background: #fce7f3;
+    color: #9d174d;
+    border: 1px solid #f9a8d4;
+}
+
+.shf-badge-stage-legal {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #7dd3fc;
+}
+
+.shf-badge-stage-valuation {
+    background: #f0fdf4;
+    color: #15803d;
+    border: 1px solid #86efac;
+}
+
+.shf-badge-stage-sanction-decision {
+    background: #fef9c3;
+    color: #854d0e;
+    border: 1px solid #facc15;
+}
+
+.shf-badge-stage-rate-pf {
+    background: #ccfbf1;
+    color: #0f766e;
+    border: 1px solid #5eead4;
+}
+
+.shf-badge-stage-sanction {
+    background: #e2e8f0;
+    color: #334155;
+    border: 1px solid #94a3b8;
+}
+
+.shf-badge-stage-docket {
+    background: #f5f3ff;
+    color: #6d28d9;
+    border: 1px solid #c4b5fd;
+}
+
+.shf-badge-stage-kfs {
+    background: #fff7ed;
+    color: #c2410c;
+    border: 1px solid #fdba74;
+}
+
+.shf-badge-stage-esign {
+    background: #fdf2f8;
+    color: #be185d;
+    border: 1px solid #f9a8d4;
+}
+
+.shf-badge-stage-disbursement {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #86efac;
+}
+
+.shf-badge-stage-otc {
+    background: #fefce8;
+    color: #854d0e;
+    border: 1px solid #fde047;
+}
+
+.doc-sortable-ghost {
+    opacity: 0.4;
+    background: var(--accent-dim) !important;
+    border: 1px dashed var(--accent) !important;
+}
+
+.doc-drag-handle:hover {
+    color: var(--accent) !important;
+}
+
+.shf-badge-red {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+}
+
+/* ---- Pagination ---- */
+.shf-pagination nav>div:first-child {
+    display: none;
+}
+
+.shf-pagination span[aria-current="page"] span {
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+    border-radius: 8px !important;
+    color: var(--white) !important;
+}
+
+.shf-pagination a {
+    border-radius: 8px !important;
+}
+
+.shf-pagination a:hover {
+    background: var(--accent-dim) !important;
+    color: var(--accent) !important;
+}
+
+/* ---- Per-Page Selector (inline with filters) ---- */
+.shf-per-page {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-dim);
+    border: 1.5px solid var(--accent);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    line-height: 1.5rem;
+    box-sizing: border-box;
+}
+
+.shf-per-page select {
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 0.78rem;
+    color: var(--accent);
+    font-weight: 600;
+    background: var(--white);
+    outline: none;
+    cursor: pointer;
+}
+
+.shf-per-page select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.shf-per-page .shf-per-page-total {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+}
+
+/* ---- Toast/Flash Messages ---- */
+.shf-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--primary-dark-solid);
+    color: var(--white);
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: toastIn 0.3s ease;
+}
+
+.shf-toast.success {
+    border-left: 4px solid var(--green);
+}
+
+.shf-toast.error {
+    border-left: 4px solid var(--red);
+}
+
+.shf-toast.warning {
+    border-left: 4px solid #f59e0b;
+}
+
+@keyframes toastIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes toastOut {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+}
+
+/* ---- Toast Wrapper (fixed bottom-right container) ---- */
+.shf-toast-wrapper {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 999;
+}
+
+/* ---- Nav Link Styles ---- */
+.shf-nav-link {
+    color: rgba(255, 255, 255, 0.6);
+    font-family: 'Jost', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-decoration: none;
+    padding: 0.5rem 0;
+    border-bottom: 3px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    display: inline-flex;
+    align-items: center;
+}
+
+.shf-nav-link:hover {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.shf-nav-active {
+    color: #fff;
+    font-family: 'Jost', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-decoration: none;
+    padding: 0.5rem 0;
+    border-bottom: 3px solid #f15a29;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* ---- Tabs ---- */
+.shf-tabs {
+    display: flex;
+    background: var(--primary-dark-solid);
+    border-radius: var(--radius) var(--radius) 0 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 2px;
+}
+
+.shf-tab {
+    padding: 10px 16px;
+    color: rgba(255, 255, 255, 0.6);
+    font-family: 'Jost', sans-serif;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    text-decoration: none;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+}
+
+.shf-tab:hover {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.shf-tab.active {
+    color: var(--white);
+    border-bottom-color: var(--accent);
+}
+
+/* ---- Checkbox Accent ---- */
+.shf-checkbox {
+    accent-color: var(--accent);
+}
+
+/* ---- Tenure / Selection Chips ---- */
+.shf-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    user-select: none;
+    color: var(--text-muted);
+    background: none;
+}
+
+.shf-chip input {
+    display: none;
+}
+
+.shf-chip:has(input:checked),
+.shf-chip.active {
+    background: var(--accent);
+    color: var(--white);
+    border-color: var(--accent);
+}
+
+/* ---- Document Grid ---- */
+.shf-doc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.shf-doc-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+}
+
+.shf-doc-item.checked {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+}
+
+/* ---- Page Header ---- */
+.shf-page-header {
+    background: linear-gradient(135deg, var(--primary-dark-solid) 0%, var(--primary-dark-light) 100%);
+    padding: 14px 20px;
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: var(--shadow);
+}
+
+.shf-page-header h1,
+.shf-page-header h2 {
+    font-family: 'Jost', sans-serif;
+    color: var(--white);
+    font-weight: 600;
+}
+
+/* ============================================================
+   RESPONSIVE STYLES
+   ============================================================ */
+
+/* ---- Tablets (max-width: 768px) ---- */
+@media (max-width: 768px) {
+    .shf-doc-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .shf-section-body {
+        padding: 14px;
+    }
+
+    .shf-section-header {
+        padding: 10px 14px;
+        gap: 8px;
+    }
+
+    .shf-tabs {
+        gap: 0;
+    }
+
+    .shf-tab {
+        padding: 8px 12px;
+        font-size: 0.72rem;
+    }
+
+    .shf-page-header {
+        padding: 10px 14px;
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+
+    .shf-stat-card {
+        padding: 12px 14px;
+        gap: 10px;
+    }
+
+    .shf-stat-value {
+        font-size: 1.3rem;
+    }
+
+    .shf-stat-label {
+        font-size: 0.7rem;
+    }
+
+    .table>thead>tr>th {
+        padding: 8px 10px;
+        font-size: 0.72rem;
+    }
+
+    .table>tbody>tr>td {
+        padding: 8px 10px;
+        font-size: 0.78rem;
+    }
+
+    .shf-toast {
+        bottom: 12px;
+        right: 12px;
+        left: 12px;
+        font-size: 0.78rem;
+        padding: 10px 14px;
+    }
+
+    .shf-form-label {
+        font-size: 0.65rem;
+    }
+
+    .shf-input {
+        padding: 7px 10px;
+        font-size: 0.82rem;
+    }
+
+    .btn-accent {
+        padding: 7px 16px;
+        font-size: 0.78rem;
+    }
+
+    .btn-accent-outline {
+        padding: 5px 12px;
+        font-size: 0.75rem;
+    }
+
+    .shf-section-title {
+        font-size: 0.85rem;
+    }
+
+    /* Form action buttons: compact on mobile, no full-width stretch */
+    .shf-form-actions {
+        flex-wrap: wrap;
+        justify-content: center !important;
+        gap: 8px !important;
+    }
+
+    .shf-form-actions .btn-accent,
+    .shf-form-actions .btn-accent-outline {
+        flex: 0 0 auto;
+        white-space: nowrap;
+        font-size: 0.75rem;
+        padding: 7px 14px;
+    }
+
+    /* Prevent inline style overrides from making buttons too wide */
+    .shf-form-actions .btn-accent[style*="padding"] {
+        padding: 7px 14px !important;
+    }
+}
+
+/* ---- Mobile table: card layout ---- */
+@media (max-width: 768px) {
+    .shf-table-mobile thead {
+        display: none;
+    }
+
+    .shf-table-mobile tbody tr {
+        display: block;
+        background: var(--white);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-bottom: 10px;
+        padding: 12px 14px;
+        box-shadow: var(--shadow);
+    }
+
+    .shf-table-mobile tbody tr:hover {
+        background: var(--white);
+    }
+
+    .shf-table-mobile tbody td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 0;
+        border-bottom: 1px solid #f5f5f5;
+        font-size: 0.82rem;
+    }
+
+    .shf-table-mobile tbody td:last-child {
+        border-bottom: none;
+        padding-top: 8px;
+    }
+
+    .shf-table-mobile tbody td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        flex-shrink: 0;
+        margin-right: 12px;
+    }
+
+    .shf-table-mobile tbody td.td-actions::before {
+        content: none;
+    }
+
+    .shf-table-mobile tbody td.td-actions {
+        justify-content: flex-end;
+    }
+}
+
+/* ---- Small phones (max-width: 480px) ---- */
+@media (max-width: 480px) {
+    .shf-section-title {
+        font-size: 0.8rem;
+    }
+
+    .shf-stat-card {
+        padding: 10px 12px;
+    }
+
+    .shf-stat-icon {
+        width: 32px;
+        height: 32px;
+    }
+
+    .shf-stat-value {
+        font-size: 1.1rem;
+    }
+
+    .shf-section-number {
+        width: 20px;
+        height: 20px;
+        font-size: 0.6rem;
+    }
+
+    .shf-tab {
+        padding: 7px 7px;
+        font-size: 0.68rem;
+    }
+
+    .shf-badge {
+        font-size: 0.62rem;
+        padding: 1px 6px;
+    }
+
+    .shf-tag {
+        padding: 2px 7px;
+        font-size: 0.68rem;
+    }
+
+    .shf-chip {
+        padding: 4px 9px;
+        font-size: 0.72rem;
+    }
+
+    .btn-accent {
+        padding: 6px 14px;
+        font-size: 0.75rem;
+    }
+
+    .shf-section-body {
+        padding: 12px;
+    }
+
+    .shf-section-header {
+        padding: 8px 12px;
+    }
+}
+
+/* ============================================================
+   DATATABLES OVERRIDES — SHF Theme
+   ============================================================ */
+
+/* Hide built-in search box (we use custom filters) */
+.dataTables_filter {
+    display: none !important;
+}
+
+/* Top bar (length selector) */
+.shf-dt-top {
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+}
+
+.shf-dt-top label {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}
+
+.shf-dt-top select {
+    padding: 4px 8px;
+    border: 1.5px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.78rem;
+    color: var(--text);
+    background: var(--white);
+    outline: none;
+}
+
+.shf-dt-top select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+/* Bottom bar (info + pagination) */
+.shf-dt-bottom {
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid #f0f0f0;
+    flex-wrap: wrap;
+    gap: 10px;
+    float: right !important;
+}
+
+/* Info text */
+.shf-dt-bottom .dataTables_info {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+/* Pagination */
+.shf-dt-bottom .dataTables_paginate {
+    margin: 0;
+}
+
+.shf-dt-bottom .dataTables_paginate .page-item .page-link {
+    font-size: 0.78rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    color: var(--text);
+    border: 1px solid var(--border);
+    margin: 0 2px;
+}
+
+.shf-dt-bottom .dataTables_paginate .page-item.active .page-link {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--white);
+}
+
+.shf-dt-bottom .dataTables_paginate .page-item .page-link:hover {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.shf-dt-bottom .dataTables_paginate .page-item.disabled .page-link {
+    color: var(--border);
+    background: transparent;
+}
+
+/* Processing indicator */
+.dataTables_processing {
+    background: var(--white) !important;
+    border: none !important;
+}
+
+/* Non-sortable column header */
+.table thead th.no-sort {
+    cursor: default;
+}
+
+/* Sort icons color */
+.table thead th.dt-orderable-asc span.dt-column-order,
+.table thead th.dt-orderable-desc span.dt-column-order {
+    color: var(--border);
+}
+
+.table thead th.dt-ordering-asc span.dt-column-order,
+.table thead th.dt-ordering-desc span.dt-column-order {
+    color: var(--accent);
+}
+
+/* DataTables responsive: hide dt-top on mobile */
+@media (max-width: 768px) {
+    .shf-dt-top {
+        display: none;
+    }
+
+    .shf-dt-bottom {
+        padding: 10px 14px;
+    }
+
+    .shf-dt-bottom .dataTables_info {
+        font-size: 0.72rem;
+    }
+
+    .shf-dt-bottom .dataTables_paginate .page-item .page-link {
+        font-size: 0.72rem;
+        padding: 3px 8px;
+    }
+}
+
+/* ============================================================
+   BOOTSTRAP DATEPICKER OVERRIDES — SHF Theme
+   ============================================================ */
+.datepicker {
+    font-family: 'Archivo', sans-serif;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    z-index: 1055 !important;
+}
+
+.datepicker.datepicker-dropdown {
+    z-index: 1055 !important;
+}
+
+.datepicker table tr td.active,
+.datepicker table tr td.active:hover,
+.datepicker table tr td.active.disabled,
+.datepicker table tr td span.active,
+.datepicker table tr td span.active:hover {
+    background: var(--accent) !important;
+    background-image: none !important;
+    border-color: var(--accent) !important;
+    color: var(--white) !important;
+}
+
+.datepicker table tr td.today,
+.datepicker table tr td.today:hover {
+    background: var(--accent-dim) !important;
+    color: var(--accent) !important;
+    border-color: var(--accent) !important;
+}
+
+.datepicker table tr td.day:hover,
+.datepicker table tr td span:hover {
+    background: var(--accent-dim);
+}
+
+.datepicker .datepicker-switch:hover,
+.datepicker .prev:hover,
+.datepicker .next:hover {
+    background: var(--accent-dim) !important;
+    accent-color: var(--accent) !important;
+}
+
+/* Disabled check mark color */
+input[type="checkbox"]:disabled:checked+label::after {
+    color: var(--accent) !important;
+    /* Grey checkmark */
+}
+
+/* Disabled box */
+input[type="checkbox"]:disabled+label::before {
+    background: var(--accent-dim) !important;
+    border-color: var(--accent) !important;
+}
+
+input[type="checkbox"]:disabled+label {
+    accent-color: var(--accent) !important;
+    cursor: not-allowed;
+}
+
+/* SHF Themed Checkbox */
+.shf-checkbox {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.shf-checkbox:checked {
+    background-color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* SHF Toggle Switch */
+.shf-toggle {
+    position: relative;
+    width: 36px;
+    height: 20px;
+    appearance: none;
+    -webkit-appearance: none;
+    background: #d1d5db;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border: none;
+    outline: none;
+}
+
+.shf-toggle:checked {
+    background: var(--accent);
+}
+
+.shf-toggle::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    background: white;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.shf-toggle:checked::before {
+    transform: translateX(16px);
+}
+
+/* Pagination — compact Bootstrap 5 style */
+.pagination {
+    margin-bottom: 0;
+    gap: 2px;
+}
+
+.pagination .page-link {
+    font-size: 0.8rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    color: var(--text);
+    border-color: var(--border);
+}
+
+.pagination .page-item.active .page-link {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+}
+
+.pagination .page-link:hover {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+.pagination .page-item.disabled .page-link {
+    color: #9ca3af;
+}
+
+/* ============================================================
+   LOAN TASK SYSTEM — Stage & Workflow Styles
+   ============================================================ */
+
+/* Stage status indicators (border-left on cards) */
+.shf-stage-pending {
+    border-left: 4px solid var(--bs-secondary) !important;
+}
+
+.shf-stage-in-progress {
+    border-left: 4px solid var(--bs-primary) !important;
+}
+
+.shf-stage-completed {
+    border-left: 4px solid var(--bs-success) !important;
+}
+
+.shf-stage-rejected {
+    border-left: 4px solid var(--bs-danger) !important;
+}
+
+.shf-stage-skipped {
+    border-left: 4px solid var(--bs-warning) !important;
+}
+
+/* Document collection items */
+.shf-doc-item {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    transition: background 0.15s;
+    cursor: pointer;
+    user-select: none;
+}
+
+.shf-doc-item:hover {
+    background: #f8f9fa;
+}
+
+.shf-doc-item:active {
+    background: #f0f0f0;
+}
+
+.shf-doc-item:last-child {
+    border-bottom: none;
+}
+
+.shf-doc-received {
+    background: #f0fdf4;
+    border-left: 3px solid var(--bs-success);
+}
+
+.shf-doc-received:hover {
+    background: #e6f9ec;
+}
+
+.shf-doc-pending {
+    border-left: 3px solid var(--bs-secondary);
+}
+
+.shf-doc-highlight {
+    animation: shf-doc-pulse 1.5s ease-out;
+}
+
+@keyframes shf-doc-pulse {
+    0% {
+        background: rgba(241, 90, 41, 0.2);
+    }
+
+    100% {
+        background: transparent;
+    }
+}
+
+.shf-doc-rejected {
+    background: #fef2f2;
+    border-left: 3px solid var(--bs-danger);
+}
+
+.shf-doc-rejected:hover {
+    background: #fde8e8;
+}
+
+.shf-doc-item .shf-doc-actions {
+    opacity: 0.5;
+    transition: opacity 0.15s;
+}
+
+.shf-doc-item:hover .shf-doc-actions {
+    opacity: 1;
+}
+
+@media (max-width: 575.98px) {
+    .shf-doc-item {
+        flex-wrap: wrap;
+        padding: 0.625rem 0.75rem;
+    }
+
+    .shf-doc-item .flex-grow-1 {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .shf-doc-item .shf-doc-actions {
+        width: 100%;
+        opacity: 1;
+        margin-top: 0.375rem;
+        padding-top: 0.375rem;
+        border-top: 1px dashed var(--bs-border-color);
+        justify-content: flex-end;
+    }
+}
+
+/* Remarks */
+.shf-remark-item {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.shf-remark-item:last-child {
+    border-bottom: none;
+}
+
+/* Notification badge on nav bell */
+.shf-notification-badge {
+    font-size: 0.6rem;
+    padding: 2px 5px;
+}
+
+/* Parallel stage grid (2x2 on desktop, 1 col mobile) */
+.shf-parallel-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .shf-parallel-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Stage Master & Phase Indicators ── */
+
+/* Role colors */
+.shf-role-loan-advisor {
+    color: #2563eb;
+}
+
+.shf-role-bank-employee {
+    color: #d97706;
+}
+
+.shf-role-branch-manager {
+    color: #059669;
+}
+
+.shf-role-office-employee {
+    color: #7c3aed;
+}
+
+.shf-role-task-owner {
+    color: #4b5563;
+}
+
+.shf-role-bg-loan-advisor {
+    background: #2563eb;
+}
+
+.shf-role-bg-bank-employee {
+    background: #d97706;
+}
+
+.shf-role-bg-branch-manager {
+    background: #059669;
+}
+
+.shf-role-bg-office-employee {
+    background: #7c3aed;
+}
+
+.shf-role-bg-task-owner {
+    background: #4b5563;
+}
+
+/* Stage master card layout */
+.shf-stage-card {
+    border: 2px solid #94a3b8;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    background: #fff;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.shf-stage-card:hover {
+    border-color: #64748b;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+
+.shf-stage-card--child {
+    margin-left: 28px;
+    border-left: 3px solid var(--accent);
+}
+
+.shf-stage-card .shf-stage-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 16px;
+    background: #f8fafc;
+    border-bottom: 2px solid #64748b;
+}
+
+.shf-stage-card .shf-stage-header-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex: 1;
+    min-width: 0;
+}
+
+.shf-stage-card .shf-stage-body {
+    padding: 12px 16px;
+}
+
+.shf-stage-card .shf-stage-roles {
+    border-top: 2px solid #94a3b8;
+    padding: 10px 16px;
+}
+
+/* Make Bootstrap .border-bottom more visible */
+#productStagesForm .border-bottom {
+    border-bottom-color: #94a3b8 !important;
+}
+
+@media (max-width: 767.98px) {
+    .shf-stage-card--child {
+        margin-left: 14px;
+    }
+
+    .shf-stage-card .shf-stage-header,
+    .shf-stage-card .shf-stage-body {
+        padding: 10px 12px;
+    }
+}
+
+/* Stage master responsive layout */
+
+@media (max-width: 767.98px) {
+    .shf-master-stage .shf-stage-roles {
+        min-width: 0 !important;
+    }
+
+    .shf-master-substage {
+        padding-left: 1rem !important;
+    }
+
+    .shf-master-substage .shf-substage-roles {
+        min-width: 0 !important;
+    }
+
+    /* Product stage config — location rows */
+    .shf-loc-row {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .shf-loc-row>div[style*="min-width"] {
+        min-width: 0 !important;
+        margin-bottom: 4px;
+    }
+
+    /* Product stage config — sub-action blocks */
+    .shf-master-substage .shf-loc-row,
+    .shf-stage-block .shf-loc-row {
+        flex-direction: column !important;
+    }
+
+    .shf-stage-notes {
+        margin-left: 0;
+    }
+
+    .shf-stage-notes .shf-note-line,
+    .shf-stage-notes .shf-transfer-line {
+        padding-left: 0;
+    }
+}
+
+/* Collapsible add form */
+.shf-add-form-wrapper {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.shf-add-form-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: #f8fafc;
+    border: none;
+    width: 100%;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: var(--shf-text-sm);
+    color: var(--text);
+}
+
+.shf-add-form-toggle:hover {
+    background: #f1f5f9;
+}
+
+.shf-add-form-toggle .shf-chevron {
+    transition: transform 0.2s;
+}
+
+.shf-add-form-toggle[aria-expanded="true"] .shf-chevron {
+    transform: rotate(180deg);
+}
+
+.shf-add-form-body {
+    padding: 16px;
+    border-top: 1px solid var(--border);
+}
+
+/* Stage notes block */
+.shf-stage-notes {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: #f8fafc;
+    border-left: 3px solid #e2e8f0;
+    border-radius: 0 6px 6px 0;
+    font-size: 0.8rem;
+    line-height: 1.7;
+}
+
+.shf-stage-notes .shf-phase-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 2px 0;
+}
+
+.shf-phase-num {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.shf-stage-notes .shf-phase-num {
+    margin-top: 1px;
+}
+
+.shf-stage-notes .shf-role-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+    vertical-align: middle;
+}
+
+.shf-stage-notes .shf-note-line {
+    color: #64748b;
+    padding-left: 28px;
+}
+
+.shf-stage-notes .shf-transfer-line {
+    color: #1e293b;
+    padding-left: 28px;
+    border-top: 1px dashed #94a3b8;
+    margin-top: 6px;
+    padding-top: 6px;
+    font-weight: 600;
+}
+
+/* Stage role labels in stage master */
+.shf-role-section-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 4px;
+}
+
+.shf-role-checkbox-label {
+    font-size: 0.8rem;
+    cursor: pointer;
+    color: #1e293b;
+}
+
+.shf-role-checkbox-label .shf-checkbox {
+    width: 15px;
+    height: 15px;
+}
+
+.shf-substage-role-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 3px;
+}
+
+.shf-substage-checkbox-label {
+    font-size: 0.75rem;
+    cursor: pointer;
+    color: #1e293b;
+}
+
+.shf-substage-checkbox-label .shf-checkbox {
+    width: 14px;
+    height: 14px;
+}
+
+/* Phase progress pills (loan stages view) */
+.shf-phase-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+    border: 1.5px solid;
+    transition: all 0.15s;
+}
+
+.shf-phase-pill--done {
+    background: #f1f5f9;
+    color: #475569;
+    border-color: #cbd5e1;
+}
+
+.shf-phase-pill--active {
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.shf-phase-pill--pending {
+    background: #fafafa;
+    color: #a1a1aa;
+    border-color: #e4e4e7;
+}
+
+.shf-phase-pill .shf-pill-role {
+    opacity: 0.85;
+    font-weight: 400;
+}
+
+.shf-phase-chevron {
+    width: 14px;
+    height: 14px;
+    color: #cbd5e1;
+    flex-shrink: 0;
+}
+
+.shf-transfer-hint {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 4px;
+}
+
+/* ============================================================
+   UTILITY CLASSES — Extracted from inline styles
+   ============================================================ */
+
+/* ── SVG Icon Sizing ── */
+.shf-icon-xs {
+    width: 10px;
+    height: 10px;
+}
+
+.shf-icon-2xs {
+    width: 12px;
+    height: 12px;
+}
+
+.shf-icon-sm {
+    width: 14px;
+    height: 14px;
+}
+
+.shf-icon-md {
+    width: 16px;
+    height: 16px;
+}
+
+.shf-icon-lg {
+    width: 20px;
+    height: 20px;
+}
+
+.shf-icon-xl {
+    width: 32px;
+    height: 32px;
+}
+
+.shf-icon-inline {
+    display: inline;
+    vertical-align: middle;
+}
+
+/* Header title icon (white, inline, with right margin) */
+.shf-header-icon {
+    width: 16px;
+    height: 16px;
+    display: inline;
+    margin-right: 6px;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* ── Page Title ── */
+.shf-page-title {
+    font-size: 1.25rem;
+    margin: 0;
+}
+
+/* ── Text Color Utilities ── */
+.shf-text-accent {
+    color: #f15a29;
+}
+
+.shf-text-white-muted {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.shf-text-nowrap {
+    white-space: nowrap;
+}
+
+.text-prewrap {
+    white-space: pre-line;
+}
+
+.text-inherit {
+    color: inherit;
+}
+
+/* ── Button Gradient Variants ── */
+.shf-btn-success {
+    background: linear-gradient(135deg, #16a34a, #22c55e);
+    color: #fff;
+}
+
+.shf-btn-warning {
+    background: linear-gradient(135deg, #d97706, #f59e0b);
+    color: #fff;
+}
+
+.shf-btn-danger {
+    background: linear-gradient(135deg, #dc2626, #ef4444);
+    color: #fff;
+}
+
+.shf-btn-gray {
+    background: linear-gradient(135deg, #6b7280, #9ca3af);
+    color: #fff;
+}
+
+/* Minimal/unstyled button (for inline actions like delete file) */
+.shf-btn-minimal {
+    border: none;
+    background: none;
+    padding: 0;
+}
+
+/* ── Container Widths ── */
+.shf-max-w-md {
+    max-width: 42rem;
+}
+
+.shf-max-w-lg {
+    max-width: 48rem;
+}
+
+.shf-max-w-xl {
+    max-width: 56rem;
+}
+
+/* ── Progress Bars ── */
+.shf-progress-sm {
+    height: 6px;
+}
+
+.shf-progress-md {
+    height: 8px;
+}
+
+/* ── Stage Progress Pipeline ── */
+.shf-pipeline {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 20px 24px 32px;
+    background: var(--white);
+    border: 3px solid var(--bg-alt);
+    border-radius: var(--radius);
+    overflow: visible;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* SVG progress border — draws over the existing gray border */
+.shf-pipeline-border {
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    z-index: 3;
+    pointer-events: none;
+    overflow: visible;
+}
+
+.shf-pipeline-border-path {
+    fill: none;
+    stroke: var(--green);
+    stroke-width: 3;
+    stroke-linecap: round;
+}
+
+/* Each step: dot + label stacked vertically */
+.shf-pipeline-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    min-width: 0;
+    position: relative;
+    z-index: 2;
+}
+
+/* Connector line between dots — dashed base */
+.shf-connector {
+    flex: 1;
+    min-width: 12px;
+    height: 0;
+    border-top: 2.5px dashed var(--border);
+    position: relative;
+}
+
+/* Filled connectors: solid accent overlays the dashed line via ::after */
+.shf-connector--filled::after,
+.shf-connector--arriving::after {
+    content: '';
+    position: absolute;
+    top: -2.5px;
+    left: 0;
+    width: 100%;
+    height: 0;
+    border-top: 2.5px solid var(--accent);
+}
+
+/* Step 1: connector appears (dashed fades in) */
+.shf-anim-conn-appear {
+    opacity: 0;
+    animation: shf-conn-appear 0.2s ease-out both;
+    animation-delay: var(--appear-delay, 0ms);
+}
+
+@keyframes shf-conn-appear {
+    0% {
+        opacity: 0;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Step 2: solid line fills over dashed (only for filled/arriving) */
+.shf-connector--filled.shf-anim-conn-appear::after,
+.shf-connector--arriving.shf-anim-conn-appear::after {
+    animation: shf-conn-fill-line 0.25s ease-out both;
+    animation-delay: var(--fill-delay, 0ms);
+}
+
+@keyframes shf-conn-fill-line {
+    0% {
+        width: 0;
+    }
+
+    100% {
+        width: 100%;
+    }
+}
+
+.shf-stage-dot {
+    width: 34px;
+    height: 34px;
+    flex-shrink: 0;
+    z-index: 2;
+    transition: all 0.2s ease;
+    cursor: default;
+}
+
+.shf-stage-dot svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.shf-stage-dot--completed {
+    background: var(--green) !important;
+    color: #fff !important;
+    border: 2px solid var(--green) !important;
+    box-shadow: 0 2px 4px rgba(39, 174, 96, 0.25);
+}
+
+.shf-stage-dot--completed svg {
+    stroke: #fff;
+}
+
+.shf-stage-dot--current {
+    background: var(--accent) !important;
+    color: #fff !important;
+    border: 2px solid var(--accent) !important;
+    width: 40px;
+    height: 40px;
+    box-shadow: 0 0 0 4px var(--accent-dim), 0 3px 8px rgba(241, 90, 41, 0.3);
+    animation: shf-current-pulse 2.5s ease-in-out infinite;
+}
+
+.shf-stage-dot--current svg {
+    stroke: #fff;
+    width: 18px;
+    height: 18px;
+}
+
+.shf-stage-dot--in-progress {
+    background: var(--accent-warm) !important;
+    color: #fff !important;
+    border: 2px solid var(--accent-warm) !important;
+    box-shadow: 0 2px 4px rgba(244, 121, 41, 0.2);
+}
+
+.shf-stage-dot--in-progress svg {
+    stroke: #fff;
+}
+
+.shf-stage-dot--pending {
+    background: var(--white) !important;
+    color: var(--text-muted) !important;
+    border: 2px solid var(--border) !important;
+}
+
+.shf-stage-dot--pending svg {
+    stroke: var(--text-muted);
+}
+
+.shf-stage-dot--skipped {
+    background: var(--border) !important;
+    color: #fff !important;
+    border: 2px solid var(--border) !important;
+}
+
+.shf-stage-dot--skipped svg {
+    stroke: #fff;
+}
+
+.shf-stage-dot--rejected {
+    background: var(--red) !important;
+    color: #fff !important;
+    border: 2px solid var(--red) !important;
+    box-shadow: 0 2px 4px rgba(192, 57, 43, 0.25);
+}
+
+.shf-stage-dot--rejected svg {
+    stroke: #fff;
+}
+
+@keyframes shf-current-pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 4px rgba(241, 90, 41, 0.10), 0 3px 8px rgba(241, 90, 41, 0.2);
+    }
+
+    50% {
+        box-shadow: 0 0 0 7px rgba(241, 90, 41, 0.22), 0 3px 8px rgba(241, 90, 41, 0.3);
+    }
+}
+
+.shf-stage-label {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 6px;
+    font-size: var(--shf-text-2xs);
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.15;
+    max-width: 80px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+    font-family: 'Jost', sans-serif;
+}
+
+.shf-stage-label--current {
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.shf-stage-label--completed {
+    color: var(--text);
+    font-weight: 600;
+}
+
+/* (progress bar removed — pipeline ::after border fill replaces it) */
+
+.shf-stage-highlight {
+    animation: shf-highlight-pulse 0.6s ease-in-out 2;
+}
+
+@keyframes shf-highlight-pulse {
+
+    0%,
+    100% {
+        box-shadow: none;
+    }
+
+    50% {
+        box-shadow: 0 0 0 4px rgba(241, 90, 41, 0.35);
+    }
+}
+
+/* ── Pipeline sequential fill animation ── */
+
+/* Dots: start as pending (gray), then pop into their final color */
+.shf-anim-dot {
+    animation: shf-dot-pop 0.3s ease-out both;
+    animation-delay: var(--anim-delay, 0ms);
+}
+
+@keyframes shf-dot-pop {
+    0% {
+        transform: scale(0.7);
+        opacity: 0.4;
+        background: var(--bg-alt) !important;
+        border-color: var(--border) !important;
+        box-shadow: none !important;
+    }
+
+    60% {
+        transform: scale(1.15);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Disable animations if user prefers reduced motion */
+@media (prefers-reduced-motion: reduce) {
+
+    .shf-anim-dot,
+    .shf-anim-conn-appear,
+    .shf-anim-conn-appear::after {
+        animation: none !important;
+        opacity: 1 !important;
+    }
+}
+
+/* Tablet */
+@media (max-width: 991.98px) and (min-width: 768px) {
+    .shf-pipeline {
+        padding: 16px 12px 28px;
+    }
+
+    .shf-stage-dot {
+        width: 30px;
+        height: 30px;
+    }
+
+    .shf-stage-dot svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .shf-stage-dot--current {
+        width: 34px;
+        height: 34px;
+    }
+
+    .shf-stage-dot--current svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .shf-connector {
+        min-width: 8px;
+    }
+
+    .shf-stage-label {
+        font-size: 0.55rem;
+        max-width: 56px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 767.98px) {
+    .shf-pipeline {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 4px 0;
+        padding: 14px 8px 10px;
+        overflow-x: visible;
+    }
+
+    .shf-stage-dot {
+        width: 28px;
+        height: 28px;
+    }
+
+    .shf-stage-dot svg {
+        width: 13px;
+        height: 13px;
+    }
+
+    .shf-stage-dot--current {
+        width: 32px;
+        height: 32px;
+    }
+
+    .shf-stage-dot--current svg {
+        width: 15px;
+        height: 15px;
+    }
+
+    .shf-connector {
+        min-width: 6px;
+        max-width: 16px;
+    }
+
+    .shf-stage-label {
+        display: none;
+    }
+}
+
+/* ── Collapsible Arrow ── */
+.shf-collapse-arrow {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.2s;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+/* ── Collapse Hidden ── */
+.shf-collapse-hidden {
+    display: none;
+}
+
+/* ── Filter Collapse ── */
+.shf-filter-count {
+    font-size: 0.65rem;
+    padding: 2px 7px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    line-height: 1;
+}
+
+/* Collapse filter bodies on mobile by default */
+@media (max-width: 767.98px) {
+    .shf-filter-body-collapse {
+        display: none;
+    }
+}
+
+/* Arrow points right (collapsed) until JS adds shf-filter-open */
+.shf-collapse-arrow {
+    transform: rotate(0deg);
+    transition: transform 0.2s;
+}
+
+.shf-filter-open .shf-collapse-arrow {
+    transform: rotate(90deg);
+}
+
+/* ── DataTable: hide table on mobile, keep pagination visible ── */
+@media (max-width: 767.98px) {
+    .shf-dt-section table.dataTable {
+        display: none !important;
+    }
+
+    .shf-dt-section .table-responsive {
+        overflow: visible;
+    }
+}
+
+/* ── Stat Cards (colored variants for loan index) ── */
+.shf-stat-border-blue {
+    border-left-color: #2563eb !important;
+}
+
+.shf-stat-border-green {
+    border-left-color: #16a34a !important;
+}
+
+.shf-stat-border-accent {
+    border-left-color: #f15a29 !important;
+}
+
+.shf-stat-border-warning {
+    border-left-color: #d97706 !important;
+}
+
+.shf-stat-icon-blue {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.shf-stat-icon-green {
+    background: #f0fdf4;
+    color: #16a34a;
+}
+
+.shf-stat-icon-accent {
+    background: #fff7ed;
+    color: #f15a29;
+}
+
+.shf-stat-icon-warning {
+    background: #fffbeb;
+    color: #d97706;
+}
+
+/* ── Card Borders ── */
+.shf-border-accent {
+    border-left: 4px solid #f15a29 !important;
+}
+
+/* ── Form Helpers ── */
+.shf-input-readonly {
+    background: #f8f9fa;
+}
+
+.shf-input-override {
+    border-color: var(--accent) !important;
+    background: var(--accent-dim) !important;
+}
+
+.shf-select-compact {
+    width: auto;
+    padding: 2px 6px;
+}
+
+/* ── Sticky form actions bar on mobile/tablet ── */
+@media (max-width: 1199.98px) {
+    .shf-form-actions {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 1050;
+        background: var(--white);
+        border-top: 1px solid var(--border);
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
+        padding: 10px 16px;
+        padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+        margin: 0 !important;
+        justify-content: center !important;
+    }
+
+    .shf-form-actions~*,
+    form:has(.shf-form-actions) {
+        padding-bottom: 70px;
+    }
+}
+
+/* ── Inline Upload Label ── */
+.shf-upload-label {
+    cursor: pointer;
+    margin: 0;
+}
+
+/* ── Timeline ── */
+.shf-timeline-line {
+    position: absolute;
+    left: 20px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--bs-border-color);
+}
+
+/* ── Font Mono ── */
+.shf-font-mono {
+    font-family: monospace;
+}
+
+/* ── Empty State ── */
+.shf-empty-state-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── Settings Tab Pane (initially hidden) ── */
+.shf-tab-pane-hidden {
+    display: none;
+}
+
+/* ── Clickable Section (hover shadow) ── */
+.shf-clickable {
+    cursor: pointer;
+    transition: box-shadow 0.15s;
+}
+
+.shf-clickable:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Guest Layout ── */
+.shf-guest-card {
+    max-width: 28rem;
+    border-top: 4px solid var(--accent);
+}
+
+/* ── Navbar Styling ── */
+.shf-navbar-bg {
+    background: rgba(58, 53, 54, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ── Additional Text Colors ── */
+.shf-text-gray {
+    color: #6b7280;
+}
+
+.shf-text-gray-light {
+    color: #9ca3af;
+}
+
+.shf-text-dark-alt {
+    color: #111827;
+}
+
+.shf-text-error {
+    color: #c0392b;
+}
+
+.shf-text-success-alt {
+    color: #27ae60;
+}
+
+.shf-text-white-70 {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* ── Password Toggle (eye button) ── */
+.shf-password-toggle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    padding-right: 12px;
+    background: none;
+    border: none;
+    color: #9ca3af;
+    cursor: pointer;
+}
+
+/* ── Section no top radius (connected to tabs) ── */
+.shf-section-no-top-radius {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+/* ── Stat Card Colored Borders ── */
+.shf-stat-card-blue {
+    border-left: 3px solid #2563eb;
+}
+
+.shf-stat-card-accent {
+    border-left: 3px solid #f15a29;
+}
+
+.shf-stat-card-green {
+    border-left: 3px solid #16a34a;
+}
+
+.shf-stat-card-warning {
+    border-left: 3px solid #d97706;
+}
+
+/* ── Empty State Icon Containers ── */
+.shf-empty-icon-blue {
+    width: 64px;
+    height: 64px;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.shf-empty-icon-accent {
+    width: 64px;
+    height: 64px;
+    background: #fff7ed;
+    color: #f15a29;
+}
+
+.shf-empty-icon-green {
+    width: 64px;
+    height: 64px;
+    background: #f0fdf4;
+    color: #16a34a;
+}
+
+/* ── Tab Close/Remove ── */
+.shf-tab-close {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    margin-left: 8px;
+}
+
+/* ── Danger Gradient Button (red alt) ── */
+.shf-btn-danger-alt {
+    background: linear-gradient(135deg, #c0392b, #e74c3c);
+    color: #fff;
+}
+
+/* ── Settings Tab Header ── */
+.shf-settings-tab-header {
+    color: #f15a29;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 8px 16px;
+}
+
+/* ── Max Width variants ── */
+.shf-max-w-sm {
+    max-width: 28rem;
+}
+
+.shf-max-w-36 {
+    max-width: 36rem;
+}
+
+.shf-max-w-20 {
+    max-width: 20rem;
+}
+
+/* ── Eye icon hidden state ── */
+.shf-eye-hidden {
+    width: 20px;
+    height: 20px;
+    display: none;
+}
+
+/* ── Separator lines ── */
+.shf-border-top-light {
+    border-top: 1px solid #f0f0f0;
+}
+
+#usersMobileCards .shf-border-top-light>div {
+    justify-content: flex-start !important;
+}
+
+.bg-accent-dim {
+    background: var(--accent-dim);
+}
+
+/* ── Impersonation Banner ── */
+.shf-impersonation-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1060;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: #fff;
+    padding: 10px 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.15);
+}
+
+/* ── Modal & SweetAlert Backdrop ── */
+.modal-backdrop.show {
+    opacity: 0.7;
+    background: linear-gradient(135deg, rgba(58, 53, 54, 0.85), rgba(241, 90, 41, 0.25));
+}
+
+.modal-dialog {
+    display: flex;
+    align-items: center;
+    min-height: calc(100% - 1rem);
+}
+
+.modal-content {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.swal2-container {
+    background: linear-gradient(135deg, rgba(58, 53, 54, 0.85), rgba(241, 90, 41, 0.25)) !important;
+}
+
+.swal2-popup {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25) !important;
+}
+
+.location-info {
+    --bs-text-opacity: 1;
+    color: var(--accent) !important;
+}

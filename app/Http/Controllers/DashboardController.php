@@ -29,10 +29,7 @@ class DashboardController extends Controller
         $permissions = [];
 
         if ($canViewQuotations) {
-            $statsQuery = Quotation::query();
-            if (! $user->hasPermission('view_all_quotations')) {
-                $statsQuery->where('user_id', $user->id);
-            }
+            $statsQuery = Quotation::visibleTo($user);
 
             $stats = [
                 'total' => (clone $statsQuery)->count(),
@@ -147,17 +144,29 @@ class DashboardController extends Controller
         $canDownloadBranded = $user->hasPermission('download_pdf_branded');
         $canDownloadPlain = $user->hasPermission('download_pdf_plain');
         $canDelete = $user->hasPermission('delete_quotations');
+        $canHold = $user->hasPermission('hold_quotation');
+        $canCancel = $user->hasPermission('cancel_quotation');
+        $canResume = $user->hasPermission('resume_quotation');
 
-        // Base query
-        $query = Quotation::with(['user', 'banks', 'loan', 'location.parent']);
-
-        // Permission-based scoping: users without view_all_quotations see own only
-        if (! $canViewAll) {
-            $query->where('user_id', $user->id);
-        }
+        // Base query — scoped by permission/role (view_all, own, or branch)
+        $query = Quotation::visibleTo($user)
+            ->with(['user', 'banks', 'loan', 'location.parent']);
 
         // Total records (before any filtering)
         $recordsTotal = (clone $query)->count();
+
+        // Quotation status filter (active / on_hold / cancelled / not_cancelled / all)
+        $status = $request->input('status', 'not_cancelled');
+        if ($status === 'active') {
+            $query->where('status', Quotation::STATUS_ACTIVE);
+        } elseif ($status === 'on_hold') {
+            $query->where('status', Quotation::STATUS_ON_HOLD);
+        } elseif ($status === 'cancelled') {
+            $query->where('status', Quotation::STATUS_CANCELLED);
+        } elseif ($status === 'not_cancelled') {
+            $query->where('status', '!=', Quotation::STATUS_CANCELLED);
+        }
+        // 'all' → no status filter
 
         // Loan status filter
         $loanStatus = $request->input('loan_status', 'not_converted');
@@ -242,7 +251,7 @@ class DashboardController extends Controller
         // Format data for DataTables
         $canConvert = $user->hasPermission('convert_to_loan');
 
-        $data = $quotations->map(function ($q) use ($canViewAll, $canDownload, $canDownloadBranded, $canDownloadPlain, $canDelete, $canConvert) {
+        $data = $quotations->map(function ($q) use ($canViewAll, $canDownload, $canDownloadBranded, $canDownloadPlain, $canDelete, $canConvert, $canHold, $canCancel, $canResume) {
             $bankNames = $q->banks ? $q->banks->pluck('bank_name')->toArray() : [];
 
             $typeLabels = [
@@ -295,6 +304,22 @@ class DashboardController extends Controller
                 'is_converted' => (bool) $q->loan_id,
                 'loan_status' => $q->loan?->status,
                 'loan_status_label' => $q->loan?->status_label,
+                'status' => $q->status,
+                'status_html' => $q->status_badge_html,
+                'is_on_hold' => $q->is_on_hold,
+                'is_cancelled' => $q->is_cancelled,
+                'hold_follow_up_date' => $q->hold_follow_up_date?->format('d M Y'),
+                'hold_reason_label' => $q->hold_reason_label,
+                'cancel_reason_label' => $q->cancel_reason_label,
+                'hold_url' => ($canHold && $q->status === Quotation::STATUS_ACTIVE && ! $q->loan_id)
+                    ? route('quotations.hold', $q->id)
+                    : null,
+                'cancel_url' => ($canCancel && $q->status !== Quotation::STATUS_CANCELLED && ! $q->loan_id)
+                    ? route('quotations.cancel', $q->id)
+                    : null,
+                'resume_url' => ($canResume && $q->status === Quotation::STATUS_ON_HOLD)
+                    ? route('quotations.resume', $q->id)
+                    : null,
                 'location_name' => $q->location ? ($q->location->parent?->name ? $q->location->parent->name.'/' : '').$q->location->name : '',
             ];
         });
@@ -392,7 +417,7 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
         $query = LoanDetail::visibleTo($user)
-            ->with(['bank', 'product', 'creator', 'location.parent', 'stageAssignments.assignee']);
+            ->with(['bank', 'product', 'creator', 'advisor', 'location.parent', 'stageAssignments.assignee.roles']);
 
         $recordsTotal = (clone $query)->count();
 
@@ -569,18 +594,18 @@ class DashboardController extends Controller
                     if ($daysUntil < 0) {
                         $overdueDays = abs($daysUntil);
                         $followUpUrgency = 'overdue';
-                        $followUpHtml = $dateStr . '<br><span class="shf-badge shf-badge-red shf-text-2xs">Overdue by ' . $overdueDays . ' ' . ($overdueDays === 1 ? 'day' : 'days') . '</span>';
+                        $followUpHtml = $dateStr.'<br><span class="shf-badge shf-badge-red shf-text-2xs">Overdue by '.$overdueDays.' '.($overdueDays === 1 ? 'day' : 'days').'</span>';
                     } elseif ($daysUntil === 0) {
                         $followUpUrgency = 'due_today';
-                        $followUpHtml = $dateStr . '<br><span class="shf-badge shf-badge-orange shf-text-2xs">Due Today</span>';
+                        $followUpHtml = $dateStr.'<br><span class="shf-badge shf-badge-orange shf-text-2xs">Due Today</span>';
                     } elseif ($daysUntil === 1) {
                         $followUpUrgency = 'due_tomorrow';
-                        $followUpHtml = $dateStr . '<br><span class="shf-badge shf-badge-orange shf-text-2xs">Due Tomorrow</span>';
+                        $followUpHtml = $dateStr.'<br><span class="shf-badge shf-badge-orange shf-text-2xs">Due Tomorrow</span>';
                     } elseif ($daysUntil <= 3) {
                         $followUpUrgency = 'due_soon';
-                        $followUpHtml = $dateStr . '<br><span class="shf-badge shf-badge-blue shf-text-2xs">Due in ' . $daysUntil . ' days</span>';
+                        $followUpHtml = $dateStr.'<br><span class="shf-badge shf-badge-blue shf-text-2xs">Due in '.$daysUntil.' days</span>';
                     } else {
-                        $followUpHtml = $dateStr . '<br><span class="shf-badge shf-badge-gray shf-text-2xs">Pending</span>';
+                        $followUpHtml = $dateStr.'<br><span class="shf-badge shf-badge-gray shf-text-2xs">Pending</span>';
                     }
                 } else {
                     $followUpHtml = '<span class="shf-badge shf-badge-orange shf-text-2xs">Pending</span>';
@@ -614,7 +639,7 @@ class DashboardController extends Controller
     public function activityLog()
     {
         $users = User::select('id', 'name')->orderBy('name')->get();
-        $actionTypes = ActivityLog::select('action')->distinct()->orderBy('action')->pluck('action');
+        $actionTypes = ActivityLog::select('description')->distinct()->orderBy('description')->pluck('description');
 
         return view('activity-log', compact('users', 'actionTypes'));
     }
@@ -626,10 +651,10 @@ class DashboardController extends Controller
         $recordsTotal = (clone $query)->count();
 
         if ($request->filled('user_id')) {
-            $query->where('user_id', $request->user_id);
+            $query->where('causer_id', $request->user_id);
         }
         if ($request->filled('action_type')) {
-            $query->where('action', $request->action_type);
+            $query->where('description', $request->action_type);
         }
         if ($request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->date_from);
@@ -641,14 +666,14 @@ class DashboardController extends Controller
         $search = $request->input('search.value', '');
         if ($search !== '' && $search !== null) {
             $query->where(function ($q) use ($search) {
-                $q->where('action', 'like', "%{$search}%")
+                $q->where('description', 'like', "%{$search}%")
                     ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%"));
             });
         }
 
         $recordsFiltered = (clone $query)->count();
 
-        $columns = ['created_at', 'user_id', 'action', 'subject_type', 'created_at'];
+        $columns = ['created_at', 'causer_id', 'description', 'subject_type', 'created_at'];
         $orderColumnIndex = (int) $request->input('order.0.column', 0);
         $orderDir = $request->input('order.0.dir', 'desc') === 'asc' ? 'asc' : 'desc';
         $orderColumn = $columns[$orderColumnIndex] ?? 'created_at';

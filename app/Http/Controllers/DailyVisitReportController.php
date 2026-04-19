@@ -7,6 +7,7 @@ use App\Models\DailyVisitReport;
 use App\Models\LoanDetail;
 use App\Models\User;
 use App\Services\ConfigService;
+use App\Validation\DvrValidationRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -131,12 +132,12 @@ class DailyVisitReportController extends Controller
         $data = $visits->map(function (DailyVisitReport $visit) use ($user, $contactTypeLabels, $purposeLabels) {
             $loanInfo = '';
             if ($visit->loan) {
-                $loanInfo = '<a href="' . route('loans.show', $visit->loan_id) . '" class="text-decoration-none">'
-                    . '<span class="shf-badge shf-badge-blue shf-text-2xs">#' . e($visit->loan->loan_number) . '</span></a>'
-                    . '<br><small class="text-muted">' . e($visit->loan->customer_name) . '</small>';
+                $loanInfo = '<a href="'.route('loans.show', $visit->loan_id).'" class="text-decoration-none">'
+                    .'<span class="shf-badge shf-badge-blue shf-text-2xs">#'.e($visit->loan->loan_number).'</span></a>'
+                    .'<br><small class="text-muted">'.e($visit->loan->customer_name).'</small>';
             } elseif ($visit->quotation) {
-                $loanInfo = '<span class="shf-badge shf-badge-gray shf-text-2xs">Q#' . $visit->quotation_id . '</span>'
-                    . '<br><small class="text-muted">' . e($visit->quotation->customer_name) . '</small>';
+                $loanInfo = '<span class="shf-badge shf-badge-gray shf-text-2xs">Q#'.$visit->quotation_id.'</span>'
+                    .'<br><small class="text-muted">'.e($visit->quotation->customer_name).'</small>';
             }
 
             // Follow-up status (same urgency logic as personal task due dates)
@@ -146,7 +147,7 @@ class DailyVisitReportController extends Controller
                 if ($visit->is_follow_up_done) {
                     $followUpHtml = '<span class="shf-badge shf-badge-green shf-text-2xs">Done</span>';
                     if ($visit->follow_up_visit_id) {
-                        $followUpHtml .= ' <a href="' . route('dvr.show', $visit->follow_up_visit_id) . '" class="shf-text-2xs">View</a>';
+                        $followUpHtml .= ' <a href="'.route('dvr.show', $visit->follow_up_visit_id).'" class="shf-text-2xs">View</a>';
                     }
                 } elseif ($visit->follow_up_date) {
                     $daysUntil = (int) today()->diffInDays($visit->follow_up_date, false);
@@ -154,18 +155,18 @@ class DailyVisitReportController extends Controller
                     if ($daysUntil < 0) {
                         $overdueDays = abs($daysUntil);
                         $followUpUrgency = 'overdue';
-                        $followUpHtml = $dateStr . '<br><span class="shf-badge shf-badge-red shf-text-2xs">Overdue by ' . $overdueDays . ' ' . ($overdueDays === 1 ? 'day' : 'days') . '</span>';
+                        $followUpHtml = $dateStr.'<br><span class="shf-badge shf-badge-red shf-text-2xs">Overdue by '.$overdueDays.' '.($overdueDays === 1 ? 'day' : 'days').'</span>';
                     } elseif ($daysUntil === 0) {
                         $followUpUrgency = 'due_today';
-                        $followUpHtml = $dateStr . '<br><span class="shf-badge shf-badge-orange shf-text-2xs">Due Today</span>';
+                        $followUpHtml = $dateStr.'<br><span class="shf-badge shf-badge-orange shf-text-2xs">Due Today</span>';
                     } elseif ($daysUntil === 1) {
                         $followUpUrgency = 'due_tomorrow';
-                        $followUpHtml = $dateStr . '<br><span class="shf-badge shf-badge-orange shf-text-2xs">Due Tomorrow</span>';
+                        $followUpHtml = $dateStr.'<br><span class="shf-badge shf-badge-orange shf-text-2xs">Due Tomorrow</span>';
                     } elseif ($daysUntil <= 3) {
                         $followUpUrgency = 'due_soon';
-                        $followUpHtml = $dateStr . '<br><span class="shf-badge shf-badge-blue shf-text-2xs">Due in ' . $daysUntil . ' days</span>';
+                        $followUpHtml = $dateStr.'<br><span class="shf-badge shf-badge-blue shf-text-2xs">Due in '.$daysUntil.' days</span>';
                     } else {
-                        $followUpHtml = $dateStr . '<br><span class="shf-badge shf-badge-gray shf-text-2xs">Pending</span>';
+                        $followUpHtml = $dateStr.'<br><span class="shf-badge shf-badge-gray shf-text-2xs">Pending</span>';
                     }
                 } else {
                     $followUpHtml = '<span class="shf-badge shf-badge-orange shf-text-2xs">Pending</span>';
@@ -211,21 +212,7 @@ class DailyVisitReportController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'contact_name' => 'required|string|max:255',
-            'contact_phone' => 'nullable|string|max:20',
-            'contact_type' => 'required|string|max:50',
-            'purpose' => 'required|string|max:50',
-            'visit_date' => 'required|date_format:d/m/Y',
-            'notes' => 'nullable|string|max:5000',
-            'outcome' => 'nullable|string|max:5000',
-            'follow_up_needed' => 'nullable|boolean',
-            'follow_up_date' => 'nullable|required_if:follow_up_needed,1|date_format:d/m/Y|after:today',
-            'follow_up_notes' => 'nullable|string|max:5000',
-            'quotation_id' => 'nullable|exists:quotations,id',
-            'loan_id' => 'nullable|exists:loan_details,id',
-            'parent_visit_id' => 'nullable|exists:daily_visit_reports,id',
-        ]);
+        $validated = $request->validate(DvrValidationRules::create());
 
         $user = Auth::user();
         $validated['user_id'] = $user->id;
@@ -294,20 +281,7 @@ class DailyVisitReportController extends Controller
             abort(403);
         }
 
-        $validated = $request->validate([
-            'contact_name' => 'required|string|max:255',
-            'contact_phone' => 'nullable|string|max:20',
-            'contact_type' => 'required|string|max:50',
-            'purpose' => 'required|string|max:50',
-            'visit_date' => 'required|date_format:d/m/Y',
-            'notes' => 'nullable|string|max:5000',
-            'outcome' => 'nullable|string|max:5000',
-            'follow_up_needed' => 'nullable|boolean',
-            'follow_up_date' => 'nullable|required_if:follow_up_needed,1|date_format:d/m/Y|after:today',
-            'follow_up_notes' => 'nullable|string|max:5000',
-            'quotation_id' => 'nullable|exists:quotations,id',
-            'loan_id' => 'nullable|exists:loan_details,id',
-        ]);
+        $validated = $request->validate(DvrValidationRules::update());
 
         $validated['visit_date'] = \Carbon\Carbon::createFromFormat('d/m/Y', $validated['visit_date'])->toDateString();
         $validated['follow_up_needed'] = ! empty($validated['follow_up_needed']);
@@ -482,12 +456,12 @@ class DailyVisitReportController extends Controller
                 'name' => $r->customer_name,
                 'phone' => $r->customer_phone,
                 'type' => 'existing_customer',
-                'source' => 'Loan #' . $r->loan_number,
+                'source' => 'Loan #'.$r->loan_number,
             ]);
         $results = $results->merge($loans);
 
         // Deduplicate by phone+name combo
-        $unique = $results->unique(fn ($r) => strtolower($r['name']) . '|' . ($r['phone'] ?? ''))
+        $unique = $results->unique(fn ($r) => strtolower($r['name']).'|'.($r['phone'] ?? ''))
             ->take(15)
             ->values();
 

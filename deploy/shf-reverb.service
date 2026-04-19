@@ -1,0 +1,21 @@
+create /etc/systemd/system/shf-reverb.service
+
+[Unit]
+Description=SHF Reverb WebSocket server
+After=network.target
+
+[Service]
+Type=simple
+User=admin
+Group=admin
+Restart=always
+RestartSec=5
+WorkingDirectory=/home/admin/web/loans.shfworld.com/public_html
+ExecStart=/usr/bin/php8.4 artisan reverb:start --host=127.0.0.1 --port=6001
+TimeoutStopSec=10
+LimitNOFILE=10000
+StandardOutput=append:/home/admin/web/loans.shfworld.com/public_html/storage/logs/reverb/reverb.log
+StandardError=append:/home/admin/web/loans.shfworld.com/public_html/storage/logs/reverb/reverb.log
+
+[Install]
+WantedBy=multi-user.target

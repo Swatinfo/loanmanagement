@@ -24,9 +24,13 @@ class LoanConversionController extends Controller
             return redirect()->route('loans.show', $quotation->loan_id)
                 ->with('info', 'This quotation has already been converted to Loan #'.$quotation->loan->loan_number);
         }
+        if ($quotation->is_cancelled) {
+            return redirect()->route('quotations.show', $quotation)
+                ->with('error', 'This quotation is cancelled and cannot be converted to a loan.');
+        }
 
-        // Authorization: own or view_all_quotations
-        if ($quotation->user_id !== auth()->id() && ! auth()->user()->hasPermission('view_all_quotations')) {
+        // Authorization: view_all / own / branch scope
+        if (! $quotation->isVisibleTo(auth()->user())) {
             abort(403);
         }
 
@@ -50,6 +54,11 @@ class LoanConversionController extends Controller
 
     public function convert(Request $request, Quotation $quotation)
     {
+        if ($quotation->is_cancelled) {
+            return redirect()->route('quotations.show', $quotation)
+                ->with('error', 'This quotation is cancelled and cannot be converted to a loan.');
+        }
+
         $validated = $request->validate([
             'bank_index' => 'required|integer|min:0',
             'branch_id' => 'nullable|exists:branches,id',

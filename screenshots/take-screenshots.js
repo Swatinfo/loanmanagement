@@ -1,11 +1,20 @@
 /**
  * Automated Screenshot Tool — Shreenathji Home Finance
- * Takes full-page screenshots of every screen at multiple viewport sizes.
- * Supports tabbed pages — captures each tab as a separate screenshot.
- * Files are numbered sequentially (001-, 002-, ...) to show capture flow order.
+ *
+ * Captures every screen across multiple viewport sizes. Two coverage modes:
+ *
+ *   1. MAIN       — one screenshot per route (default tab only, no per-loan / per-role loops).
+ *                   ~40 screens total per viewport. Fast sanity check.
+ *
+ *   2. COMPLETE   — every tab on tabbed pages, every seeded loan's show+stages page,
+ *                   every loan-stages view under each of the 6 roles, plus per-DVR and per-task detail pages.
+ *                   Hundreds of screenshots per viewport — used for full UI review.
+ *
+ * Reads `screenshot-fixtures.json` (written by `php artisan app:seed-screenshot-loans`)
+ * to find the IDs for `/{id}` routes. Reads `loan-stage-map.json` for the loans list.
  *
  * Usage: node screenshots/take-screenshots.js
- * Requires: puppeteer (globally installed)
+ * Requires: puppeteer
  */
 
 const puppeteer = require('puppeteer');
@@ -27,47 +36,79 @@ const ALL_VIEWPORTS = {
   7: { key: 'large-desktop',     width: 2560, height: 1440, label: 'Large Desktop (QHD)' },
 };
 
-// Will be populated after user selection
+// Populated after user selection
 let VIEWPORTS = {};
 
-// Pages to screenshot (name → path)
-// tabs: array of { name, dataTab } for pages with shf-tab switching
+// Full static-route catalog. `tabs` = shf-tab switching.
+// In MAIN mode, tabs are ignored (one screenshot per page).
+// In COMPLETE mode, each tab gets its own screenshot.
 const PAGES = [
-  // Auth (unauthenticated)
+  // ── Auth (unauthenticated) ──
   { name: 'login',                  path: '/login',               auth: false },
   { name: 'forgot-password',        path: '/forgot-password',     auth: false },
 
-  // Dashboard — tabs
+  // ── Dashboard — tabs ──
   { name: 'dashboard',              path: '/dashboard', tabs: [
-    { name: 'dashboard-tasks',       dataTab: 'dash-tasks' },
-    { name: 'dashboard-loans',       dataTab: 'dash-loans' },
-    { name: 'dashboard-quotations',  dataTab: 'dash-quotations' },
+    { name: 'dashboard-personal-tasks', dataTab: 'dash-personal-tasks' },
+    { name: 'dashboard-tasks',          dataTab: 'dash-tasks' },
+    { name: 'dashboard-loans',          dataTab: 'dash-loans' },
+    { name: 'dashboard-dvr',            dataTab: 'dash-dvr' },
+    { name: 'dashboard-quotations',     dataTab: 'dash-quotations' },
   ]},
 
-  // Quotations
+  // ── Quotations ──
+  { name: 'quotations-index',       path: '/quotations' },
   { name: 'quotation-create',       path: '/quotations/create' },
 
-  // Loans
+  // ── Loans ──
   { name: 'loans-index',            path: '/loans' },
   { name: 'loan-create',            path: '/loans/create' },
 
-  // Users
+  // ── Customers ──
+  { name: 'customers-index',        path: '/customers' },
+
+  // ── General Tasks ──
+  { name: 'general-tasks-index',    path: '/general-tasks' },
+
+  // ── DVR ──
+  { name: 'dvr-index',              path: '/dvr' },
+
+  // ── Reports ──
+  { name: 'report-turnaround',      path: '/reports/turnaround' },
+
+  // ── Users ──
   { name: 'users-index',            path: '/users' },
   { name: 'user-create',            path: '/users/create' },
 
-  // Quotation Settings — tabs
+  // ── Roles ──
+  { name: 'roles-index',            path: '/roles' },
+  { name: 'role-create',            path: '/roles/create' },
+
+  // ── Permissions ──
+  { name: 'permissions',            path: '/permissions' },
+
+  // ── Notifications & Activity ──
+  { name: 'notifications',          path: '/notifications' },
+  { name: 'activity-log',           path: '/activity-log' },
+
+  // ── Profile ──
+  { name: 'profile',                path: '/profile' },
+
+  // ── Quotation Settings — tabs ──
   { name: 'settings',               path: '/settings', tabs: [
-    { name: 'settings-company',      dataTab: 'company' },
-    { name: 'settings-charges',      dataTab: 'charges' },
-    { name: 'settings-bank-charges', dataTab: 'bank-charges' },
-    { name: 'settings-gst',          dataTab: 'gst' },
-    { name: 'settings-services',     dataTab: 'services' },
-    { name: 'settings-tenures',      dataTab: 'tenures' },
-    { name: 'settings-documents',    dataTab: 'documents' },
-    { name: 'settings-permissions',  dataTab: 'permissions' },
+    { name: 'settings-company',            dataTab: 'company' },
+    { name: 'settings-charges',            dataTab: 'charges' },
+    { name: 'settings-bank-charges',       dataTab: 'bank-charges' },
+    { name: 'settings-gst',                dataTab: 'gst' },
+    { name: 'settings-services',           dataTab: 'services' },
+    { name: 'settings-tenures',            dataTab: 'tenures' },
+    { name: 'settings-documents',          dataTab: 'documents' },
+    { name: 'settings-dvr',                dataTab: 'dvr' },
+    { name: 'settings-quotation-reasons',  dataTab: 'quotation-reasons' },
+    { name: 'settings-permissions',        dataTab: 'permissions' },
   ]},
 
-  // Loan Settings — tabs
+  // ── Loan Settings — tabs ──
   { name: 'loan-settings',          path: '/loan-settings', tabs: [
     { name: 'loan-settings-locations',        dataTab: 'locations' },
     { name: 'loan-settings-banks',            dataTab: 'banks' },
@@ -76,45 +117,59 @@ const PAGES = [
     { name: 'loan-settings-products',         dataTab: 'products' },
     { name: 'loan-settings-role-permissions', dataTab: 'role-permissions' },
   ]},
-
-  // Permissions
-  { name: 'permissions',            path: '/permissions' },
-
-  // Notifications
-  { name: 'notifications',          path: '/notifications' },
-
-  // Activity Log
-  { name: 'activity-log',           path: '/activity-log' },
-
-  // Profile
-  { name: 'profile',                path: '/profile' },
 ];
 
-// Per-loan pages — captured for EVERY loan (to show each stage)
+// Per-loan pages — captured for EVERY seeded loan in COMPLETE mode, skipped in MAIN.
 const PER_LOAN_PAGES = [
   { suffix: 'show',   pathFn: (id) => `/loans/${id}` },
   { suffix: 'stages', pathFn: (id) => `/loans/${id}/stages` },
 ];
 
-// Single-loan pages — captured only for the first loan
+// Single-loan pages — captured once using the fixture loan in BOTH modes.
 const SINGLE_LOAN_PAGES = [
+  { name: 'loan-show',              pathFn: (id) => `/loans/${id}` },
+  { name: 'loan-stages',            pathFn: (id) => `/loans/${id}/stages` },
   { name: 'loan-edit',              pathFn: (id) => `/loans/${id}/edit` },
   { name: 'loan-documents',         pathFn: (id) => `/loans/${id}/documents` },
   { name: 'loan-timeline',          pathFn: (id) => `/loans/${id}/timeline` },
   { name: 'loan-transfers',         pathFn: (id) => `/loans/${id}/transfers` },
   { name: 'loan-disbursement',      pathFn: (id) => `/loans/${id}/disbursement` },
   { name: 'loan-valuation',         pathFn: (id) => `/loans/${id}/valuation` },
+  { name: 'loan-valuation-map',     pathFn: (id) => `/loans/${id}/valuation-map` },
+  { name: 'loan-remarks',           pathFn: (id) => `/loans/${id}/remarks` },
 ];
 
 const QUOTATION_PAGES = [
   { name: 'quotation-show',         pathFn: (id) => `/quotations/${id}` },
+  { name: 'quotation-convert',      pathFn: (id) => `/quotations/${id}/convert` },
 ];
 
 const USER_PAGES = [
   { name: 'user-edit',              pathFn: (id) => `/users/${id}/edit` },
 ];
 
-// Users for multi-role screenshots of loan stages
+const ROLE_DETAIL_PAGES = [
+  { name: 'role-edit',              pathFn: (id) => `/roles/${id}/edit` },
+];
+
+const CUSTOMER_PAGES = [
+  { name: 'customer-show',          pathFn: (id) => `/customers/${id}` },
+  { name: 'customer-edit',          pathFn: (id) => `/customers/${id}/edit` },
+];
+
+const DVR_PAGES = [
+  { name: 'dvr-show',               pathFn: (id) => `/dvr/${id}` },
+];
+
+const TASK_PAGES = [
+  { name: 'general-task-show',      pathFn: (id) => `/general-tasks/${id}` },
+];
+
+const PRODUCT_STAGES_PAGES = [
+  { name: 'product-stages',         pathFn: (id) => `/loan-settings/products/${id}/stages` },
+];
+
+// Users for multi-role loan-stage screenshots (COMPLETE mode only).
 const ROLE_USERS = [
   { name: 'admin',           email: 'admin@shf.com',         password: 'Admin@123' },
   { name: 'branch-manager',  email: 'denish@shfworld.com',   password: 'password' },
@@ -127,8 +182,11 @@ const ROLE_USERS = [
 const SCREENSHOT_DIR = path.join(__dirname);
 const readline = require('readline');
 
-// Global sequential counter for numbered filenames
+// Runtime state — populated after user prompts.
 let screenshotCounter = 0;
+let screenshotMode = 2;      // 1=delete+regen, 2=replace, 3=keep-existing
+let coverageMode = 'main';   // 'main' | 'complete'
+let fixtures = {};
 
 function nextNumber() {
   screenshotCounter++;
@@ -149,47 +207,36 @@ async function takeScreenshot(page, pageName, viewportName, viewportSize) {
     deviceScaleFactor: 1,
   });
 
-  // Wait for any responsive layout reflow
   await sleep(500);
 
   const filePath = path.join(dir, `${pageName}.png`);
 
-  // Mode 3: skip if file already exists
   if (screenshotMode === 3 && fs.existsSync(filePath)) {
     console.log(`  ⏭ ${viewportName}/${pageName}.png (exists, skipped)`);
     return;
   }
 
-  await page.screenshot({
-    path: filePath,
-    fullPage: true,
-  });
-
+  await page.screenshot({ path: filePath, fullPage: true });
   console.log(`  ✓ ${viewportName}/${pageName}.png`);
 }
 
-/**
- * Click a tab by its data-tab attribute, wait for content to appear
- */
 async function clickTab(page, dataTab) {
   await page.evaluate((tab) => {
     const btn = document.querySelector(`.shf-tab[data-tab="${tab}"]`);
     if (btn) btn.click();
   }, dataTab);
-  await sleep(800); // Wait for tab content + any AJAX
+  await sleep(800);
 }
 
 /**
- * Capture a page with numbered prefix.
- * If it has tabs, each tab gets its own number.
- * Otherwise the page gets one number.
+ * Capture one page. In COMPLETE mode, iterate each tab. In MAIN mode, one screenshot per page.
  */
 async function capturePage(page, pg, pagePath) {
   try {
     await page.goto(`${BASE_URL}${pagePath}`, { waitUntil: 'networkidle2' });
-    await sleep(1000); // Wait for DataTables/AJAX
+    await sleep(1000);
 
-    if (pg.tabs && pg.tabs.length > 0) {
+    if (coverageMode === 'complete' && pg.tabs && pg.tabs.length > 0) {
       for (const tab of pg.tabs) {
         const num = nextNumber();
         const numberedName = `${num}-${tab.name}`;
@@ -212,9 +259,6 @@ async function capturePage(page, pg, pagePath) {
   }
 }
 
-/**
- * Capture a single named page with numbered prefix.
- */
 async function captureNamedPage(page, name, pagePath) {
   const num = nextNumber();
   const numberedName = `${num}-${name}`;
@@ -230,9 +274,21 @@ async function captureNamedPage(page, name, pagePath) {
   }
 }
 
-/**
- * Prompt user to select which viewports to capture.
- */
+async function selectCoverageMode() {
+  console.log('\n╔══════════════════════════════════════════════╗');
+  console.log('║   Coverage Mode                              ║');
+  console.log('╠══════════════════════════════════════════════╣');
+  console.log('║   1. Main — one shot per route (fast)        ║');
+  console.log('║   2. Complete — every tab/stage/role         ║');
+  console.log('╚══════════════════════════════════════════════╝');
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const answer = await new Promise(resolve => rl.question('\nYour choice (default: 1): ', resolve));
+  rl.close();
+  const choice = parseInt(answer.trim()) || 1;
+  coverageMode = choice === 2 ? 'complete' : 'main';
+  console.log(`\n✓ Coverage mode: ${coverageMode.toUpperCase()}`);
+}
+
 async function selectViewports() {
   console.log('\n╔══════════════════════════════════════╗');
   console.log('║   Select Viewport(s) to Capture      ║');
@@ -252,8 +308,7 @@ async function selectViewports() {
   const choices = answer.trim().split(/[,\s]+/).map(Number).filter(n => !isNaN(n));
 
   if (choices.includes(8)) {
-    // All viewports
-    for (const [num, vp] of Object.entries(ALL_VIEWPORTS)) {
+    for (const [, vp] of Object.entries(ALL_VIEWPORTS)) {
       VIEWPORTS[vp.key] = { width: vp.width, height: vp.height };
     }
   } else {
@@ -275,7 +330,6 @@ async function selectViewports() {
   const selected = Object.keys(VIEWPORTS).join(', ');
   console.log(`\n✓ Selected: ${selected}`);
 
-  // Ask whether to delete old screenshots first or keep them
   const rl2 = readline.createInterface({ input: process.stdin, output: process.stdout });
   console.log('\n╔══════════════════════════════════════╗');
   console.log('║   Existing Screenshots               ║');
@@ -290,7 +344,6 @@ async function selectViewports() {
   const mode = parseInt(modeAnswer.trim()) || 2;
 
   if (mode === 1) {
-    // Delete all PNGs in selected viewport folders
     for (const vpKey of Object.keys(VIEWPORTS)) {
       const dir = path.join(SCREENSHOT_DIR, vpKey);
       if (fs.existsSync(dir)) {
@@ -308,11 +361,39 @@ async function selectViewports() {
   return mode;
 }
 
-// Global mode: 1=delete+regen, 2=replace, 3=keep existing
-let screenshotMode = 2;
+function loadFixtures() {
+  const fixturesPath = path.join(SCREENSHOT_DIR, 'screenshot-fixtures.json');
+  if (!fs.existsSync(fixturesPath)) {
+    console.log('\n⚠ screenshot-fixtures.json not found.');
+    console.log(`  Run: php artisan app:seed-screenshot-loans --mode=${coverageMode}\n`);
+    return {};
+  }
+  const data = JSON.parse(fs.readFileSync(fixturesPath, 'utf8'));
+  console.log(`\n✓ Loaded fixtures (seeded mode: ${data.mode || 'unknown'})`);
+  if (data.mode && data.mode !== coverageMode) {
+    console.log(`  ⚠ Coverage mode mismatch: fixtures seeded for "${data.mode}", you picked "${coverageMode}".`);
+    console.log(`  Re-run: php artisan app:seed-screenshot-loans --mode=${coverageMode}`);
+  }
+  return data;
+}
+
+function loadLoans() {
+  const stageMapPath = path.join(SCREENSHOT_DIR, 'loan-stage-map.json');
+  if (!fs.existsSync(stageMapPath)) {
+    console.log('\n⚠ loan-stage-map.json not found — per-loan screenshots will be skipped.');
+    return [];
+  }
+  const stageMap = JSON.parse(fs.readFileSync(stageMapPath, 'utf8'));
+  return Object.entries(stageMap).map(([id, target]) => ({
+    id,
+    stageName: target.replace(/_/g, '-'),
+  }));
+}
 
 async function run() {
+  await selectCoverageMode();
   screenshotMode = await selectViewports();
+  fixtures = loadFixtures();
 
   console.log('Launching browser...');
   const browser = await puppeteer.launch({
@@ -326,12 +407,11 @@ async function run() {
     ignoreHTTPSErrors: true,
   });
 
-  // Use incognito context to avoid cache issues
   const context = await browser.createBrowserContext();
   const page = await context.newPage();
   page.setDefaultNavigationTimeout(30000);
 
-  // ── Step 1: Login ──
+  // ── Step 1: Login as admin ──
   console.log('\nLogging in...');
   await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle2' });
   await page.type('input[name="email"]', LOGIN_EMAIL);
@@ -342,7 +422,7 @@ async function run() {
   ]);
   console.log('Logged in successfully.\n');
 
-  // ── Step 2: Capture unauthenticated pages first (separate incognito session) ──
+  // ── Step 2: Unauthenticated pages (separate guest context) ──
   const guestContext = await browser.createBrowserContext();
   const guestPage = await guestContext.newPage();
   guestPage.setDefaultNavigationTimeout(30000);
@@ -365,119 +445,101 @@ async function run() {
   await guestPage.close();
   await guestContext.close();
 
-  // ── Step 3: Capture authenticated static pages (with tab support) ──
+  // ── Step 3: Authenticated static pages (tabs honored in COMPLETE mode) ──
   const authPages = PAGES.filter(p => p.auth !== false);
   for (const pg of authPages) {
     await capturePage(page, pg, pg.path);
   }
 
-  // ── Step 4: Load loan stage map (active loans only, ordered by stage sequence) ──
-  const stageMapPath = path.join(SCREENSHOT_DIR, 'loan-stage-map.json');
-  let loans = [];
-  if (fs.existsSync(stageMapPath)) {
-    const stageMap = JSON.parse(fs.readFileSync(stageMapPath, 'utf8'));
-    // Preserve insertion order from JSON (ordered by stage sequence from seeder)
-    loans = Object.entries(stageMap).map(([id, target]) => ({
-      id,
-      stageName: target.replace(/_/g, '-'),
-    }));
-    console.log(`\n✓ Loaded loan-stage-map.json (${loans.length} active loans, ordered by stage)`);
-  } else {
-    console.log('\n⚠ loan-stage-map.json not found — skipping loan screenshots');
-    console.log('  Run: php artisan app:seed-screenshot-loans');
-  }
-
-  // ── Step 5: Capture per-loan pages (show + stages for every loan) ──
-  if (loans.length > 0) {
-    for (const loan of loans) {
-      for (const pg of PER_LOAN_PAGES) {
-        const pagePath = pg.pathFn(loan.id);
-        await captureNamedPage(page, `loan-${pg.suffix}-${loan.stageName}`, pagePath);
-      }
-    }
-
-    // Single-loan pages (first loan only)
-    const firstLoanId = loans[0].id;
+  // ── Step 4: Fixture-driven detail pages (both modes) ──
+  if (fixtures.loan_id) {
     for (const pg of SINGLE_LOAN_PAGES) {
-      await captureNamedPage(page, pg.name, pg.pathFn(firstLoanId));
+      await captureNamedPage(page, pg.name, pg.pathFn(fixtures.loan_id));
     }
-  } else {
-    console.log('\n⚠ No loans found — skipping loan pages');
   }
-
-  // ── Step 6: Capture quotation pages ──
-  await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle2' });
-  await sleep(1000);
-  const quotationId = await page.evaluate(() => {
-    const link = document.querySelector('a[href*="/quotations/"]');
-    if (link) {
-      const match = link.href.match(/\/quotations\/(\d+)/);
-      return match ? match[1] : null;
-    }
-    return null;
-  });
-  if (quotationId) {
+  if (fixtures.quotation_id) {
     for (const pg of QUOTATION_PAGES) {
-      await captureNamedPage(page, pg.name, pg.pathFn(quotationId));
+      await captureNamedPage(page, pg.name, pg.pathFn(fixtures.quotation_id));
     }
-  } else {
-    console.log('\n⚠ No quotations found — skipping quotation detail pages');
   }
-
-  // ── Step 7: Capture user pages ──
-  await page.goto(`${BASE_URL}/users`, { waitUntil: 'networkidle2' });
-  await sleep(1000);
-  const userId = await page.evaluate(() => {
-    const link = document.querySelector('a[href*="/users/"][href*="/edit"]');
-    if (link) {
-      const match = link.href.match(/\/users\/(\d+)/);
-      return match ? match[1] : null;
-    }
-    return null;
-  });
-  if (userId) {
+  if (fixtures.user_id) {
     for (const pg of USER_PAGES) {
-      await captureNamedPage(page, pg.name, pg.pathFn(userId));
+      await captureNamedPage(page, pg.name, pg.pathFn(fixtures.user_id));
     }
-  } else {
-    console.log('\n⚠ No users found — skipping user edit page');
+  }
+  if (fixtures.role_id) {
+    for (const pg of ROLE_DETAIL_PAGES) {
+      await captureNamedPage(page, pg.name, pg.pathFn(fixtures.role_id));
+    }
+  }
+  if (fixtures.customer_id) {
+    for (const pg of CUSTOMER_PAGES) {
+      await captureNamedPage(page, pg.name, pg.pathFn(fixtures.customer_id));
+    }
+  }
+  if (fixtures.dvr_id) {
+    for (const pg of DVR_PAGES) {
+      await captureNamedPage(page, pg.name, pg.pathFn(fixtures.dvr_id));
+    }
+  }
+  if (fixtures.task_id) {
+    for (const pg of TASK_PAGES) {
+      await captureNamedPage(page, pg.name, pg.pathFn(fixtures.task_id));
+    }
+  }
+  if (fixtures.product_id) {
+    for (const pg of PRODUCT_STAGES_PAGES) {
+      await captureNamedPage(page, pg.name, pg.pathFn(fixtures.product_id));
+    }
   }
 
-  // ── Step 8: Multi-role loan stage screenshots ──
-  if (loans.length > 0) {
-    for (const roleUser of ROLE_USERS) {
-      if (roleUser.email === LOGIN_EMAIL) continue; // Already captured as admin
-
-      console.log(`\n🔑 Switching to ${roleUser.name} (${roleUser.email})...`);
-      const roleContext = await browser.createBrowserContext();
-      const rolePage = await roleContext.newPage();
-      rolePage.setDefaultNavigationTimeout(30000);
-
-      try {
-        await rolePage.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle2' });
-        await rolePage.type('input[name="email"]', roleUser.email);
-        await rolePage.type('input[name="password"]', roleUser.password);
-        await Promise.all([
-          rolePage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 }),
-          rolePage.click('button[type="submit"]'),
-        ]);
-
-        for (const loan of loans) {
-          const pagePath = `/loans/${loan.id}/stages`;
-          await captureNamedPage(rolePage, `loan-stages-${loan.stageName}-${roleUser.name}`, pagePath);
+  // ── Step 5: COMPLETE mode only — per-loan + per-role loan-stage views ──
+  if (coverageMode === 'complete') {
+    const loans = loadLoans();
+    if (loans.length > 0) {
+      console.log(`\n── Per-loan captures (${loans.length} loans) ──`);
+      for (const loan of loans) {
+        for (const pg of PER_LOAN_PAGES) {
+          await captureNamedPage(page, `loan-${pg.suffix}-${loan.stageName}`, pg.pathFn(loan.id));
         }
-      } catch (err) {
-        console.log(`  ✗ Login failed for ${roleUser.name}: ${err.message}`);
       }
 
-      await rolePage.close();
-      await roleContext.close();
+      console.log('\n── Multi-role loan-stage captures ──');
+      for (const roleUser of ROLE_USERS) {
+        if (roleUser.email === LOGIN_EMAIL) continue;
+
+        console.log(`\n🔑 Switching to ${roleUser.name} (${roleUser.email})...`);
+        const roleContext = await browser.createBrowserContext();
+        const rolePage = await roleContext.newPage();
+        rolePage.setDefaultNavigationTimeout(30000);
+
+        try {
+          await rolePage.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle2' });
+          await rolePage.type('input[name="email"]', roleUser.email);
+          await rolePage.type('input[name="password"]', roleUser.password);
+          await Promise.all([
+            rolePage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 }),
+            rolePage.click('button[type="submit"]'),
+          ]);
+
+          for (const loan of loans) {
+            const pagePath = `/loans/${loan.id}/stages`;
+            await captureNamedPage(rolePage, `loan-stages-${loan.stageName}-${roleUser.name}`, pagePath);
+          }
+        } catch (err) {
+          console.log(`  ✗ Login failed for ${roleUser.name}: ${err.message}`);
+        }
+
+        await rolePage.close();
+        await roleContext.close();
+      }
+    } else {
+      console.log('\n⚠ No loans in loan-stage-map.json — per-loan + multi-role captures skipped.');
     }
   }
 
   await browser.close();
 
-  // ── Summary ──
   let total = 0;
   for (const vpName of Object.keys(VIEWPORTS)) {
     const dir = path.join(SCREENSHOT_DIR, vpName);
@@ -486,7 +548,7 @@ async function run() {
       total += files.length;
     }
   }
-  console.log(`\n✅ Done! ${total} screenshots saved to screenshots/`);
+  console.log(`\n✅ Done! ${total} screenshots saved to screenshots/ (${coverageMode} mode)`);
 }
 
 run().catch(err => {

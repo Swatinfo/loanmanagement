@@ -157,15 +157,15 @@ class LoanDocumentService
         }
 
         $loan = $document->loan;
-        $directory = 'loan-documents/' . $loan->id;
-        $fileName = $document->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+        $directory = 'loan-documents/'.$loan->id;
+        $fileName = FileUploadService::hashedFilename($file);
         $path = $file->storeAs($directory, $fileName, 'local');
 
         $document->update([
             'file_path' => $path,
             'file_name' => $file->getClientOriginalName(),
             'file_size' => $file->getSize(),
-            'file_mime' => $file->getClientMimeType(),
+            'file_mime' => $file->getMimeType(),
             'uploaded_by' => $userId,
             'uploaded_at' => now(),
         ]);

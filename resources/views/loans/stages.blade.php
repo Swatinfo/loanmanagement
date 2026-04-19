@@ -38,13 +38,17 @@
             word-break: break-word;
         }
 
-        /* Fixed bottom action bar for mobile/tablet */
+        /* Fixed bottom action bar for mobile/tablet.
+           Rides above the mobile bottom nav via --shf-bottom-nav-height.
+           z-index sits BELOW Bootstrap offcanvas (1045) so the "More" sheet
+           covers it cleanly, and BELOW modals (1055) so confirm dialogs sit
+           on top. Kept above the bottom nav (1029) and the FAB (1035). */
         .shf-bottom-bar {
             position: fixed;
-            bottom: 0;
+            bottom: var(--shf-bottom-nav-height, 0px);
             left: 0;
             right: 0;
-            z-index: 1050;
+            z-index: 1040;
             display: none;
             align-items: center;
             justify-content: center;

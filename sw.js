@@ -1,12 +1,17 @@
 // ============================================================
-//  SERVICE WORKER — SHF Loan Management PWA (Laravel)
+//  SERVICE WORKER — SHF Loan Management PWA (online-only gate)
+//
+//  Strategy: cache only the app shell (static assets + the offline
+//  fallback page). App pages and API calls are always network-first.
+//  If offline, any page/API request returns the offline shell or 503,
+//  so stale data is never shown.
 // ============================================================
-var SHF_SW_VERSION = '20260415220839';
+var SHF_SW_VERSION = '20260418190650';
 var STATIC_CACHE = 'shf-static-' + SHF_SW_VERSION;
-var DYNAMIC_CACHE = 'shf-dynamic-' + SHF_SW_VERSION;
+var OFFLINE_URL = '/offline.html';
 
-// Only pre-cache actual static files (not auth-protected routes)
 var STATIC_ASSETS = [
+    OFFLINE_URL,
     '/css/shf.css',
     '/images/logo3.png',
     '/images/background.png',
@@ -15,155 +20,136 @@ var STATIC_ASSETS = [
     '/images/Shree-4.png',
     '/fonts/NotoSansGujarati-Regular.ttf',
     '/fonts/NotoSansGujarati-Bold.ttf',
-    '/manifest.json'
+    '/manifest.json',
 ];
 
-// Install: pre-cache static assets
+// Install: pre-cache the app shell.
 self.addEventListener('install', function (event) {
     event.waitUntil(
         caches.open(STATIC_CACHE).then(function (cache) {
-            var promises = STATIC_ASSETS.map(function (url) {
-                return cache.add(url).catch(function (err) {
-                    console.warn('SW: Failed to cache', url, err);
-                });
-            });
-            return Promise.all(promises);
+            return Promise.all(
+                STATIC_ASSETS.map(function (url) {
+                    return cache.add(url).catch(function (err) {
+                        console.warn('SW: failed to pre-cache', url, err);
+                    });
+                })
+            );
         }).then(function () {
             return self.skipWaiting();
         })
     );
 });
 
-// Activate: clean old caches
+// Activate: drop any non-current caches (including old dynamic caches from
+// previous offline-first versions — we explicitly do NOT keep dynamic HTML).
 self.addEventListener('activate', function (event) {
     event.waitUntil(
         caches.keys().then(function (keys) {
             return Promise.all(
-                keys.filter(function (key) {
-                    return key !== STATIC_CACHE && key !== DYNAMIC_CACHE;
-                }).map(function (key) {
-                    return caches.delete(key);
-                })
+                keys.filter(function (key) { return key !== STATIC_CACHE; })
+                    .map(function (key) { return caches.delete(key); })
             );
-        }).then(function () {
-            return self.clients.claim();
-        })
+        }).then(function () { return self.clients.claim(); })
     );
 });
 
-// Fetch routing
+// Fetch routing.
 self.addEventListener('fetch', function (event) {
-    var url = new URL(event.request.url);
+    var req = event.request;
+    var url = new URL(req.url);
 
-    // Skip non-GET requests (POST forms, CSRF, logout, etc.)
-    if (event.request.method !== 'GET') {
-        return;
-    }
+    // Only intercept same-origin requests. Let everything else (CDN, external
+    // analytics, etc.) fall through.
+    if (url.origin !== location.origin) { return; }
 
-    // Skip browser extensions and non-same-origin
-    if (url.origin !== location.origin) {
-        return;
-    }
+    // Non-GET (POST, PUT, DELETE) never cached. If offline, let the network
+    // error bubble so the UI can surface it; don't pretend success.
+    if (req.method !== 'GET') { return; }
 
-    // PDF downloads: Network-First with cache (available offline after first download)
-    if (url.pathname.startsWith('/quotations/download-file') || url.pathname.match(/\/quotations\/\d+\/download/)) {
-        event.respondWith(
-            fetch(event.request).then(function (response) {
-                if (response.status === 200) {
-                    var clone = response.clone();
-                    caches.open(DYNAMIC_CACHE).then(function (cache) {
-                        cache.put(event.request, clone);
-                    });
-                }
-                return response;
-            }).catch(function () {
-                return caches.match(event.request).then(function (cached) {
-                    if (cached) return cached;
-                    return new Response('PDF not available offline. Please connect to the internet and try again.', {
-                        status: 503,
-                        headers: { 'Content-Type': 'text/plain' }
-                    });
-                });
-            })
-        );
-        return;
-    }
-
-    // AJAX data endpoints: skip SW caching, let client-side handle offline
-    if (url.pathname === '/dashboard/quotation-data') {
-        return;
-    }
-
-    // API config: Network-First (so it's available offline after first visit)
-    if (url.pathname === '/api/config/public') {
-        event.respondWith(
-            fetch(event.request).then(function (response) {
-                if (response.status === 200) {
-                    var clone = response.clone();
-                    caches.open(DYNAMIC_CACHE).then(function (cache) {
-                        cache.put(event.request, clone);
-                    });
-                }
-                return response;
-            }).catch(function () {
-                return caches.match(event.request).then(function (cached) {
-                    return cached || new Response('{}', { headers: { 'Content-Type': 'application/json' } });
-                });
-            })
-        );
-        return;
-    }
-
-    // Static assets: Cache-First
+    // Static assets: cache-first.
     if (isStaticAsset(url.pathname)) {
         event.respondWith(
-            caches.match(event.request).then(function (cached) {
-                return cached || fetch(event.request).then(function (response) {
-                    var clone = response.clone();
-                    caches.open(STATIC_CACHE).then(function (cache) {
-                        cache.put(event.request, clone);
-                    });
-                    return response;
+            caches.match(req).then(function (cached) {
+                return cached || fetch(req).then(function (resp) {
+                    if (resp && resp.status === 200) {
+                        var clone = resp.clone();
+                        caches.open(STATIC_CACHE).then(function (cache) { cache.put(req, clone); });
+                    }
+                    return resp;
+                }).catch(function () {
+                    return new Response('', { status: 503 });
                 });
             })
         );
         return;
     }
 
-    // HTML pages (Laravel routes): Network-First with cache fallback
-    // This caches pages as the user visits them, so they work offline later
+    // Page navigations: network-first, offline-shell on failure.
+    // Accept header is "text/html" for real navigations and HX-requests both.
+    if (req.mode === 'navigate' || (req.headers.get('accept') || '').indexOf('text/html') !== -1) {
+        event.respondWith(
+            fetch(req).catch(function () {
+                return caches.match(OFFLINE_URL);
+            })
+        );
+        return;
+    }
+
+    // Everything else (XHR, fetch for JSON/API, etc.): network-only. If the
+    // server isn't reachable, return a 503 JSON so callers see the error
+    // explicitly instead of cached data.
     event.respondWith(
-        fetch(event.request).then(function (response) {
-            // Only cache successful HTML responses (not redirects/errors)
-            if (response.status === 200) {
-                var clone = response.clone();
-                caches.open(DYNAMIC_CACHE).then(function (cache) {
-                    cache.put(event.request, clone);
-                });
-            }
-            return response;
-        }).catch(function () {
-            return caches.match(event.request).then(function (cached) {
-                if (cached) return cached;
-                // Fallback: return cached dashboard if available
-                return caches.match('/dashboard').then(function (fallback) {
-                    return fallback || new Response(
-                        '<html><body style="font-family:sans-serif;text-align:center;padding:60px 20px;background:#f8f8f8;">' +
-                        '<h1 style="color:#3a3536;">You are offline</h1>' +
-                        '<p style="color:#666;">Please check your internet connection and try again.</p></body></html>',
-                        { headers: { 'Content-Type': 'text/html' } }
-                    );
-                });
-            });
+        fetch(req).catch(function () {
+            return new Response(
+                JSON.stringify({ offline: true, error: 'You are offline. Please reconnect.' }),
+                { status: 503, headers: { 'Content-Type': 'application/json' } }
+            );
         })
     );
 });
 
 function isStaticAsset(pathname) {
-    var exts = ['.css', '.js', '.ttf', '.woff', '.woff2', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico'];
+    if (pathname === OFFLINE_URL || pathname === '/manifest.json') { return true; }
+    var exts = ['.css', '.js', '.ttf', '.woff', '.woff2', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp'];
     for (var i = 0; i < exts.length; i++) {
-        if (pathname.endsWith(exts[i])) return true;
+        if (pathname.endsWith(exts[i])) { return true; }
     }
-    if (pathname === '/manifest.json') return true;
     return false;
 }
+
+// --- Web Push: show OS notification when the server pushes ---
+self.addEventListener('push', function (event) {
+    var data = {};
+    try { data = event.data ? event.data.json() : {}; } catch (err) { data = { title: 'SHF', body: event.data ? event.data.text() : '' }; }
+
+    var title = data.title || 'SHF';
+    var options = {
+        body: data.body || '',
+        icon: data.icon || '/images/icon-192x192.png',
+        badge: data.badge || '/images/icon-192x192.png',
+        tag: data.tag || 'shf-notification',
+        renotify: true,
+        data: data.data || {},
+    };
+
+    event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Click: focus an open window or open the deep link in a new tab.
+self.addEventListener('notificationclick', function (event) {
+    event.notification.close();
+    var target = (event.notification.data && event.notification.data.url) || '/dashboard';
+
+    event.waitUntil(
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
+            for (var i = 0; i < clientList.length; i++) {
+                var c = clientList[i];
+                if (c.url.indexOf(self.location.origin) === 0 && 'focus' in c) {
+                    if (c.navigate) { c.navigate(target); }
+                    return c.focus();
+                }
+            }
+            return self.clients.openWindow(target);
+        })
+    );
+});

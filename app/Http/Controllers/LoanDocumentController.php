@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\LoanDetail;
 use App\Models\LoanDocument;
+use App\Services\FileUploadService;
 use App\Services\LoanDocumentService;
 use App\Services\LoanStageService;
 use Illuminate\Http\JsonResponse;
@@ -125,9 +126,10 @@ class LoanDocumentController extends Controller
     {
         abort_unless($document->loan_id === $loan->id, 404);
 
-        $request->validate([
-            'file' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png,webp,doc,docx,xls,xlsx',
-        ]);
+        $request->validate(
+            ['file' => FileUploadService::rules()],
+            FileUploadService::messages(),
+        );
 
         $document = $this->documentService->uploadFile(
             $document,

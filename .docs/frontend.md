@@ -26,6 +26,7 @@ Colors:
 Sizing / shape:
 - `--radius` `10px`, `--shadow`, `--shadow-lg`
 - `--bs-border-width` `2px` (Bootstrap override)
+- `--shf-bottom-nav-height` — see **Mobile chrome (bottom nav + FAB)** below
 
 Font scale (use utility classes of the same name):
 - `--shf-text-2xs` `0.65rem` — badges, tiny labels
@@ -229,6 +230,30 @@ Wrap in `.shf-section .shf-dt-section`. Use `{ dom: 'rt<"shf-dt-bottom"ip>' }`. 
 - Each cell becomes a key/value row with `data-label` pseudo-element
 
 Alternative: use `.shf-table-mobile` on simpler tables — CSS transforms rows into cards automatically with `<td data-label="...">` markup.
+
+## Mobile chrome (bottom nav + FAB)
+
+Below xl (< 1200 px — same breakpoint the top navbar uses with `navbar-expand-xl`), the app hands navigation off to two fixed widgets instead of a hamburger:
+
+- **Bottom nav** (`resources/views/partials/bottom-nav.blade.php`) — 5 slots: `Dashboard · Loans · DVR · Tasks · More`. Class `.shf-bottom-nav` + `.shf-bottom-nav-item`. **More** opens a Bootstrap bottom `offcanvas` (`#shfMoreOffcanvas`) listing Quotations, Customers, Users, Settings, Activity Log, Reports, Notifications, Profile, Logout — all permission-gated.
+- **Mobile FAB** (`resources/views/partials/mobile-fab.blade.php`) — expanding create-actions launcher. Pills: `New Quotation`, `New Task`, `New Visit`. Triggered via `data-bs-toggle` or `?create=1` deep-link. Class `.shf-fab-wrap` + `.shf-fab-main` + `.shf-fab-item`. Classes `shf-fab-backdrop` + body state `shf-fab-open` drive the expanded UI.
+
+Both are included in `layouts/app.blade.php` at `</body>` — guarded by `request()->routeIs(...)` against loan deep-workflow routes (`loans.stages`, `loans.documents`, `loans.valuation`, `loans.valuation-map`, `loans.transfers`, `loans.timeline`, `loans.disbursement`). When suppressed, the body lacks `has-bottom-nav`, so `--shf-bottom-nav-height` resolves to `0` and in-page sticky bars keep their natural bottom anchor.
+
+### Height variable + sticky-bar contract
+
+```
+:root                          → --shf-bottom-nav-height: 0
+@media (max-width: 1199.98px)
+  body.has-bottom-nav          → --shf-bottom-nav-height: 64px
+                                  body { padding-bottom: var(--...); }
+```
+
+Any fixed/sticky bottom bar on a page that coexists with the bottom nav should read the variable: `bottom: var(--shf-bottom-nav-height, 0px)`. Example: the loan stages page's `.shf-bottom-bar`.
+
+### Hamburger removed
+
+`<button class="navbar-toggler">` is gone from `layouts/navigation.blade.php`. The `#shfNavbar` collapse wrapper stays because Bootstrap's `navbar-expand-xl` uses it to render the desktop horizontal nav at ≥ xl. At < xl the collapse stays closed; navigation happens via the bottom nav + More sheet.
 
 ## CSS rules of engagement
 
